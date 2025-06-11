@@ -42,37 +42,23 @@ solver = Rodas5()          # high-accuracy ODE solver
 🔹 extractData(df)
 Extracts cleaned x and y vectors from a DataFrame with a "Day Averages" column.
 
-julia
-Copy
-Edit
+
 x, y = extractData(df)
 🔹 setUpProblem(model, x, y, solver, u0, p, tspan, bounds)
 Optimizes parameters for a given model and returns the fitted solution and problem.
 
-julia
-Copy
-Edit
 params, sol, prob = setUpProblem(logistic_growth, x, y, solver, u0, p, tspan, bounds)
 🔹 calculate_bic(prob, x, y, solver, opt_params)
 Computes BIC and SSR for a solved ODE problem.
 
-julia
-Copy
-Edit
 bic, ssr = calculate_bic(prob, x, y, solver, params)
 🔹 pQuickStat(x, y, params, sol, prob, bic, ssr)
 Prints parameters and plots model fit against data.
 
-julia
-Copy
-Edit
 pQuickStat(x, y, params, sol, prob, bic, ssr)
 🔹 compareModelsBB(name1, name2, model1, model2, x, y, solver, u0, p, tspan, bounds)
 Fits and compares two ODE models to the same dataset. Plots results and saves CSV.
 
-julia
-Copy
-Edit
 compareModelsBB(
     "Logistic", "Gompertz",
     logistic_growth, gompertz_growth,
@@ -81,9 +67,6 @@ compareModelsBB(
 🔹 compareCellResponseModels(label_res, x_res, y_res, model_res, label_sen, x_sen, y_sen, model_sen, solver, u0_res, u0_sen, p, tspan, bounds)
 Compare responses of resistant and sensitive cells under different models. Saves comparison and plots results.
 
-julia
-Copy
-Edit
 compareCellResponseModels(
     "Resistant", x, y, logistic_growth,
     "Sensitive", x1, y1, gompertz_growth,
