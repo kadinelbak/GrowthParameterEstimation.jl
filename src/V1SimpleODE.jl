@@ -182,5 +182,83 @@ function compareModelsBB(name1, name2, model1, model2, xdata, ydata, solver, u0,
     plot!(p1, layout=(2, 1), size=(800, 600))
 end
 
+"""
+    extract_sample_trajectories(file_name)
+
+    Takes a data file that has two columns. One column of names that are formatted like so:
+    "...Replicate2...Day2...Classifier..." and will average all the replicate of each respective day and classifier until you
+    ouput a  
+"""
+
+function extract_sample_trajectories(file_path::String)
+    df = CSV.read(file_path, DataFrame)
+
+    # Rename columns for clarity
+    rename!(df, Dict(names(df)[1] => :Sample, names(df)[2] => :Count))
+
+    # === Extract day number from the Sample string ===
+    df[!, :Day] = [occursin(r"Day\d+", s) ? parse(Int, match(r"Day(\d+)", s).captures[1]) : missing for s in df.Sample]
+
+    # === Extract base sample name by removing Replicate and Day identifiers ===
+    df[!, :Base] = [replace(s, r"_Replicate\d+_Day\d+" => "") for s in df.Sample]
+
+    # Sort for consistency
+    sort!(df, [:Base, :Day])
+
+    # === Group and average every blank replicates per Base + Day ===
+    grouped = groupby(df, [:Base, :Day])
+    summarized = combine(grouped, :Count => mean => :Avg)
+
+    # === Prepare storage and plotting ===
+    results = Dict{String, NamedTuple{(:x, :y), Tuple{Vector{Int}, Vector{Float64}}}}()
+    plot(title="Sample Group Trajectories", xlabel="Day", ylabel="Avg Cell Count", legend=:topright)
+
+    for base in unique(summarized.Base)
+        sub = summarized[summarized.Base .== base, :]
+        x = sub.Day
+        y = sub.Avg
+
+        # Save result
+        results[base] = (x = x, y = y)
+
+        # Log to terminal
+        println("\nGroup: $base")
+        println("  Days (x): ", x)
+        println("  Averages (y): ", y)
+
+        # Add to plot
+        plot!(x, y, label=base, lw=2)
+    end
+
+    display(current())
+    return results
+end
+
+"""
+    extractData(file_name)
+
+    Takes a data file that has one column. One column that has a header of "Day Averages"
+"""
+
+function extractData(file_name)
+    df = CSV.read(file_name, DataFrame)
+
+    x = []
+    y = []
+    current_day = 1
+    for row in eachrow(df)
+        val = row[:"Day Averages"]
+        if !ismissing(val) && !isempty(strip(string(val)))  # Filters out missing or blank cells
+            push!(x, current_day)
+            push!(y, val)  # No need to parse
+            current_day += 1
+        end
+    end
+
+    x = Float64.(x)
+    y = Float64.(y)
+    
+    return x, y
+end 
 
 end
