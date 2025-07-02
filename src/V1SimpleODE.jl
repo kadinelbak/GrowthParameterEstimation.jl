@@ -58,15 +58,16 @@ function extract_day_averages_from_df(df::DataFrame)
     return x, y
 end
 
-"""
-    extractData(dfTemp)
-
-Extracts non-missing values from the column "Day Averages" in the given DataFrame and assigns time indices.
-Returns two Float64 arrays: time points `x` and values `y`. Note that names for lines need to follow this pattern <celltype>_<drug_concentration>_<treated/untreated>_<Day#>_<Tile-#>_<Well/Sample>.
 
 """
+    extractData(file_name)
 
-function extractData(df::DataFrame)
+    Takes a data file that has one column. One column that has a header of "Day Averages"
+"""
+
+function extractData(file_name)
+    df = CSV.read(file_name, DataFrame)
+
     x = []
     y = []
     current_day = 1
@@ -84,6 +85,7 @@ function extractData(df::DataFrame)
     
     return x, y
 end
+
 
 """
     setUpProblem(model, xdata, ydata, solver, u0, p, tspan, bounds)
@@ -482,6 +484,7 @@ end
 # 4) Gompertz + death: p = (a, b, δ)
 function gompertz_growth_with_death!(du,u,p,t)
   a,b,δ = p; du[1] = a*u[1]*exp(-b*t) - δ*u[1]
+
 end
 
 # 5) exp with lag: p = (r, t_lag)
