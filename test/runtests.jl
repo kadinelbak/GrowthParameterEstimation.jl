@@ -1,11 +1,20 @@
 using V1SimpleODE
 using Test
 using CSV, DataFrames, DifferentialEquations
+using BlackBoxOptim
+
+# Get the directory where the test file is located
+const TEST_DIR = dirname(@__FILE__)
 
 @testset "V1SimpleODE.jl" begin
-    # Load data
-    df = CSV.read("logistic_day_averages.csv", DataFrame)
+    # Test with sample data
+    df = CSV.read(joinpath(TEST_DIR, "test_data.csv"), DataFrame)
+    @test names(df) == ["Day Averages"] # Verify column name
+
+    # Test data extraction
     x, y = V1SimpleODE.extractData(df)
+    @test length(x) == length(y) # Check lengths match
+    @test all(x .== 1:length(x)) # Check x values are sequential days
     @test length(x) == length(y) > 0
 
     # Define a simple logistic model for testing
