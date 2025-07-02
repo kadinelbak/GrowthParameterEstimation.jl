@@ -16,7 +16,7 @@ using CSV, DataFrames, DifferentialEquations
     u0 = [y[1]]
     p = [0.1, maximum(y)*1.5]
     tspan = (x[1], x[end])
-    bounds = [(0.0, 2.0), (maximum(y), maximum(y)*2.0)]
+    bounds = [(0.0, 2.0), (maximum(y)*0.8, maximum(y)*2.0)]
     solver = Tsit5()
 
     # Test setUpProblem

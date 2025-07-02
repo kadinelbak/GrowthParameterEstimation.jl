@@ -16,7 +16,9 @@ packages = [
     "OptimizationOptimJL",
     "OptimizationBBO",
     "BlackBoxOptim",
-    "Statistics"
+    "Statistics",
+    "RecursiveArrayTools",
+    "V1SimpleODE"
 ]
 
 println("Installing required packages for testing...")
