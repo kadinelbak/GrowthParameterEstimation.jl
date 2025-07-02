@@ -10,30 +10,71 @@ using LsqFit
 using DifferentialEquations, RecursiveArrayTools, Plots, DiffEqParamEstim
 using Optimization, ForwardDiff, OptimizationOptimJL, OptimizationBBO
 using BlackBoxOptim
+using Statistics
 
 # Load the CSV file
 df = CSV.read("logistic_day_averages.csv", DataFrame)
-df1 = CSV.read("logistic_day_averages2.csv", DataFrame)
+
+"""
+    extract_day_average_from_df(dfTemp)
+
+Extracts non-missing values from the column "Day Averages" in the given DataFrame and assigns time indices.
+Returns two Float64 arrays: time points `x` and values `y`. Note that names 
+for lines need to follow this pattern <celltype>_<drug_concentration>_<treated/untreated>_<Day#>_<Tile-#>_<Well/Sample>.
+example: `A2780cis_15and20__Treated_Day1_Tile-1_A5`.
+"""
+function extract_day_averages_from_df(df::DataFrame)
+    df = filter(row -> occursin(r"_Tile-\d+_[^AC]\d", row.Image), df)
+
+    # Extract day from image name
+    function extract_day(name::AbstractString)
+        m = match(r"(?i)day(\d+)", name)
+        return m !== nothing ? parse(Int, m.captures[1]) : missing
+    end
+    df.day = extract_day.(df.Image)
+    df = dropmissing(df, :day)
+
+    # Group by day and average every 18 tiles
+    grouped = groupby(df, :day)
+    new_rows = []
+
+    for g in grouped
+        chunked = [g[i:min(i+17, nrow(g)), :] for i in 1:18:nrow(g)]
+        for chunk in chunked
+            avg = mean(chunk[!, Symbol("Area µm^2")])
+            push!(new_rows, (Day = unique(chunk.day)[1], Average = avg))
+        end
+    end
+    println("This is what the data looks like", DataFrame(new_rows))
+    return DataFrame(new_rows)
+end
 
 """
     extractData(dfTemp)
 
 Extracts non-missing values from the column "Day Averages" in the given DataFrame and assigns time indices.
-Returns two Float64 arrays: time points `x` and values `y`.
+Returns two Float64 arrays: time points `x` and values `y`. Note that names for lines need to follow this pattern <celltype>_<drug_concentration>_<treated/untreated>_<Day#>_<Tile-#>_<Well/Sample>.
+
 """
+
 function extractData(dfTemp)
+    
     x = []
     y = []
     current_day = 1
-    for row in eachrow(dfTemp)
+    for row in eachrow(df)
         val = row[:"Day Averages"]
-        if !ismissing(val) && !isempty(strip(string(val)))
+        if !ismissing(val) && !isempty(strip(string(val)))  # Filters out missing or blank cells
             push!(x, current_day)
-            push!(y, val)
+            push!(y, val)  # No need to parse
             current_day += 1
         end
     end
-    return Float64.(x), Float64.(y)
+
+    x = Float64.(x)
+    y = Float64.(y)
+    
+    return x, y
 end 
 
 """
@@ -96,6 +137,12 @@ function pQuickStat(x, y, optimized_params, optimized_sol, optimized_prob, bic, 
     plot!(optimized_sol.t, [u[1] for u in optimized_sol.u], label="Model", lw=2)
     display(p)
 end
+
+
+
+
+
+
 
 """
     compareCellResponseModels(...)
@@ -182,5 +229,4 @@ function compareModelsBB(name1, name2, model1, model2, xdata, ydata, solver, u0,
     plot!(p1, layout=(2, 1), size=(800, 600))
 end
 
-
-end
+end # module V1SimpleODE
