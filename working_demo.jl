@@ -89,25 +89,27 @@ cv_result = leave_one_out_validation(x_data, y_data, [0.1, 80.0];
                                    bounds=bounds, show_stats=false)
 println("✓ Cross-validation completed!")
 println("  RMSE: $(round(cv_result.rmse, digits=4))")
-println("  R²: $(round(cv_result.r2, digits=3))")
-println("  Valid predictions: $(cv_result.valid_predictions)/$(length(x_data))")
+println("  R²: $(round(cv_result.r_squared, digits=3))")
+println("  Valid predictions: $(cv_result.n_valid)/$(length(x_data))")
 
 # 5. Basic analysis demonstrations
 println("\n🔧 5. Testing analysis functions...")
 
 # Enhanced BIC analysis
 println("Running enhanced BIC analysis...")
-bic_result = enhanced_bic_analysis(x_data, y_data; 
-    bounds_logistic=[(0.01, 2.0), (10.0, 150.0)],
-    bounds_gompertz=[(0.01, 2.0), (0.1, 10.0), (10.0, 150.0)],
-    bounds_exp_delay=[(0.01, 2.0), (0.1, 5.0), (0.1, 5.0)])
-
-println("✓ Enhanced BIC analysis completed!")
-println("  Number of successful fits: $(length(bic_result.results))")
-if !isempty(bic_result.results)
-    best_idx = findmin([res.bic for res in bic_result.results])[2]
-    best_model = bic_result.results[best_idx]
-    println("  Best model: $(best_model.name)")
+try
+    bic_result = enhanced_bic_analysis(x_data, y_data; show_plots=false)
+    println("✓ Enhanced BIC analysis completed!")
+    println("  Number of successful fits: $(length(bic_result.results))")
+    if !isempty(bic_result.results)
+        best_idx = findmin([res.bic for res in bic_result.results])[2]
+        best_model = bic_result.results[best_idx]
+        println("  Best model: $(best_model.name)")
+        println("  Best model BIC: $(round(best_model.bic, digits=2))")
+    end
+catch e
+    println("⚠ Enhanced BIC analysis failed: $(e)")
+end
     println("  Best BIC: $(round(best_model.bic, digits=2))")
 end
 
