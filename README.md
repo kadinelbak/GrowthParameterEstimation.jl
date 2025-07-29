@@ -76,9 +76,21 @@ Compare models on two different datasets. Saves comparison and plots results.
 🔹 compare_models_dict(x, y, specs; ...)
 Compare multiple models (specified in dictionary) on the same dataset.
 
+🔹 fit_three_datasets(x1, y1, name1, x2, y2, name2, x3, y3, name3, p0; ...)
+Fits the same ODE model to three different datasets and plots all results on one plot.
+
 ## Example Usage
 
 ```julia
+# Fit same model to three datasets
+fit_three_datasets(
+    x1, y1, "Sample 1",
+    x2, y2, "Sample 2", 
+    x3, y3, "Sample 3",
+    [0.5, 100.0];  # initial parameter guess
+    model = logistic_growth!
+)
+
 # Compare two models on the same data
 compare_models(
     x, y,

@@ -395,6 +395,127 @@ BIC Summary:")
     return fits
 end
 
+"""
+fit_three_datasets(
+    x1::Vector{<:Real}, y1::Vector{<:Real}, name1::String,
+    x2::Vector{<:Real}, y2::Vector{<:Real}, name2::String,
+    x3::Vector{<:Real}, y3::Vector{<:Real}, name3::String,
+    p0::Vector{<:Real};
+    model                = logistic_growth!,
+    fixed_params         = nothing,
+    solver               = Rodas5(),
+    bounds               = nothing,
+    show_stats::Bool     = false,
+    output_csv::String   = "three_datasets_comparison.csv"
+)
+
+Fits the same ODE model to three different datasets with identical initial conditions,
+plots all three fits on a single plot, prints statistics, and saves results to CSV.
+
+This is essentially a wrapper around `run_single_fit` that handles three datasets
+with the same model and parameters but allows for different data.
+"""
+function fit_three_datasets(
+    x1::Vector{<:Real}, y1::Vector{<:Real}, name1::String,
+    x2::Vector{<:Real}, y2::Vector{<:Real}, name2::String,
+    x3::Vector{<:Real}, y3::Vector{<:Real}, name3::String,
+    p0::Vector{<:Real};
+    model                = logistic_growth!,
+    fixed_params         = nothing,
+    solver               = Rodas5(),
+    bounds               = nothing,
+    show_stats::Bool     = false,
+    output_csv::String   = "three_datasets_comparison.csv"
+)
+    # Fit each dataset individually
+    fit1 = run_single_fit(
+        x1, y1, p0;
+        model        = model,
+        fixed_params = fixed_params,
+        solver       = solver,
+        bounds       = bounds,
+        show_stats   = show_stats
+    )
+
+    fit2 = run_single_fit(
+        x2, y2, p0;
+        model        = model,
+        fixed_params = fixed_params,
+        solver       = solver,
+        bounds       = bounds,
+        show_stats   = show_stats
+    )
+
+    fit3 = run_single_fit(
+        x3, y3, p0;
+        model        = model,
+        fixed_params = fixed_params,
+        solver       = solver,
+        bounds       = bounds,
+        show_stats   = show_stats
+    )
+
+    # Convert to Float64 for plotting
+    x1, y1 = Float64.(x1), Float64.(y1)
+    x2, y2 = Float64.(x2), Float64.(y2)
+    x3, y3 = Float64.(x3), Float64.(y3)
+
+    # Create combined plot
+    plt = scatter(
+        x1, y1;
+        label  = "Data - $name1",
+        color  = :blue,
+        xlabel = "Time",
+        ylabel = "Value",
+        title  = "Three Dataset Comparison: $name1, $name2, $name3",
+        legend = :bottomright,
+        markersize = 4
+    )
+    
+    # Plot first model fit
+    plot!(plt, fit1.sol.t, getindex.(fit1.sol.u,1);
+          label="Model - $name1", color=:blue, lw=2)
+
+    # Add second dataset
+    scatter!(plt, x2, y2;
+             label  = "Data - $name2",
+             color  = :red,
+             markersize = 4)
+    plot!(plt, fit2.sol.t, getindex.(fit2.sol.u,1);
+          label="Model - $name2", color=:red, lw=2, linestyle=:dash)
+
+    # Add third dataset
+    scatter!(plt, x3, y3;
+             label  = "Data - $name3",
+             color  = :green,
+             markersize = 4)
+    plot!(plt, fit3.sol.t, getindex.(fit3.sol.u,1);
+          label="Model - $name3", color=:green, lw=2, linestyle=:dot)
+
+    display(plt)
+
+    # Print summary statistics
+    println("=== $name1 ===")
+    println("Params: $(fit1.params), BIC: $(fit1.bic), SSR: $(fit1.ssr)")
+    println("=== $name2 ===")
+    println("Params: $(fit2.params), BIC: $(fit2.bic), SSR: $(fit2.ssr)")
+    println("=== $name3 ===")
+    println("Params: $(fit3.params), BIC: $(fit3.bic), SSR: $(fit3.ssr)")
+
+    # Save results to CSV
+    df_out = DataFrame(
+        Dataset = [name1, name2, name3],
+        Params  = [string(fit1.params), string(fit2.params), string(fit3.params)],
+        BIC     = [fit1.bic, fit2.bic, fit3.bic],
+        SSR     = [fit1.ssr, fit2.ssr, fit3.ssr]
+    )
+    CSV.write(output_csv, df_out)
+    println("Results saved to $output_csv")
+
+    # Return all fit results
+    return (fit1 = fit1, fit2 = fit2, fit3 = fit3)
+end
+
 # 1) plain logistic: p = (r, K)
 function logistic_growth!(du,u,p,t)
   r,K = p; du[1] = r*u[1]*(1 - u[1]/K)
