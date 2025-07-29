@@ -1,51 +1,96 @@
 using V1SimpleODE
 using Test
-using CSV, DataFrames, DifferentialEquations
-using BlackBoxOptim
-using Plots
+using DifferentialEquations
+using Statistics
+using Random
 
-# Get the directory where the test file is located
-const TEST_DIR = dirname(@__FILE__)
+# Set a global random seed for reproducible tests
+Random.seed!(12345)
 
-@testset "V1SimpleODE.jl Comprehensive Tests" begin
+println("Starting V1SimpleODE test suite...")
+println("Testing package version: V1SimpleODE")
+
+@testset "V1SimpleODE.jl Test Suite" begin
     
-    @testset "Test Data Setup" begin
-        # Create test data instead of loading from files
-        x = [1.0, 2.0, 3.0, 4.0, 5.0]
-        y = [10.0, 20.0, 35.0, 55.0, 80.0]
-        @test length(x) == length(y)
-        @test length(x) > 0
-        @test all(y .> 0)  # Assuming positive values
+    @testset "Package Loading and Basic Setup" begin
+        # Test that all main modules are accessible
+        @test isdefined(V1SimpleODE, :Models)
+        @test isdefined(V1SimpleODE, :Fitting) 
+        @test isdefined(V1SimpleODE, :Analysis)
         
-        # Create second dataset for comparison tests
-        x2 = [1.0, 2.0, 3.0, 4.0, 5.0]
-        y2 = [15.0, 28.0, 45.0, 65.0, 90.0]
-        @test length(x2) == length(y2)
-        @test length(x2) > 0
+        # Test that main functions are exported
+        @test isdefined(Main, :run_single_fit)
+        @test isdefined(Main, :compare_models)
+        @test isdefined(Main, :logistic_growth!)
+        @test isdefined(Main, :leave_one_out_validation)
+        @test isdefined(Main, :parameter_sensitivity_analysis)
+        
+        println("✓ Package structure validation passed")
     end
     
-    @testset "ODE Models" begin
-        # Test all built-in ODE models
-        u_test = [100.0]
-        p_logistic = [0.1, 500.0]
-        p_gompertz = [0.05, 2.0, 500.0]
-        p_delay = [0.1, 500.0, 1.0]
-        p_death = [0.1, 500.0, 0.01]
+    @testset "ODE Models Validation" begin
+        # Test all ODE model functions exist and work
+        u_test = [50.0]
         t_test = 1.0
         du_test = similar(u_test)
         
         # Test logistic growth
-        V1SimpleODE.logistic_growth!(du_test, u_test, p_logistic, t_test)
+        p_logistic = [0.2, 100.0]
+        logistic_growth!(du_test, u_test, p_logistic, t_test)
         @test length(du_test) == 1
         @test isfinite(du_test[1])
+        @test du_test[1] > 0  # Should be positive growth
         
         # Test logistic with death
-        V1SimpleODE.logistic_growth_with_death!(du_test, u_test, p_death, t_test)
+        p_death = [0.2, 100.0, 0.01]
+        logistic_growth_with_death!(du_test, u_test, p_death, t_test)
         @test length(du_test) == 1
         @test isfinite(du_test[1])
         
         # Test Gompertz growth
-        V1SimpleODE.gompertz_growth!(du_test, u_test, p_gompertz, t_test)
+        p_gompertz = [0.1, 1.0, 100.0]
+        gompertz_growth!(du_test, u_test, p_gompertz, t_test)
+        @test length(du_test) == 1
+        @test isfinite(du_test[1])
+        
+        # Test exponential with delay
+        p_exp_delay = [0.2, 100.0, 0.5]
+        exponential_growth_with_delay!(du_test, u_test, p_exp_delay, t_test)
+        @test length(du_test) == 1
+        @test isfinite(du_test[1])
+        
+        # Test exponential with death and delay
+        p_exp_death_delay = [0.2, 100.0, 0.01, 0.5]
+        exponential_growth_with_death_and_delay!(du_test, u_test, p_exp_death_delay, t_test)
+        @test length(du_test) == 1
+        @test isfinite(du_test[1])
+        
+        # Test pure exponential
+        p_exp = [0.2]
+        exponential_growth!(du_test, u_test, p_exp, t_test)
+        @test length(du_test) == 1
+        @test isfinite(du_test[1])
+        @test du_test[1] > 0  # Should be positive growth
+        
+        println("✓ All ODE models validation passed")
+    end
+    
+    # Include the specific test files
+    println("\n" * "="^50)
+    println("Running Fitting Tests...")
+    println("="^50)
+    include("test_fitting.jl")
+    
+    println("\n" * "="^50)
+    println("Running Analysis Tests...")  
+    println("="^50)
+    include("test_analysis.jl")
+    
+end
+
+println("\n" * "="^60)
+println("V1SimpleODE test suite completed!")
+println("="^60)
         @test length(du_test) == 1
         @test isfinite(du_test[1])
         

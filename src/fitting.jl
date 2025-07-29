@@ -2,6 +2,7 @@
 module Fitting
 
 using StatsBase
+using Statistics
 using CSV
 using Plots
 using DataFrames
@@ -519,6 +520,86 @@ function fit_three_datasets(
 
     # Return all fit results
     return (fit1 = fit1, fit2 = fit2, fit3 = fit3)
+end
+
+"""
+fit_three_datasets(
+    x_datasets::Vector{Vector{<:Real}},
+    y_datasets::Vector{Vector{<:Real}};
+    p0::Vector{<:Real}     = [0.1, 100.0],
+    model                  = Models.logistic_growth!,
+    fixed_params           = nothing,
+    solver                 = Rodas5(),
+    bounds                 = nothing,
+    show_plots::Bool       = true
+)
+
+Fits the same ODE model to multiple datasets provided as vectors of vectors.
+Returns individual fits and summary statistics.
+
+This version accepts datasets as vectors for convenience when working with 
+programmatically generated data.
+"""
+function fit_three_datasets(
+    x_datasets::Vector{Vector{<:Real}},
+    y_datasets::Vector{Vector{<:Real}};
+    p0::Vector{<:Real}     = [0.1, 100.0],
+    model                  = Models.logistic_growth!,
+    fixed_params           = nothing,
+    solver                 = Rodas5(),
+    bounds                 = nothing,
+    show_plots::Bool       = true
+)
+    n_datasets = length(x_datasets)
+    @assert length(y_datasets) == n_datasets "Number of x and y datasets must match"
+    
+    # Fit each dataset
+    individual_fits = []
+    for i in 1:n_datasets
+        try
+            fit_result = run_single_fit(
+                x_datasets[i], y_datasets[i], p0;
+                model        = model,
+                fixed_params = fixed_params,
+                solver       = solver,
+                bounds       = bounds,
+                show_stats   = false
+            )
+            
+            push!(individual_fits, (dataset = i, fit_result = fit_result))
+        catch e
+            println("Warning: Failed to fit dataset $i: $e")
+            push!(individual_fits, (dataset = i, fit_result = nothing))
+        end
+    end
+    
+    # Calculate summary statistics
+    successful_fits = filter(f -> f.fit_result !== nothing, individual_fits)
+    
+    if length(successful_fits) > 0
+        all_params = [f.fit_result.params for f in successful_fits]
+        mean_params = [mean([p[i] for p in all_params]) for i in 1:length(all_params[1])]
+        std_params = [std([p[i] for p in all_params]) for i in 1:length(all_params[1])]
+        mean_ssr = mean([f.fit_result.ssr for f in successful_fits])
+        
+        summary = (
+            mean_params = mean_params,
+            std_params = std_params,
+            mean_ssr = mean_ssr,
+            n_successful = length(successful_fits),
+            n_total = n_datasets
+        )
+    else
+        summary = (
+            mean_params = Float64[],
+            std_params = Float64[],
+            mean_ssr = Inf,
+            n_successful = 0,
+            n_total = n_datasets
+        )
+    end
+    
+    return (individual_fits = individual_fits, summary = summary)
 end
 
 end # module Fitting

@@ -3,27 +3,30 @@ using Pkg
 # Add all required packages for testing
 packages = [
     "Test",
-    "CSV",
-    "DataFrames",
     "DifferentialEquations",
     "StatsBase",
     "Plots",
-    "SciMLSensitivity",
-    "LsqFit",
-    "DiffEqParamEstim",
-    "Optimization",
-    "ForwardDiff",
-    "OptimizationOptimJL",
-    "OptimizationBBO",
     "BlackBoxOptim",
     "Statistics",
-    "RecursiveArrayTools",
-    "V1SimpleODE"
+    "Random",
+    "Distributions"
 ]
 
 println("Installing required packages for testing...")
 for pkg in packages
-    println("Adding package: $pkg")
-    Pkg.add(pkg)
+    try
+        println("Adding package: $pkg")
+        Pkg.add(pkg)
+    catch e
+        println("Warning: Could not add $pkg - $e")
+    end
 end
 println("Package installation complete!")
+
+# Test that V1SimpleODE can be loaded
+try
+    using V1SimpleODE
+    println("✓ V1SimpleODE loaded successfully")
+catch e
+    println("✗ Failed to load V1SimpleODE: $e")
+end
