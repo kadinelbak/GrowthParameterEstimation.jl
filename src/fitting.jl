@@ -16,7 +16,6 @@ using ForwardDiff
 using OptimizationOptimJL
 using OptimizationBBO
 using BlackBoxOptim
-using Statistics
 using Random
 
 # Import models from Models module
@@ -104,10 +103,33 @@ function run_single_fit(
     bounds        = nothing,
     show_stats::Bool = true
 )
-    # wrap for fixed_params
+    # Handle fixed parameters
     if fixed_params !== nothing
-        old_model = model
-        model = (du,u,p,t) -> old_model(du, u, vcat(p, fixed_params), t)
+        original_model = model
+        n_total_params = length(p0) + length(fixed_params)
+        
+        # Create a new model that reconstructs full parameter vector
+        model = function(du, u, p_free, t)
+            # Reconstruct full parameter vector by inserting free params and fixed params
+            p_full = zeros(n_total_params)
+            free_idx = 1
+            for i in 1:n_total_params
+                if haskey(fixed_params, i)
+                    p_full[i] = fixed_params[i]
+                else
+                    p_full[i] = p_free[free_idx]
+                    free_idx += 1
+                end
+            end
+            original_model(du, u, p_full, t)
+        end
+        
+        # Remove fixed parameters from p0 and bounds
+        free_indices = [i for i in 1:length(p0) if !haskey(fixed_params, i)]
+        p0 = p0[free_indices]
+        if bounds !== nothing
+            bounds = bounds[free_indices]
+        end
     end
 
     nparams = length(p0)
@@ -122,7 +144,7 @@ function run_single_fit(
     bic, ssr       = calculate_bic(prob̂, x, y, solver, p̂)
     show_stats && pQuickStat(x, y, p̂, sol̂, prob̂, bic, ssr)
 
-    return (params = p̂, bic = bic, ssr = ssr, sol = sol̂)
+    return (params = p̂, bic = bic, ssr = ssr, solution = sol̂)
 end
 
 # ────────────────────────────────────────────────────────────────────────────

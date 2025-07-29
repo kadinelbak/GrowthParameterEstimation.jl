@@ -16,14 +16,24 @@ function logistic_growth_with_death!(du,u,p,t)
   r,K,δ = p; du[1] = r*u[1]*(1 - u[1]/K) - δ*u[1]
 end
 
-# 3) Gompertz: p = (a, b, K) - corrected to include carrying capacity
+# 3) Gompertz: p = (a, b, K) - safe implementation
 function gompertz_growth!(du,u,p,t)
-  a,b,K = p; du[1] = a*u[1]*log(K/u[1])
+  a,b,K = p
+  if u[1] <= 0 || u[1] >= K
+    du[1] = 0.0
+  else
+    du[1] = a*u[1]*log(K/u[1])
+  end
 end
 
-# 4) Gompertz + death: p = (a, b, K, δ)
+# 4) Gompertz + death: p = (a, b, K, δ) - safe implementation  
 function gompertz_growth_with_death!(du,u,p,t)
-  a,b,K,δ = p; du[1] = a*u[1]*log(K/u[1]) - δ*u[1]
+  a,b,K,δ = p
+  if u[1] <= 0 || u[1] >= K
+    du[1] = -δ*u[1]
+  else
+    du[1] = a*u[1]*log(K/u[1]) - δ*u[1]
+  end
 end
 
 # 5) exp with delay: p = (r, K, t_lag) - corrected to include carrying capacity
