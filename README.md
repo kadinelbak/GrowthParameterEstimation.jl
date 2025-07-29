@@ -17,76 +17,81 @@ Full CSV export of model stats for reproducibility
 
 Perfect for computational biology, pharmacodynamics, and systems modeling where comparing mechanistic ODE models is essential.
 
+## Data Input Format
 
-TRYING TO CONTROL FOR ALL DATA INPUT IS HARD SO I JUST ASSUMED YOU WOULD BE GIVING DAILY INFO THAT TAKES [] for x values and [] for y values. 
+This package expects time-series data as two separate vectors:
+- `x`: Vector of time points (e.g., days)
+- `y`: Vector of corresponding measurements (e.g., cell counts, areas)
 
-Also please ensure you add a code block that will input the necessary variables. 
+## Basic Usage
+
+```julia
 using V1SimpleODE
-using DifferentialEquations, CSV, DataFrames
+using DifferentialEquations
 
-# Load your data
-df = CSV.read("logistic_day_averages.csv", DataFrame)
+# Prepare your data as vectors
+x = [1.0, 2.0, 3.0, 4.0, 5.0]  # time points
+y = [10.0, 25.0, 45.0, 70.0, 90.0]  # measurements
 
-x, y = extractData(df)  # Provided by the package
+# Define your models - these are already included in the package:
+# - logistic_growth!
+# - logistic_growth_with_death!
+# - gompertz_growth!
+# - gompertz_growth_with_death!
+# - exponential_growth_with_delay!
+# - logistic_growth_with_delay!
 
+# Initial parameter guess
+p0 = [0.5, 100.0]           # parameter guess [r, K] for logistic model
 
-# Define your models
-logistic_growth(u, p, t) = p[1] * u * (1 - u / p[2])
-
-gompertz_growth(u, p, t) = p[1] * u * log(p[2] / u)
-
-
-# Initial conditions and parameter guess
-u0 = [y[1]]                # initial value
-
-p = [0.5, 100.0]           # parameter guess
-
-tspan = (x[1], x[end])     # time span for ODE
-
+# Optional: define parameter bounds
 bounds = [(0.0, 1.5), (75.0, 125.0)]  # search range for optimization
 
+# Optional: choose solver
 solver = Rodas5()          # high-accuracy ODE solver
 
+# Fit a single model
+result = run_single_fit(x, y, p0; model=logistic_growth!, bounds=bounds, solver=solver)
+```
 
-🔹 extractData(df)
-
-Extracts cleaned x and y vectors from a DataFrame with a "Day Averages" column.
-
-
-x, y = extractData(df)
-
+## Main Functions
 🔹 setUpProblem(model, x, y, solver, u0, p, tspan, bounds)
 Optimizes parameters for a given model and returns the fitted solution and problem.
-
-params, sol, prob = setUpProblem(logistic_growth, x, y, solver, u0, p, tspan, bounds)
 
 🔹 calculate_bic(prob, x, y, solver, opt_params)
 Computes BIC and SSR for a solved ODE problem.
 
-bic, ssr = calculate_bic(prob, x, y, solver, params)
-
 🔹 pQuickStat(x, y, params, sol, prob, bic, ssr)
 Prints parameters and plots model fit against data.
 
-pQuickStat(x, y, params, sol, prob, bic, ssr)
+🔹 run_single_fit(x, y, p0; model, fixed_params, solver, bounds, show_stats)
+Fits a single model to x,y data with parameter optimization.
 
-🔹 compareModelsBB(name1, name2, model1, model2, x, y, solver, u0, p, tspan, bounds)
+🔹 compare_models(x, y, name1, model1, p0_1, name2, model2, p0_2; ...)
 Fits and compares two ODE models to the same dataset. Plots results and saves CSV.
 
-compareModelsBB(
-    "Logistic", "Gompertz",
-    logistic_growth, gompertz_growth,
-    x, y, solver, u0, p, tspan, bounds
+🔹 compare_datasets(x1, y1, name1, model1, p0_1, x2, y2, name2, model2, p0_2; ...)
+Compare models on two different datasets. Saves comparison and plots results.
+
+🔹 compare_models_dict(x, y, specs; ...)
+Compare multiple models (specified in dictionary) on the same dataset.
+
+## Example Usage
+
+```julia
+# Compare two models on the same data
+compare_models(
+    x, y,
+    "Logistic", logistic_growth!, [0.5, 100.0],
+    "Gompertz", gompertz_growth!, [0.3, 0.1]
 )
 
-🔹 compareCellResponseModels(label_res, x_res, y_res, model_res, label_sen, x_sen, y_sen, model_sen, solver, u0_res, u0_sen, p, tspan, bounds)
-Compare responses of resistant and sensitive cells under different models. Saves comparison and plots results.
-
-compareCellResponseModels(
-    "Resistant", x, y, logistic_growth,
-    "Sensitive", x1, y1, gompertz_growth,
-    solver, [y[1]], [y1[1]], p, tspan, bounds
+# Compare same model on two datasets  
+compare_datasets(
+    x1, y1, "Dataset 1", logistic_growth!, [0.5, 100.0],
+    x2, y2, "Dataset 2", logistic_growth!, [0.5, 100.0]
 )
+```
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://kadinelbak.github.io/V1SimpleODE.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://kadinelbak.github.io/V1SimpleODE.jl/dev/)

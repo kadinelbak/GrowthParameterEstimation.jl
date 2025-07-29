@@ -12,19 +12,14 @@ const TEST_DIR = dirname(@__FILE__)
     @test V1SimpleODE isa Module
     println("✓ Module loaded successfully")
     
-    # Test 2: Data loading
-    df = CSV.read(joinpath(TEST_DIR, "test_data.csv"), DataFrame)
-    @test names(df) == ["Day Averages"]
-    println("✓ Test data loaded")
-    
-    # Test 3: Data extraction
-    x, y = V1SimpleODE.extractData(df)
+    # Test 2: Create test data
+    x = [1.0, 2.0, 3.0, 4.0, 5.0]
+    y = [10.0, 20.0, 35.0, 55.0, 80.0]
     @test length(x) == length(y)
     @test length(x) > 0
-    @test all(x .== 1:length(x))
-    println("✓ Data extraction works: extracted $(length(x)) points")
+    println("✓ Test data created: $(length(x)) points")
     
-    # Test 4: Built-in models
+    # Test 3: Built-in models
     u_test = [100.0]
     du_test = similar(u_test)
     

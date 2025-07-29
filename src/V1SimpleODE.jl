@@ -17,77 +17,6 @@ using BlackBoxOptim
 using Statistics
 
 """
-    extract_day_averages_from_df(dfTemp)
-
-Extracts non-missing values from a DataFrame and assigns time indices.
-Returns two Float64 arrays: time points `x` and values `y`. Note that names 
-for lines need to follow this pattern <celltype>_<drug_concentration>_<treated/untreated>_<Day#>_<Tile-#>_<Well/Sample>.
-example: `A2780cis_15and20__Treated_Day1_Tile-1_A5`.
-"""
-function extract_day_averages_from_df(df::DataFrame)
-    # 1) keep only the Tile rows you care about
-    df = filter(row -> occursin(r"_Tile-\d+_[^AC]\d", row.Image), df)
-
-    # 2) pull out the day number
-    extract_day(name::AbstractString) = begin
-        m = match(r"(?i)day(\d+)", name)
-        m !== nothing ? parse(Int, m.captures[1]) : missing
-    end
-    df.day = extract_day.(df.Image)
-    df = dropmissing(df, :day)
-
-    # 3) group by day, chunk into 18-tile batches, compute means
-    grouped = groupby(df, :day)
-    new_rows = Vector{NamedTuple{(:Day, :Average), Tuple{Int,Float64}}}()
-    for g in grouped
-        for i in 1:18:nrow(g)
-            chunk = g[i : min(i+17, nrow(g)), :]
-            avg = mean(chunk[!, Symbol("Area µm^2")])
-            push!(new_rows, (Day = unique(chunk.day)[1], Average = avg))
-        end
-    end
-
-    # 4) assemble and show the small DataFrame
-    df_avg = DataFrame(new_rows)
-    println("This is what the data looks like:\n", df_avg)
-
-    # 5) turn into plain Float64 vectors
-    x = Float64.(df_avg.Day)
-    y = Float64.(df_avg.Average)
-
-    return x, y
-end
-
-
-"""
-    extractData(file_name)
-
-    Takes a data file that has one column. One column that has a header of "Day Averages"
-"""
-
-function extractData(file_name)
-    df = CSV.read(file_name, DataFrame)
-
-    x = []
-    y = []
-    current_day = 1
-    for row in eachrow(df)
-        val = row[:"Day Averages"]
-        if !ismissing(val) && !isempty(strip(string(val)))  # Filters out missing or blank cells
-            push!(x, current_day)
-            push!(y, val)  # No need to parse
-            current_day += 1
-        end
-    end
-
-    x = Float64.(x)
-    y = Float64.(y)
-    
-    return x, y
-end
-
-
-"""
     setUpProblem(model, xdata, ydata, solver, u0, p, tspan, bounds)
 
 Sets up and solves an ODE fitting problem using BlackBoxOptim.
@@ -159,7 +88,8 @@ end
 
 
 function run_single_fit(
-    df::DataFrame,
+    x::Vector{<:Real},
+    y::Vector{<:Real},
     p0::Vector{<:Real};
     model         = logistic_growth!,
     fixed_params  = nothing,
@@ -176,9 +106,8 @@ function run_single_fit(
     nparams = length(p0)
     bounds === nothing && (bounds = [(0.0, Inf) for _ in 1:nparams])
 
-    df_avg = extract_day_averages_from_df(df)
-    x      = Float64.(df_avg.Day)
-    y      = Float64.(df_avg.Average)
+    x      = Float64.(x)
+    y      = Float64.(y)
     tspan  = (x[1], x[end])
     u0     = [y[1]]
 
@@ -194,8 +123,9 @@ end
 # ────────────────────────────────────────────────────────────────────────────
 """
 compare_models(
-    df::DataFrame,
-    name1::String, model1::Function, p0_1::Vector{<:Real};
+    x::Vector{<:Real},
+    y::Vector{<:Real},
+    name1::String, model1::Function, p0_1::Vector{<:Real},
     name2::String, model2::Function, p0_2::Vector{<:Real};
     solver               = Rodas5(),
     bounds1              = nothing,
@@ -210,7 +140,8 @@ Fits two candidate models to the same dataset via `run_single_fit`,
 plots both curves over the data, prints parameter/BIC/SSR, and writes a CSV summary.
 """
 function compare_models(
-    df::DataFrame,
+    x::Vector{<:Real},
+    y::Vector{<:Real},
     name1::String, model1::Function, p0_1::Vector{<:Real},
     name2::String, model2::Function, p0_2::Vector{<:Real};
     solver             = Rodas5(),
@@ -223,7 +154,7 @@ function compare_models(
 )
     # Fit model 1
     fit1 = run_single_fit(
-        df, p0_1;
+        x, y, p0_1;
         model        = model1,
         fixed_params = fixed_params1,
         solver       = solver,
@@ -233,7 +164,7 @@ function compare_models(
 
     # Fit model 2
     fit2 = run_single_fit(
-        df, p0_2;
+        x, y, p0_2;
         model        = model2,
         fixed_params = fixed_params2,
         solver       = solver,
@@ -241,9 +172,8 @@ function compare_models(
         show_stats   = show_stats
     )
 
-    # Extract data for plotting
-    df_avg = extract_day_averages_from_df(df)
-    x, y   = Float64.(df_avg.Day), Float64.(df_avg.Average)
+    # Convert to Float64 for plotting
+    x, y = Float64.(x), Float64.(y)
 
     # Plot
     plt = scatter(
@@ -283,8 +213,8 @@ end
 # ────────────────────────────────────────────────────────────────────────────
 """
 compare_datasets(
-    df1::DataFrame, name1::String, model1::Function, p0_1::Vector{<:Real};
-    df2::DataFrame, name2::String, model2::Function, p0_2::Vector{<:Real};
+    x1::Vector{<:Real}, y1::Vector{<:Real}, name1::String, model1::Function, p0_1::Vector{<:Real},
+    x2::Vector{<:Real}, y2::Vector{<:Real}, name2::String, model2::Function, p0_2::Vector{<:Real};
     solver               = Rodas5(),
     bounds1              = nothing,
     bounds2              = nothing,
@@ -298,8 +228,8 @@ Fits a model to two different datasets via `run_single_fit`,
 plots both fits side-by-side, prints stats, and writes a CSV summary.
 """
 function compare_datasets(
-    df1::DataFrame, name1::String, model1::Function, p0_1::Vector{<:Real},
-    df2::DataFrame, name2::String, model2::Function, p0_2::Vector{<:Real};
+    x1::Vector{<:Real}, y1::Vector{<:Real}, name1::String, model1::Function, p0_1::Vector{<:Real},
+    x2::Vector{<:Real}, y2::Vector{<:Real}, name2::String, model2::Function, p0_2::Vector{<:Real};
     solver             = Rodas5(),
     bounds1            = nothing,
     bounds2            = nothing,
@@ -310,7 +240,7 @@ function compare_datasets(
 )
     # Fit first dataset
     fit1 = run_single_fit(
-        df1, p0_1;
+        x1, y1, p0_1;
         model        = model1,
         fixed_params = fixed_params1,
         solver       = solver,
@@ -320,7 +250,7 @@ function compare_datasets(
 
     # Fit second dataset
     fit2 = run_single_fit(
-        df2, p0_2;
+        x2, y2, p0_2;
         model        = model2,
         fixed_params = fixed_params2,
         solver       = solver,
@@ -328,11 +258,9 @@ function compare_datasets(
         show_stats   = show_stats
     )
 
-    # Extract data for plotting
-    df_avg1 = extract_day_averages_from_df(df1)
-    df_avg2 = extract_day_averages_from_df(df2)
-    x1, y1  = Float64.(df_avg1.Day), Float64.(df_avg1.Average)
-    x2, y2  = Float64.(df_avg2.Day), Float64.(df_avg2.Average)
+    # Convert to Float64 for plotting
+    x1, y1 = Float64.(x1), Float64.(y1)
+    x2, y2 = Float64.(x2), Float64.(y2)
 
     # Plot
     plt = scatter(
@@ -373,14 +301,15 @@ end
 
 """
 compare_models_dict(
-    df::DataFrame,
-    specs::Dict{String,<:NamedTuple},;
+    x::Vector{<:Real},
+    y::Vector{<:Real},
+    specs::Dict{String,<:NamedTuple};
     default_solver        = Rodas5(),
     show_stats::Bool      = false,
     output_csv::String    = "all_models_comparison.csv"
 )
 
-Fits each model in `specs` to `df`, allowing each spec to override solver,
+Fits each model in `specs` to the x,y data, allowing each spec to override solver,
 plots all model curves together, prints a summary table, and writes results to CSV.
 
 Each `specs[name]` should be a NamedTuple with fields:
@@ -391,7 +320,8 @@ Each `specs[name]` should be a NamedTuple with fields:
   • (optional) solver::Any  # e.g. Rodas5() or Tsit5()
 """
 function compare_models_dict(
-    df::DataFrame,
+    x::Vector{<:Real},
+    y::Vector{<:Real},
     specs::Dict{String,<:NamedTuple};
     default_solver        = Rodas5(),
     show_stats::Bool      = false,
@@ -403,7 +333,7 @@ function compare_models_dict(
     for (name, spec) in specs
         solver_i = haskey(spec, :solver) ? spec.solver : default_solver
         fit = run_single_fit(
-            df, spec.p0;
+            x, y, spec.p0;
             model        = spec.model,
             fixed_params = spec.fixed_params,
             solver       = solver_i,
@@ -436,8 +366,7 @@ BIC Summary:")
     println("Summary saved to $output_csv")
 
     # Plot data + model curves
-    df_avg = extract_day_averages_from_df(df)
-    x, y = Float64.(df_avg.Day), Float64.(df_avg.Average)
+    x, y = Float64.(x), Float64.(y)
     plt = scatter(x, y;
                   label="Data",
                   xlabel="Day",

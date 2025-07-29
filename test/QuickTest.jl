@@ -1,6 +1,13 @@
 #!/usr/bin/env julia
 
-# Quick test script to identify issues
+# Quick test scri    # Test fitting with simple data
+    println("Testing model fitting...")
+    
+catch e
+    println("✗ Error in testing: ", e)
+end
+
+println("Test complete!")identify issues
 println("Testing V1SimpleODE module...")
 
 try
@@ -32,22 +39,13 @@ catch e
     println("✗ Error loading BlackBoxOptim: ", e)
 end
 
-# Test data loading
-test_dir = dirname(@__FILE__)
-test_file = joinpath(test_dir, "test_data.csv")
+# Create test data
+x = [1.0, 2.0, 3.0, 4.0, 5.0]
+y = [10.0, 20.0, 35.0, 55.0, 80.0]
 
-if isfile(test_file)
-    println("✓ Test data file exists")
-    try
-        df = CSV.read(test_file, DataFrame)
-        println("✓ Test data loaded: ", size(df))
-        
-        # Test data extraction
-        x, y = V1SimpleODE.extractData(df)
-        println("✓ Data extraction works: x=$(length(x)), y=$(length(y))")
-        
-    catch e
-        println("✗ Error processing test data: ", e)
+println("✓ Test data created: x=$(length(x)), y=$(length(y))")
+
+try
     end
 else
     println("✗ Test data file missing: ", test_file)
