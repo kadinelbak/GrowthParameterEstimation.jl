@@ -4,8 +4,6 @@ module Analysis
 using StatsBase
 using Plots
 using DifferentialEquations
-using Statistics
-using Random
 using Distributions
 
 # Import models and fitting from other modules
@@ -177,7 +175,7 @@ function k_fold_cross_validation(
     fold_size = div(n, k_folds)
     
     # Randomly shuffle indices
-    indices = randperm(n)
+    indices = Random.randperm(n)
     
     all_predictions = Float64[]
     all_actual = Float64[]

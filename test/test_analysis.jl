@@ -83,12 +83,12 @@ include("test_data_generator.jl")
         x, y = data.x, data.y
         
         # First get a fit result
-        fit_result = run_single_fit(x, y, [0.1, 50.0]; show_plots=false, show_stats=false)
+        fit_result = run_single_fit(x, y, [0.1, 50.0]; bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
         
         # Perform sensitivity analysis
         sens_result = parameter_sensitivity_analysis(x, y, fit_result; 
                                                    perturbation=0.1, 
-                                                   show_plots=false)
+                                                   )
         
         @test haskey(sens_result, :sensitivity_metrics)
         @test haskey(sens_result, :ranking)
@@ -136,10 +136,10 @@ include("test_data_generator.jl")
         x, y = data.x, data.y
         
         # Get a fit result
-        fit_result = run_single_fit(x, y, [0.1, 50.0]; show_plots=false, show_stats=false)
+        fit_result = run_single_fit(x, y, [0.1, 50.0]; bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
         
         # Perform residual analysis
-        resid_result = residual_analysis(x, y, fit_result; show_plots=false)
+        resid_result = residual_analysis(x, y, fit_result)
         
         @test haskey(resid_result, :residuals)
         @test haskey(resid_result, :standardized_residuals)
@@ -186,7 +186,7 @@ include("test_data_generator.jl")
         x, y = data.x, data.y
         
         # Test enhanced BIC analysis with default models
-        bic_result = enhanced_bic_analysis(x, y; show_plots=false)
+        bic_result = enhanced_bic_analysis(x, y)
         
         @test haskey(bic_result, :results)
         @test haskey(bic_result, :successful_results)
@@ -253,9 +253,7 @@ include("test_data_generator.jl")
         x, y = data.x, data.y
         
         # Fit with Gompertz model
-        gompertz_fit = run_single_fit(x, y, [0.1, 1.0, 50.0]; 
-                                     model=gompertz_growth!, 
-                                     show_plots=false, show_stats=false)
+        gompertz_fit = run_single_fit(x, y, [0.1, 1.0, 50.0]; model=gompertz_growth!, bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
         
         # Test that analysis functions work with different model types
         try
@@ -268,14 +266,14 @@ include("test_data_generator.jl")
             # Sensitivity analysis with Gompertz
             sens_result = parameter_sensitivity_analysis(x, y, gompertz_fit; 
                                                        model=gompertz_growth!,
-                                                       show_plots=false)
+                                                       )
             @test haskey(sens_result, :sensitivity_metrics)
             @test length(sens_result.sensitivity_metrics) == 3  # Gompertz has 3 params
             
             # Residual analysis with Gompertz
             resid_result = residual_analysis(x, y, gompertz_fit; 
                                            model=gompertz_growth!,
-                                           show_plots=false)
+                                           )
             @test haskey(resid_result, :residuals)
             
             println("✓ Analysis integration test passed")
@@ -297,7 +295,7 @@ include("test_data_generator.jl")
         
         # Sensitivity analysis should handle bad parameters gracefully
         try
-            sens_result = parameter_sensitivity_analysis(x, y, bad_fit; show_plots=false)
+            sens_result = parameter_sensitivity_analysis(x, y, bad_fit)
             # Should either work or fail gracefully
             @test haskey(sens_result, :sensitivity_metrics)
         catch e
@@ -307,7 +305,7 @@ include("test_data_generator.jl")
         
         # Residual analysis should handle bad parameters gracefully  
         try
-            resid_result = residual_analysis(x, y, bad_fit; show_plots=false)
+            resid_result = residual_analysis(x, y, bad_fit)
             @test haskey(resid_result, :residuals)
         catch e
             @test isa(e, Exception)

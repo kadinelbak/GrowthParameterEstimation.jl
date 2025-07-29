@@ -2,7 +2,6 @@
 module Fitting
 
 using StatsBase
-using Statistics
 using CSV
 using Plots
 using DataFrames
@@ -16,7 +15,6 @@ using ForwardDiff
 using OptimizationOptimJL
 using OptimizationBBO
 using BlackBoxOptim
-using Random
 
 # Import models from Models module
 using ..Models
@@ -213,9 +211,9 @@ function compare_models(
         title  = "Model Comparison: $name1 vs $name2",
         legend = :bottomright
     )
-    plot!(plt, fit1.sol.t, getindex.(fit1.sol.u,1);
+    plot!(plt, fit1.solution.t, getindex.(fit1.solution.u,1);
           label=name1, lw=2)
-    plot!(plt, fit2.sol.t, getindex.(fit2.sol.u,1);
+    plot!(plt, fit2.solution.t, getindex.(fit2.solution.u,1);
           label=name2, lw=2, linestyle=:dash)
     display(plt)
 
@@ -300,13 +298,13 @@ function compare_datasets(
         title  = "Dataset Comparison: $name1 vs $name2",
         legend = :bottomright
     )
-    plot!(plt, fit1.sol.t, getindex.(fit1.sol.u,1);
+    plot!(plt, fit1.solution.t, getindex.(fit1.solution.u,1);
           label="Model - $name1", color=:green, lw=2)
 
     scatter!(plt, x2, y2;
              label  = "Data - $name2",
              color  = :purple)
-    plot!(plt, fit2.sol.t, getindex.(fit2.sol.u,1);
+    plot!(plt, fit2.solution.t, getindex.(fit2.solution.u,1);
           label="Model - $name2", color=:purple, lw=2, linestyle=:dash)
     display(plt)
 
@@ -403,7 +401,7 @@ BIC Summary:")
                   legend=:bottomright)
     for name in keys(fits)
         fit = fits[name]
-        plot!(plt, fit.sol.t, getindex.(fit.sol.u,1);
+        plot!(plt, fit.solution.t, getindex.(fit.solution.u,1);
               label=name, lw=2)
     end
     display(plt)
@@ -411,7 +409,7 @@ BIC Summary:")
     # Collect raw predictions
     pred_rows = NamedTuple[]
     for (name, fit) in pairs(fits)
-        for (t, u) in zip(fit.sol.t, fit.sol.u)
+        for (t, u) in zip(fit.solution.t, fit.solution.u)
             push!(pred_rows, (Model=name, Time=t, Prediction=u[1]))
         end
     end
@@ -501,7 +499,7 @@ function fit_three_datasets(
     )
     
     # Plot first model fit
-    plot!(plt, fit1.sol.t, getindex.(fit1.sol.u,1);
+    plot!(plt, fit1.solution.t, getindex.(fit1.solution.u,1);
           label="Model - $name1", color=:blue, lw=2)
 
     # Add second dataset
@@ -509,7 +507,7 @@ function fit_three_datasets(
              label  = "Data - $name2",
              color  = :red,
              markersize = 4)
-    plot!(plt, fit2.sol.t, getindex.(fit2.sol.u,1);
+    plot!(plt, fit2.solution.t, getindex.(fit2.solution.u,1);
           label="Model - $name2", color=:red, lw=2, linestyle=:dash)
 
     # Add third dataset
@@ -517,7 +515,7 @@ function fit_three_datasets(
              label  = "Data - $name3",
              color  = :green,
              markersize = 4)
-    plot!(plt, fit3.sol.t, getindex.(fit3.sol.u,1);
+    plot!(plt, fit3.solution.t, getindex.(fit3.solution.u,1);
           label="Model - $name3", color=:green, lw=2, linestyle=:dot)
 
     display(plt)

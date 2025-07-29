@@ -13,7 +13,7 @@ include("test_data_generator.jl")
         p0 = [0.1, 50.0]  # Initial guess [r, K]
         
         # Test run_single_fit
-        result = run_single_fit(x, y, p0; show_plots=false, show_stats=false)
+        result = run_single_fit(x, y, p0; bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
         
         @test haskey(result, :params)
         @test haskey(result, :ssr)
@@ -40,21 +40,17 @@ include("test_data_generator.jl")
         x, y = data.x, data.y
         
         # Test logistic growth (default)
-        result_logistic = run_single_fit(x, y, [0.1, 50.0]; show_plots=false, show_stats=false)
+        result_logistic = run_single_fit(x, y, [0.1, 50.0]; bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
         @test length(result_logistic.params) == 2
         @test result_logistic.ssr >= 0
         
         # Test Gompertz growth
-        result_gompertz = run_single_fit(x, y, [0.1, 1.0, 50.0]; 
-                                       model=gompertz_growth!, 
-                                       show_plots=false, show_stats=false)
+        result_gompertz = run_single_fit(x, y, [0.1, 1.0, 50.0]; model=gompertz_growth!, bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
         @test length(result_gompertz.params) == 3
         @test result_gompertz.ssr >= 0
         
         # Test exponential with delay
-        result_exp_delay = run_single_fit(x, y, [0.1, 50.0, 1.0]; 
-                                        model=exponential_growth_with_delay!, 
-                                        show_plots=false, show_stats=false)
+        result_exp_delay = run_single_fit(x, y, [0.1, 50.0, 1.0]; model=exponential_growth_with_delay!, bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
         @test length(result_exp_delay.params) == 3
         @test result_exp_delay.ssr >= 0
         
@@ -69,7 +65,7 @@ include("test_data_generator.jl")
         x, y = data.x, data.y
         
         # Test compare_models function
-        result = compare_models(x, y; show_plots=false)
+        result = compare_models(x, y)
         
         @test haskey(result, :models)
         @test haskey(result, :best_model)
@@ -97,7 +93,7 @@ include("test_data_generator.jl")
         y_datasets = [data1.y, data2.y, data3.y]
         
         # Test fit_three_datasets
-        results = fit_three_datasets(x_datasets, y_datasets; show_plots=false)
+        results = fit_three_datasets(x_datasets, y_datasets)
         
         @test haskey(results, :individual_fits)
         @test haskey(results, :summary)
@@ -137,7 +133,7 @@ include("test_data_generator.jl")
         # Test with parameter bounds
         bounds = [(0.01, 1.0), (10.0, 200.0)]  # [r_min, r_max], [K_min, K_max]
         
-        result = run_single_fit(x, y, p0; bounds=bounds, show_plots=false, show_stats=false)
+        result = run_single_fit(x, y, p0; bounds=bounds, show_stats=false)
         
         @test length(result.params) == 2
         r_fitted, K_fitted = result.params
@@ -156,10 +152,10 @@ include("test_data_generator.jl")
         x, y = data.x, data.y
         
         # Test with mismatched data lengths
-        @test_throws BoundsError run_single_fit(x[1:end-1], y, [0.1, 50.0]; show_plots=false)
+        @test_throws BoundsError run_single_fit(x[1:end-1], y, [0.1, 50.0])
         
         # Test with empty data
-        @test_throws BoundsError run_single_fit(Float64[], Float64[], [0.1, 50.0]; show_plots=false)
+        @test_throws BoundsError run_single_fit(Float64[], Float64[], [0.1, 50.0])
         
         # Test with negative/zero initial values 
         x_bad = [0.0, 1.0, 2.0]
@@ -167,7 +163,7 @@ include("test_data_generator.jl")
         
         # Should handle gracefully or throw appropriate error
         try
-            result = run_single_fit(x_bad, y_bad, [0.1, 50.0]; show_plots=false, show_stats=false)
+            result = run_single_fit(x_bad, y_bad, [0.1, 50.0]; bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
             # If it succeeds, check that it returns something reasonable
             @test haskey(result, :params)
         catch e
@@ -186,7 +182,7 @@ include("test_data_generator.jl")
         fixed_params = Dict(2 => 80.0)  # Fix K to 80.0
         p0 = [0.1, 80.0]  # K will be ignored due to fixing
         
-        result = run_single_fit(x, y, p0; fixed_params=fixed_params, show_plots=false, show_stats=false)
+        result = run_single_fit(x, y, p0; fixed_params=fixed_params, bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
         
         @test length(result.params) == 2
         @test result.params[2] ≈ 80.0  # K should be exactly the fixed value
