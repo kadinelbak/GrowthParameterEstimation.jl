@@ -1,15 +1,15 @@
-# V1SimpleODE.jl
+# GrowthParamEst.jl
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://kadinelbak.github.io/V1SimpleODE.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://kadinelbak.github.io/V1SimpleODE.jl/dev/)
 [![Build Status](https://github.com/kadinelbak/V1SimpleODE.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/kadinelbak/V1SimpleODE.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Coverage](https://codecov.io/gh/kadinelbak/V1SimpleODE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/kadinelbak/V1SimpleODE.jl)
 
-🧬 **V1SimpleODE.jl** – A comprehensive Julia package for modeling, fitting, and analyzing ordinary differential equation (ODE) systems with applications in biological research, population dynamics, and growth modeling.
+🧬 **GrowthParamEst.jl** – A comprehensive Julia package for modeling, fitting, and analyzing ordinary differential equation (ODE) systems with applications in biological research, population dynamics, and growth modeling. V1SimpleODE.jl was the first version please understand any missed references are discussing GrowthParamEst
 
 ## 📖 Overview
 
-V1SimpleODE.jl provides a complete toolkit for:
+GrowthParamEst.jl provides a complete toolkit for:
 - **Parameter estimation** using global optimization algorithms
 - **Model comparison** with statistical criteria (BIC, AIC, R²)
 - **Cross-validation** and sensitivity analysis  
