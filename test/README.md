@@ -1,103 +1,97 @@
 # V1SimpleODE Test Suite
 
-This directory contains a comprehensive test suite for the V1SimpleODE package.
+This folder contains organized tests for the V1SimpleODE package.
 
 ## Test Structure
 
-### Files:
+### Main Test Files
 
-1. **`runtests.jl`** - Main test runner that executes all tests
-2. **`setup_test_env.jl`** - Script to install required testing dependencies
-3. **`test_data_generator.jl`** - Functions to generate synthetic test data
-4. **`test_fitting.jl`** - Tests for fitting functionality
-5. **`test_analysis.jl`** - Tests for analysis functionality  
-6. **`simple_test.jl`** - Simple standalone test for development
+- **`runtests.jl`** - Main test runner that executes all tests
+- **`individual_tests.jl`** - Individual test functions that can be run separately
+- **`test_fitting.jl`** - Focused tests for the Fitting module
+- **`test_analysis.jl`** - Focused tests for the Analysis module
+- **`test_data_generator.jl`** - Utility functions for generating test data
 
-### Test Data Generation
+### Demo and Example Files
 
-The `test_data_generator.jl` file provides functions to create synthetic logistic growth data:
+- **`simple_test.jl`** - Quick development test script
+- **`working_demo.jl`** - Comprehensive demonstration of package features
+- **`demo_script.jl`** - Additional demo examples
 
-- `generate_logistic_test_data()` - Creates single dataset with noise
-- `generate_three_test_datasets()` - Creates three different datasets for testing
-- `get_basic_test_data()` - Simple dataset for basic tests
+### Utility Files
 
-### Test Coverage
-
-#### Fitting Tests (`test_fitting.jl`):
-- Basic single fit functionality
-- Different ODE models (logistic, Gompertz, exponential variants)
-- Model comparison capabilities
-- Three datasets fitting
-- Parameter bounds handling
-- Fixed parameters functionality
-- Error handling
-
-#### Analysis Tests (`test_analysis.jl`):
-- Leave-one-out cross-validation
-- K-fold cross-validation  
-- Parameter sensitivity analysis
-- Residual analysis and diagnostics
-- Enhanced BIC model comparison
-- Integration tests across different models
-- Error handling in analysis functions
+- **`setup_test_env.jl`** - Test environment setup
+- **`fix_tests.jl`** - Test utilities and fixes
 
 ## Running Tests
 
-### Method 1: Standard Julia Testing
+### Run All Tests
 ```julia
-using Pkg
-Pkg.test()
+julia --project=. test/runtests.jl
 ```
 
-### Method 2: Direct Execution
+### Run Individual Test Functions
 ```julia
-include("runtests.jl")
+# Load the individual test functions
+include("test/individual_tests.jl")
+
+# Run specific tests
+test_package_loading()
+test_basic_fitting()
+test_cross_validation()
+test_sensitivity_analysis()
+
+# Or run all individual tests
+run_all_individual_tests()
 ```
 
-### Method 3: Simple Development Test
+### Run Module-Specific Tests
 ```julia
-include("simple_test.jl")
+# Run only fitting tests
+include("test/test_fitting.jl")
+
+# Run only analysis tests
+include("test/test_analysis.jl")
 ```
 
-### Method 4: Individual Test Files
+## Individual Test Functions
+
+The `individual_tests.jl` file provides these functions for focused testing:
+
+- `test_package_loading()` - Verify package loads correctly
+- `test_ode_models()` - Test all ODE model functions
+- `test_basic_fitting()` - Test basic fitting functionality
+- `test_model_comparison()` - Test model comparison features
+- `test_cross_validation()` - Test cross-validation methods
+- `test_sensitivity_analysis()` - Test parameter sensitivity analysis
+- `test_residual_analysis()` - Test residual analysis
+- `test_enhanced_bic_analysis()` - Test enhanced BIC model selection
+- `test_three_datasets()` - Test multi-dataset fitting
+
+## Test Data
+
+Test data is generated using functions in `test_data_generator.jl`:
+
+- `get_basic_test_data()` - Standard logistic growth test data
+- `generate_logistic_test_data(...)` - Customizable synthetic data
+- `generate_three_test_datasets()` - Multiple datasets for comparison
+
+## Quick Development Testing
+
+For quick testing during development, use:
+
 ```julia
-include("test_fitting.jl")    # Run only fitting tests
-include("test_analysis.jl")   # Run only analysis tests
+# Quick functional test
+include("test/simple_test.jl")
+
+# Comprehensive demo
+include("test/working_demo.jl")
 ```
 
-## Test Data Characteristics
+## Test Organization Benefits
 
-The synthetic test data emulates realistic growth scenarios:
-
-- **Dataset 1**: Fast growth (r=0.25), moderate capacity (K=80)
-- **Dataset 2**: Slow growth (r=0.15), high capacity (K=150)  
-- **Dataset 3**: Medium growth (r=0.18), low capacity (K=60)
-
-All datasets include realistic noise levels (3-6%) and use different time ranges.
-
-## Expected Outputs
-
-When tests pass successfully, you should see:
-- ✓ markers for passed tests
-- Performance metrics (RMSE, R², BIC values)
-- Parameter estimation results
-- Validation statistics
-
-## Dependencies
-
-Required packages (installed by `setup_test_env.jl`):
-- Test
-- DifferentialEquations
-- StatsBase
-- Plots
-- BlackBoxOptim
-- Statistics
-- Random
-- Distributions
-
-## Notes
-
-- Tests use fixed random seeds for reproducibility
-- All plotting is disabled in tests for speed
-- Tests handle edge cases and error conditions
-- Analysis functions are tested with multiple ODE models
+1. **Individual Testing**: Each function can be tested in isolation
+2. **Module Separation**: Fitting and Analysis tests are separate
+3. **No Duplication**: Removed redundant test code
+4. **Clear Structure**: Easy to find and run specific tests
+5. **Development Friendly**: Quick testing during development

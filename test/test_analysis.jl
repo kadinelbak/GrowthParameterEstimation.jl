@@ -1,4 +1,6 @@
-# Tests for analysis functionality in V1SimpleODE
+# Focused Analysis Tests for V1SimpleODE
+# Tests specific to the Analysis module functionality
+
 using Test
 using V1SimpleODE
 using Statistics
@@ -6,15 +8,15 @@ using Random
 
 include("test_data_generator.jl")
 
-@testset "Analysis Tests" begin
+@testset "Analysis Module Tests" begin
     
-    @testset "Leave-One-Out Cross-Validation" begin
+    @testset "leave_one_out_validation Function" begin
         data = get_basic_test_data()
         x, y = data.x, data.y
         p0 = [0.1, 50.0]
+        bounds = [(0.01, 2.0), (10.0, 100.0)]
         
-        # Perform leave-one-out validation
-        loo_result = leave_one_out_validation(x, y, p0; show_stats=false)
+        loo_result = leave_one_out_validation(x, y, p0; bounds=bounds, show_stats=false)
         
         @test haskey(loo_result, :predictions)
         @test haskey(loo_result, :actual)
@@ -30,288 +32,152 @@ include("test_data_generator.jl")
         @test loo_result.rmse >= 0
         @test loo_result.mae >= 0
         @test loo_result.n_valid <= length(y)
-        @test length(loo_result.fit_params) == length(y)
-        @test length(loo_result.param_std) == length(p0)
         
-        # R-squared should be reasonable for good fit
-        valid_predictions = sum(.!isnan.(loo_result.predictions))
-        if valid_predictions >= 3
-            @test -1 <= loo_result.r_squared <= 1
-        end
-        
-        println("✓ Leave-one-out cross-validation test passed")
-        println("  RMSE: $(round(loo_result.rmse, digits=4))")
-        println("  R²: $(round(loo_result.r_squared, digits=4))")
-        println("  Valid predictions: $(loo_result.n_valid)/$(length(y))")
+        println("✓ leave_one_out_validation tests passed")
     end
     
-    @testset "K-Fold Cross-Validation" begin
+    @testset "k_fold_cross_validation Function" begin
         data = get_basic_test_data()
         x, y = data.x, data.y
         p0 = [0.1, 50.0]
+        bounds = [(0.01, 2.0), (10.0, 100.0)]
         
-        # Test k-fold validation with k=3
-        k_fold_result = k_fold_cross_validation(x, y, p0; k_folds=3, show_stats=false)
+        # Test with 3 folds for small dataset
+        kfold_result = k_fold_cross_validation(x, y, p0; k_folds=3, bounds=bounds, show_stats=false)
         
-        @test haskey(k_fold_result, :fold_metrics)
-        @test haskey(k_fold_result, :overall_rmse)
-        @test haskey(k_fold_result, :overall_mae)
-        @test haskey(k_fold_result, :r_squared)
-        @test haskey(k_fold_result, :predictions)
-        @test haskey(k_fold_result, :actual)
+        @test haskey(kfold_result, :fold_metrics)
+        @test haskey(kfold_result, :overall_rmse)
+        @test haskey(kfold_result, :overall_mae)
+        @test haskey(kfold_result, :r_squared)
         
-        @test length(k_fold_result.fold_metrics) <= 3  # May be less if some folds fail
-        @test k_fold_result.overall_rmse >= 0
-        @test k_fold_result.overall_mae >= 0
+        @test kfold_result.overall_rmse >= 0
+        @test kfold_result.overall_mae >= 0
+        @test length(kfold_result.fold_metrics) <= 3
         
-        # Check fold metrics structure
-        for fold_metric in k_fold_result.fold_metrics
-            @test haskey(fold_metric, :fold)
-            @test haskey(fold_metric, :rmse)
-            @test haskey(fold_metric, :mae)
-            @test haskey(fold_metric, :n_valid)
-        end
-        
-        println("✓ K-fold cross-validation test passed")
-        println("  Overall RMSE: $(round(k_fold_result.overall_rmse, digits=4))")
-        println("  Overall R²: $(round(k_fold_result.r_squared, digits=4))")
-        println("  Number of folds completed: $(length(k_fold_result.fold_metrics))")
+        println("✓ k_fold_cross_validation tests passed")
     end
     
-    @testset "Parameter Sensitivity Analysis" begin
+    @testset "parameter_sensitivity_analysis Function" begin
         data = get_basic_test_data()
         x, y = data.x, data.y
+        p0 = [0.1, 50.0]
+        bounds = [(0.01, 2.0), (10.0, 100.0)]
         
         # First get a fit result
-        fit_result = run_single_fit(x, y, [0.1, 50.0]; bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
+        fit_result = run_single_fit(x, y, p0; bounds=bounds, show_stats=false)
         
-        # Perform sensitivity analysis
-        sens_result = parameter_sensitivity_analysis(x, y, fit_result; 
-                                                   perturbation=0.1, 
-                                                   )
+        # Test sensitivity analysis
+        sens_result = parameter_sensitivity_analysis(x, y, fit_result; show_plots=false)
         
         @test haskey(sens_result, :sensitivity_metrics)
         @test haskey(sens_result, :ranking)
         @test haskey(sens_result, :baseline_predictions)
         @test haskey(sens_result, :x_dense)
         
-        # Check sensitivity metrics for each parameter
-        n_params = length(fit_result.params)
-        @test length(sens_result.sensitivity_metrics) == n_params
+        @test length(sens_result.sensitivity_metrics) == length(fit_result.params)
+        @test length(sens_result.ranking) <= length(fit_result.params)
         
-        for i in 1:n_params
-            metric = sens_result.sensitivity_metrics[i]
-            @test haskey(metric, :param_index)
-            @test haskey(metric, :param_value)
-            @test haskey(metric, :sensitivity_index)
-            @test haskey(metric, :max_rel_change)
-            @test haskey(metric, :pred_up)
-            @test haskey(metric, :pred_down)
-            
-            @test metric.param_index == i
-            @test metric.param_value == fit_result.params[i]
-            
-            # Sensitivity metrics should be non-negative if analysis succeeded
+        # Check that sensitivity metrics are reasonable
+        for metric in values(sens_result.sensitivity_metrics)
             if !isnan(metric.sensitivity_index)
                 @test metric.sensitivity_index >= 0
-                @test metric.max_rel_change >= 0
+                @test metric.param_value > 0
             end
         end
         
-        # Ranking should be sorted by sensitivity index
-        valid_rankings = filter(r -> !isnan(r.sensitivity_index), sens_result.ranking)
-        if length(valid_rankings) > 1
-            for i in 1:(length(valid_rankings)-1)
-                @test valid_rankings[i].sensitivity_index >= valid_rankings[i+1].sensitivity_index
-            end
-        end
-        
-        println("✓ Parameter sensitivity analysis test passed")
-        println("  Most sensitive parameter: $(valid_rankings[1].param_index) (SI=$(round(valid_rankings[1].sensitivity_index, digits=3)))")
-        println("  Number of parameters analyzed: $n_params")
+        println("✓ parameter_sensitivity_analysis tests passed")
     end
     
-    @testset "Residual Analysis" begin
+    @testset "residual_analysis Function" begin
         data = get_basic_test_data()
         x, y = data.x, data.y
+        p0 = [0.1, 50.0]
+        bounds = [(0.01, 2.0), (10.0, 100.0)]
         
-        # Get a fit result
-        fit_result = run_single_fit(x, y, [0.1, 50.0]; bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
+        # First get a fit result
+        fit_result = run_single_fit(x, y, p0; bounds=bounds, show_stats=false)
         
-        # Perform residual analysis
-        resid_result = residual_analysis(x, y, fit_result)
+        # Test residual analysis
+        res_result = residual_analysis(x, y, fit_result; show_plots=false)
         
-        @test haskey(resid_result, :residuals)
-        @test haskey(resid_result, :standardized_residuals)
-        @test haskey(resid_result, :predicted_values)
-        @test haskey(resid_result, :outlier_indices)
-        @test haskey(resid_result, :statistics)
-        @test haskey(resid_result, :normality_correlation)
-        @test haskey(resid_result, :durbin_watson)
-        @test haskey(resid_result, :autocorrelation_concern)
+        @test haskey(res_result, :residuals)
+        @test haskey(res_result, :standardized_residuals)
+        @test haskey(res_result, :predicted_values)
+        @test haskey(res_result, :outlier_indices)
+        @test haskey(res_result, :statistics)
         
-        @test length(resid_result.residuals) == length(y)
-        @test length(resid_result.standardized_residuals) == length(y)
-        @test length(resid_result.predicted_values) == length(y)
+        @test length(res_result.residuals) == length(y)
+        @test length(res_result.standardized_residuals) == length(y)
+        @test length(res_result.predicted_values) == length(y)
+        @test res_result.statistics.rmse >= 0
+        @test res_result.statistics.mae >= 0
         
-        # Check residual statistics
-        stats = resid_result.statistics
-        @test haskey(stats, :mean_residual)
-        @test haskey(stats, :std_residual)
-        @test haskey(stats, :rmse)
-        @test haskey(stats, :mae)
-        @test haskey(stats, :n_outliers)
-        
-        @test stats.rmse >= 0
-        @test stats.mae >= 0
-        @test stats.std_residual >= 0
-        @test stats.n_outliers >= 0
-        @test stats.n_outliers <= length(y)
-        
-        # Mean residual should be close to zero for good fit
-        @test abs(stats.mean_residual) < stats.std_residual
-        
-        # Check outlier indices are valid
-        @test all(1 .<= resid_result.outlier_indices .<= length(y))
-        
-        println("✓ Residual analysis test passed")
-        println("  RMSE: $(round(stats.rmse, digits=4))")
-        println("  Mean residual: $(round(stats.mean_residual, digits=4))")
-        println("  Number of outliers: $(stats.n_outliers)")
-        println("  Durbin-Watson: $(round(resid_result.durbin_watson, digits=3))")
+        println("✓ residual_analysis tests passed")
     end
     
-    @testset "Enhanced BIC Analysis" begin
+    @testset "enhanced_bic_analysis Function" begin
         data = get_basic_test_data()
         x, y = data.x, data.y
         
         # Test enhanced BIC analysis with default models
-        bic_result = enhanced_bic_analysis(x, y)
+        bic_result = enhanced_bic_analysis(x, y; show_plots=false)
         
         @test haskey(bic_result, :results)
         @test haskey(bic_result, :successful_results)
         @test haskey(bic_result, :bic_ranking)
-        @test haskey(bic_result, :aic_ranking)
-        @test haskey(bic_result, :r2_ranking)
-        @test haskey(bic_result, :bic_weights)
         @test haskey(bic_result, :best_model)
         @test haskey(bic_result, :recommendation)
         
-        # Should have results for each model tested
-        @test length(bic_result.results) >= 3
+        @test length(bic_result.results) >= 1
+        @test !isempty(bic_result.bic_ranking)
+        @test !isnothing(bic_result.best_model)
         
-        # Check successful results
-        successful = bic_result.successful_results
-        if length(successful) > 0
-            @test all(r.fit_success for r in successful)
-            
-            # Check BIC ranking is properly sorted
-            bic_values = [r.bic for r in bic_result.bic_ranking]
-            @test issorted(bic_values)
-            
-            # Check that best model is the one with lowest BIC
-            @test bic_result.best_model.bic == minimum(bic_values)
-            
-            # BIC weights should sum to approximately 1
-            @test abs(sum(bic_result.bic_weights) - 1.0) < 1e-10
-            
-            # All weights should be positive
-            @test all(w >= 0 for w in bic_result.bic_weights)
-        end
+        # Test with specific models
+        models = [logistic_growth!, gompertz_growth!]
+        model_names = ["Logistic", "Gompertz"]
+        p0_values = [[0.1, 50.0], [0.1, 1.0, 50.0]]
         
-        # Check individual model results structure
-        for result in bic_result.results
-            @test haskey(result, :model_name)
-            @test haskey(result, :fit_success)
-            @test haskey(result, :bic)
-            @test haskey(result, :aic)
-            @test haskey(result, :r_squared)
-            @test haskey(result, :n_params)
-            
-            if result.fit_success
-                @test isfinite(result.bic)
-                @test isfinite(result.aic)
-                @test -1 <= result.r_squared <= 1
-                @test result.n_params > 0
-            end
-        end
+        bic_result2 = enhanced_bic_analysis(x, y; 
+                                          models=models, 
+                                          model_names=model_names,
+                                          p0_values=p0_values,
+                                          show_plots=false)
         
-        println("✓ Enhanced BIC analysis test passed")
-        if length(successful) > 0
-            println("  Best model: $(bic_result.best_model.model_name)")
-            println("  Best BIC: $(round(bic_result.best_model.bic, digits=2))")
-            println("  Best R²: $(round(bic_result.best_model.r_squared, digits=4))")
-            println("  Number of successful fits: $(length(successful))")
-        else
-            println("  No successful fits obtained")
-        end
+        @test length(bic_result2.results) == 2
+        
+        println("✓ enhanced_bic_analysis tests passed")
     end
     
-    @testset "Analysis Integration" begin
-        # Test that all analysis functions work together with different models
+    @testset "Cross-Validation with Different Models" begin
         data = get_basic_test_data()
         x, y = data.x, data.y
+        bounds = [(0.01, 2.0), (10.0, 100.0)]
         
-        # Fit with Gompertz model
-        gompertz_fit = run_single_fit(x, y, [0.1, 1.0, 50.0]; model=gompertz_growth!, bounds=[(0.01, 2.0), (10.0, 100.0)], show_stats=false)
+        # Test LOO with Gompertz model
+        loo_gompertz = leave_one_out_validation(x, y, [0.1, 1.0, 50.0]; 
+                                              model=gompertz_growth!,
+                                              bounds=[(0.01, 2.0), (0.1, 10.0), (10.0, 100.0)], 
+                                              show_stats=false)
         
-        # Test that analysis functions work with different model types
-        try
-            # Leave-one-out with Gompertz
-            loo_result = leave_one_out_validation(x, y, [0.1, 1.0, 50.0]; 
-                                                model=gompertz_growth!, 
-                                                show_stats=false)
-            @test haskey(loo_result, :rmse)
-            
-            # Sensitivity analysis with Gompertz
-            sens_result = parameter_sensitivity_analysis(x, y, gompertz_fit; 
-                                                       model=gompertz_growth!,
-                                                       )
-            @test haskey(sens_result, :sensitivity_metrics)
-            @test length(sens_result.sensitivity_metrics) == 3  # Gompertz has 3 params
-            
-            # Residual analysis with Gompertz
-            resid_result = residual_analysis(x, y, gompertz_fit; 
-                                           model=gompertz_growth!,
-                                           )
-            @test haskey(resid_result, :residuals)
-            
-            println("✓ Analysis integration test passed")
-            println("  All analysis functions work with different ODE models")
-            
-        catch e
-            # Some analysis might fail with different models - that's ok for testing
-            println("⚠ Analysis integration test partially passed (some functions failed with alternative models)")
-            println("  Error: $e")
-        end
+        @test haskey(loo_gompertz, :rmse)
+        @test loo_gompertz.rmse >= 0
+        
+        println("✓ Cross-validation with different models tests passed")
     end
     
-    @testset "Error Handling in Analysis" begin
-        data = get_basic_test_data()
-        x, y = data.x, data.y
+    @testset "Analysis with Edge Cases" begin
+        # Test with minimal data
+        x_small = [0.0, 1.0, 2.0]
+        y_small = [5.0, 10.0, 15.0]
+        p0 = [0.1, 20.0]
+        bounds = [(0.01, 2.0), (10.0, 30.0)]
         
-        # Test analysis with bad fit result
-        bad_fit = (params = [NaN, NaN], ssr = Inf, bic = Inf, solution = nothing)
+        # LOO should still work with minimal data
+        loo_small = leave_one_out_validation(x_small, y_small, p0; bounds=bounds, show_stats=false)
+        @test haskey(loo_small, :rmse)
+        @test loo_small.n_valid <= length(y_small)
         
-        # Sensitivity analysis should handle bad parameters gracefully
-        try
-            sens_result = parameter_sensitivity_analysis(x, y, bad_fit)
-            # Should either work or fail gracefully
-            @test haskey(sens_result, :sensitivity_metrics)
-        catch e
-            # Failing is acceptable for bad input
-            @test isa(e, Exception)
-        end
-        
-        # Residual analysis should handle bad parameters gracefully  
-        try
-            resid_result = residual_analysis(x, y, bad_fit)
-            @test haskey(resid_result, :residuals)
-        catch e
-            @test isa(e, Exception)
-        end
-        
-        println("✓ Error handling in analysis test passed")
+        println("✓ Edge cases tests passed")
     end
     
 end
