@@ -3,7 +3,6 @@ module Fitting
 
 using StatsBase
 using CSV
-using Plots
 using DataFrames
 using DifferentialEquations
 using SciMLSensitivity
@@ -73,22 +72,12 @@ end
 """
     pQuickStat(x, y, optimized_params, optimized_sol, optimized_prob, bic, ssr)
 
-Displays a plot of model fit and prints model parameters, BIC, and SSR.
+Prints model parameters, BIC, and SSR.
 """
 function pQuickStat(x, y, p, sol, prob, bic, ssr)
     println("→ Optimized params: ", p)
     println("→ SSR: ", ssr)
     println("→ BIC: ", bic)
-
-    plt = scatter(x, y;
-        label   = "Data",
-        legend  = :bottomright,
-        xlabel  = "Day",
-        ylabel  = "Average",
-        title   = "Model Fit"
-    )
-    plot!(plt, sol.t, getindex.(sol.u,1); label="Model", lw=2)
-    display(plt)
 end
 
 function run_single_fit(
@@ -164,7 +153,7 @@ compare_models(
 )
 
 Fits two candidate models to the same dataset via `run_single_fit`,
-plots both curves over the data, prints parameter/BIC/SSR, and writes a CSV summary.
+prints parameter/BIC/SSR, and writes a CSV summary.
 """
 function compare_models(
     x::Vector{<:Real},
@@ -199,23 +188,8 @@ function compare_models(
         show_stats   = show_stats
     )
 
-    # Convert to Float64 for plotting
+    # Convert to Float64 for calculations
     x, y = Float64.(x), Float64.(y)
-
-    # Plot
-    plt = scatter(
-        x, y;
-        label  = "Data",
-        xlabel = "Day",
-        ylabel = "Value",
-        title  = "Model Comparison: $name1 vs $name2",
-        legend = :bottomright
-    )
-    plot!(plt, fit1.solution.t, getindex.(fit1.solution.u,1);
-          label=name1, lw=2)
-    plot!(plt, fit2.solution.t, getindex.(fit2.solution.u,1);
-          label=name2, lw=2, linestyle=:dash)
-    display(plt)
 
     # Print summary
     println("=== $name1 ===")
@@ -232,6 +206,18 @@ function compare_models(
     )
     CSV.write(output_csv, df_out)
     println("Results saved to $output_csv")
+    
+    # Determine best model
+    best_model = fit1.bic <= fit2.bic ? 
+                 (name=name1, params=fit1.params, bic=fit1.bic, ssr=fit1.ssr, solution=fit1.solution) :
+                 (name=name2, params=fit2.params, bic=fit2.bic, ssr=fit2.ssr, solution=fit2.solution)
+    
+    # Return comparison results
+    return (
+        model1 = (name=name1, params=fit1.params, bic=fit1.bic, ssr=fit1.ssr, solution=fit1.solution),
+        model2 = (name=name2, params=fit2.params, bic=fit2.bic, ssr=fit2.ssr, solution=fit2.solution),
+        best_model = best_model
+    )
 end
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -251,7 +237,7 @@ compare_datasets(
 )
 
 Fits a model to two different datasets via `run_single_fit`,
-plots both fits side-by-side, prints stats, and writes a CSV summary.
+prints stats, and writes a CSV summary.
 """
 function compare_datasets(
     x1::Vector{<:Real}, y1::Vector{<:Real}, name1::String, model1::Function, p0_1::Vector{<:Real},
@@ -284,29 +270,9 @@ function compare_datasets(
         show_stats   = show_stats
     )
 
-    # Convert to Float64 for plotting
+    # Convert to Float64 for calculations
     x1, y1 = Float64.(x1), Float64.(y1)
     x2, y2 = Float64.(x2), Float64.(y2)
-
-    # Plot
-    plt = scatter(
-        x1, y1;
-        label  = "Data - $name1",
-        color  = :green,
-        xlabel = "Day",
-        ylabel = "Value",
-        title  = "Dataset Comparison: $name1 vs $name2",
-        legend = :bottomright
-    )
-    plot!(plt, fit1.solution.t, getindex.(fit1.solution.u,1);
-          label="Model - $name1", color=:green, lw=2)
-
-    scatter!(plt, x2, y2;
-             label  = "Data - $name2",
-             color  = :purple)
-    plot!(plt, fit2.solution.t, getindex.(fit2.solution.u,1);
-          label="Model - $name2", color=:purple, lw=2, linestyle=:dash)
-    display(plt)
 
     # Print summary
     println("=== $name1 ===")
@@ -336,7 +302,7 @@ compare_models_dict(
 )
 
 Fits each model in `specs` to the x,y data, allowing each spec to override solver,
-plots all model curves together, prints a summary table, and writes results to CSV.
+prints a summary table, and writes results to CSV.
 
 Each `specs[name]` should be a NamedTuple with fields:
   • model::Function
@@ -391,21 +357,6 @@ BIC Summary:")
     CSV.write(output_csv, df_summary)
     println("Summary saved to $output_csv")
 
-    # Plot data + model curves
-    x, y = Float64.(x), Float64.(y)
-    plt = scatter(x, y;
-                  label="Data",
-                  xlabel="Day",
-                  ylabel="Value",
-                  title="All Models Comparison",
-                  legend=:bottomright)
-    for name in keys(fits)
-        fit = fits[name]
-        plot!(plt, fit.solution.t, getindex.(fit.solution.u,1);
-              label=name, lw=2)
-    end
-    display(plt)
-
     # Collect raw predictions
     pred_rows = NamedTuple[]
     for (name, fit) in pairs(fits)
@@ -436,7 +387,7 @@ fit_three_datasets(
 )
 
 Fits the same ODE model to three different datasets with identical initial conditions,
-plots all three fits on a single plot, prints statistics, and saves results to CSV.
+prints statistics, and saves results to CSV.
 
 This is essentially a wrapper around `run_single_fit` that handles three datasets
 with the same model and parameters but allows for different data.
@@ -481,44 +432,10 @@ function fit_three_datasets(
         show_stats   = show_stats
     )
 
-    # Convert to Float64 for plotting
+    # Convert to Float64 for calculations
     x1, y1 = Float64.(x1), Float64.(y1)
     x2, y2 = Float64.(x2), Float64.(y2)
     x3, y3 = Float64.(x3), Float64.(y3)
-
-    # Create combined plot
-    plt = scatter(
-        x1, y1;
-        label  = "Data - $name1",
-        color  = :blue,
-        xlabel = "Time",
-        ylabel = "Value",
-        title  = "Three Dataset Comparison: $name1, $name2, $name3",
-        legend = :bottomright,
-        markersize = 4
-    )
-    
-    # Plot first model fit
-    plot!(plt, fit1.solution.t, getindex.(fit1.solution.u,1);
-          label="Model - $name1", color=:blue, lw=2)
-
-    # Add second dataset
-    scatter!(plt, x2, y2;
-             label  = "Data - $name2",
-             color  = :red,
-             markersize = 4)
-    plot!(plt, fit2.solution.t, getindex.(fit2.solution.u,1);
-          label="Model - $name2", color=:red, lw=2, linestyle=:dash)
-
-    # Add third dataset
-    scatter!(plt, x3, y3;
-             label  = "Data - $name3",
-             color  = :green,
-             markersize = 4)
-    plot!(plt, fit3.solution.t, getindex.(fit3.solution.u,1);
-          label="Model - $name3", color=:green, lw=2, linestyle=:dot)
-
-    display(plt)
 
     # Print summary statistics
     println("=== $name1 ===")
@@ -550,8 +467,7 @@ fit_three_datasets(
     model                  = Models.logistic_growth!,
     fixed_params           = nothing,
     solver                 = Rodas5(),
-    bounds                 = nothing,
-    show_plots::Bool       = true
+    bounds                 = nothing
 )
 
 Fits the same ODE model to multiple datasets provided as vectors of vectors.
@@ -567,8 +483,7 @@ function fit_three_datasets(
     model                  = Models.logistic_growth!,
     fixed_params           = nothing,
     solver                 = Rodas5(),
-    bounds                 = nothing,
-    show_plots::Bool       = true
+    bounds                 = nothing
 )
     n_datasets = length(x_datasets)
     @assert length(y_datasets) == n_datasets "Number of x and y datasets must match"

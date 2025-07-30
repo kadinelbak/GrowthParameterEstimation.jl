@@ -23,10 +23,10 @@ for pkg in packages
 end
 println("Package installation complete!")
 
-# Test that V1SimpleODE can be loaded
+# Test that GrowthParamEst can be loaded
 try
-    using V1SimpleODE
-    println("✓ V1SimpleODE loaded successfully")
+    using GrowthParamEst
+    println("✓ GrowthParamEst loaded successfully")
 catch e
-    println("✗ Failed to load V1SimpleODE: $e")
+    println("✗ Failed to load GrowthParamEst: $e")
 end

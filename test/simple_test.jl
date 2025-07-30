@@ -4,8 +4,8 @@
 push!(LOAD_PATH, joinpath(@__DIR__, ".."))
 
 try
-    using V1SimpleODE
-    println("✓ V1SimpleODE package loaded successfully")
+    using GrowthParamEst
+    println("✓ GrowthParamEst package loaded successfully")
     
     # Test basic functionality with simple data
     x = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
@@ -38,7 +38,7 @@ try
     
     println("\n" * "="^50)
     println("All basic tests passed! ✓")
-    println("The V1SimpleODE package is working correctly.")
+    println("The GrowthParamEst package is working correctly.")
     println("="^50)
     
 catch e

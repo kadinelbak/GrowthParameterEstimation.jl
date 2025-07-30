@@ -2,9 +2,9 @@
 module Analysis
 
 using StatsBase
-using Plots
 using DifferentialEquations
 using Distributions
+using Random
 
 # Import models and fitting from other modules
 using ..Models
@@ -125,20 +125,6 @@ function leave_one_out_validation(
         println("R²: $(round(r_squared, digits=4))")
         println("Valid predictions: $(sum(valid_indices))/$n")
         println("Parameter standard deviations: $(round.(param_std, digits=4))")
-        
-        # Plot predictions vs actual
-        plt = scatter(y, predictions; 
-                     xlabel="Actual Values", 
-                     ylabel="Predicted Values",
-                     title="Leave-One-Out Cross-Validation",
-                     label="Predictions",
-                     alpha=0.7)
-        
-        # Add perfect prediction line
-        min_val, max_val = minimum([y; predictions[valid_indices]]), maximum([y; predictions[valid_indices]])
-        plot!(plt, [min_val, max_val], [min_val, max_val]; 
-              label="Perfect Prediction", linestyle=:dash, color=:red)
-        display(plt)
     end
     
     return results
@@ -266,7 +252,6 @@ function k_fold_cross_validation(
         println("Overall MAE: $(round(overall_mae, digits=4))")
         println("Overall R²: $(round(r_squared, digits=4))")
         
-        # Plot fold results
         fold_rmse = [m.rmse for m in fold_metrics if !isnan(m.rmse)]
         if length(fold_rmse) > 0
             println("Fold RMSE: mean=$(round(mean(fold_rmse), digits=4)), std=$(round(std(fold_rmse), digits=4))")
@@ -283,8 +268,7 @@ parameter_sensitivity_analysis(
     fit_result::NamedTuple;
     perturbation::Float64    = 0.1,
     model                   = Models.logistic_growth!,
-    solver                  = Rodas5(),
-    show_plots::Bool        = true
+    solver                  = Rodas5()
 )
 
 Analyzes how sensitive model predictions are to changes in fitted parameters.
@@ -296,8 +280,7 @@ function parameter_sensitivity_analysis(
     fit_result::NamedTuple;
     perturbation::Float64    = 0.1,
     model                   = Models.logistic_growth!,
-    solver                  = Rodas5(),
-    show_plots::Bool        = true
+    solver                  = Rodas5()
 )
     params = fit_result.params
     n_params = length(params)
@@ -392,45 +375,7 @@ function parameter_sensitivity_analysis(
     for (rank, metric) in enumerate(sorted_metrics)
         println("$rank. Parameter $(metric.param_index) (value=$(round(metric.param_value, digits=4))): SI=$(round(metric.sensitivity_index, digits=3))")
     end
-    
-    if show_plots && length(valid_metrics) > 0
-        # Plot sensitivity analysis
-        plt = plot(x_dense, baseline_pred; 
-                   label="Baseline", 
-                   xlabel="Time", 
-                   ylabel="Value",
-                   title="Parameter Sensitivity Analysis",
-                   lw=3, color=:black)
-        
-        colors = [:red, :blue, :green, :orange, :purple, :brown]
-        
-        for (i, metric) in enumerate(valid_metrics)
-            if i <= length(colors)
-                color = colors[i]
-                plot!(plt, x_dense, metric.pred_up; 
-                      label="Param $(metric.param_index) +$(perturbation*100)%", 
-                      linestyle=:dash, color=color, alpha=0.7)
-                plot!(plt, x_dense, metric.pred_down; 
-                      label="Param $(metric.param_index) -$(perturbation*100)%", 
-                      linestyle=:dot, color=color, alpha=0.7)
-            end
-        end
-        
-        scatter!(plt, x, y; label="Data", color=:black, markersize=3)
-        display(plt)
-        
-        # Bar plot of sensitivity indices
-        param_indices = [m.param_index for m in sorted_metrics]
-        sensitivity_values = [m.sensitivity_index for m in sorted_metrics]
-        
-        plt2 = bar(param_indices, sensitivity_values;
-                   xlabel="Parameter Index",
-                   ylabel="Sensitivity Index",
-                   title="Parameter Sensitivity Ranking",
-                   legend=false)
-        display(plt2)
-    end
-    
+
     return (
         sensitivity_metrics = sensitivity_metrics,
         ranking = sorted_metrics,
@@ -446,12 +391,11 @@ residual_analysis(
     fit_result::NamedTuple;
     model              = Models.logistic_growth!,
     solver             = Rodas5(),
-    show_plots::Bool   = true,
     outlier_threshold::Float64 = 2.0
 )
 
 Performs comprehensive residual analysis for model diagnostics.
-Calculates residuals, identifies outliers, and creates diagnostic plots.
+Calculates residuals and identifies outliers.
 """
 function residual_analysis(
     x::Vector{<:Real},
@@ -459,7 +403,6 @@ function residual_analysis(
     fit_result::NamedTuple;
     model              = Models.logistic_growth!,
     solver             = Rodas5(),
-    show_plots::Bool   = true,
     outlier_threshold::Float64 = 2.0
 )
     params = fit_result.params
@@ -544,74 +487,6 @@ function residual_analysis(
         end
     end
     
-    if show_plots
-        # Create diagnostic plots
-        p1 = scatter(y_pred, residuals; 
-                     xlabel="Predicted Values", 
-                     ylabel="Residuals",
-                     title="Residuals vs Fitted",
-                     legend=false,
-                     markersize=4)
-        hline!(p1, [0]; color=:red, linestyle=:dash)
-        
-        # Highlight outliers
-        if n_outliers > 0
-            scatter!(p1, y_pred[outlier_indices], residuals[outlier_indices]; 
-                     color=:red, markersize=6, alpha=0.7)
-        end
-        
-        p2 = scatter(x, residuals; 
-                     xlabel="Time", 
-                     ylabel="Residuals",
-                     title="Residuals vs Time",
-                     legend=false,
-                     markersize=4)
-        hline!(p2, [0]; color=:red, linestyle=:dash)
-        
-        if n_outliers > 0
-            scatter!(p2, x[outlier_indices], residuals[outlier_indices]; 
-                     color=:red, markersize=6, alpha=0.7)
-        end
-        
-        p3 = histogram(standardized_residuals; 
-                       xlabel="Standardized Residuals", 
-                       ylabel="Frequency",
-                       title="Residual Distribution",
-                       bins=min(10, n÷2),
-                       alpha=0.7,
-                       legend=false)
-        
-        # Add normal distribution overlay
-        if n >= 5
-            x_norm = range(minimum(standardized_residuals)*1.2, maximum(standardized_residuals)*1.2, length=100)
-            y_norm = pdf.(Normal(0,1), x_norm) .* n * (maximum(standardized_residuals) - minimum(standardized_residuals)) / 10
-            plot!(p3, x_norm, y_norm; color=:red, lw=2, alpha=0.7)
-        end
-        
-        # Q-Q plot
-        if n >= 3
-            sorted_residuals = sort(standardized_residuals)
-            expected_quantiles = [quantile(Normal(0,1), (i-0.5)/n) for i in 1:n]
-            
-            p4 = scatter(expected_quantiles, sorted_residuals; 
-                         xlabel="Theoretical Quantiles", 
-                         ylabel="Sample Quantiles",
-                         title="Q-Q Plot (Normal)",
-                         legend=false,
-                         markersize=4)
-            
-            # Add diagonal line
-            min_q, max_q = extrema([expected_quantiles; sorted_residuals])
-            plot!(p4, [min_q, max_q], [min_q, max_q]; color=:red, linestyle=:dash)
-        else
-            p4 = plot(title="Q-Q Plot (insufficient data)", legend=false)
-        end
-        
-        # Combine plots
-        combined_plot = plot(p1, p2, p3, p4; layout=(2,2), size=(800,600))
-        display(combined_plot)
-    end
-    
     return (
         residuals = residuals,
         standardized_residuals = standardized_residuals,
@@ -632,7 +507,6 @@ enhanced_bic_analysis(
     model_names = ["Logistic", "Gompertz", "Exponential+Delay"],
     p0_values = [[0.1, 100.0], [0.1, 100.0], [0.1, 1.0, 1.0]],
     solver = Rodas5(),
-    show_plots::Bool = true,
     population_size::Int = 150,
     max_time::Float64 = 60.0
 )
@@ -647,7 +521,6 @@ function enhanced_bic_analysis(
     model_names = ["Logistic", "Gompertz", "Exponential+Delay"],
     p0_values = [[0.1, 100.0], [0.1, 100.0], [0.1, 1.0, 1.0]],
     solver = Rodas5(),
-    show_plots::Bool = true,
     population_size::Int = 150,
     max_time::Float64 = 60.0
 )
@@ -669,7 +542,7 @@ function enhanced_bic_analysis(
             fit_result = Fitting.run_single_fit(x, y, p0; 
                                         model=model, 
                                         solver=solver,
-                                        show_plots=false)
+                                        show_stats=false)
             
             # Calculate additional information criteria
             n = length(y)
@@ -819,47 +692,6 @@ function enhanced_bic_analysis(
     end
     
     println("Recommendation: $recommendation")
-    
-    if show_plots && !isempty(successful_results)
-        # Plot model comparisons
-        x_plot = range(x[1], x[end], length=100)
-        
-        p1 = plot(xlabel="Time", ylabel="Value", title="Model Comparison", legend=:right)
-        scatter!(p1, x, y; label="Data", color=:black, markersize=4)
-        
-        colors = [:red, :blue, :green, :orange, :purple, :brown]
-        for (i, result) in enumerate(successful_results)
-            if i <= length(colors)
-                # Plot model prediction
-                tspan = (x[1], x[end])
-                prob = ODEProblem(result.model, [y[1]], tspan, result.params)
-                sol = solve(prob, solver, saveat=x_plot)
-                y_plot = getindex.(sol.u, 1)
-                
-                plot!(p1, x_plot, y_plot; 
-                      label="$(result.model_name) (BIC=$(round(result.bic, digits=1)))",
-                      color=colors[i], lw=2)
-            end
-        end
-        
-        # BIC comparison plot
-        model_names_plot = [r.model_name for r in successful_results]
-        bic_values = [r.bic for r in successful_results]
-        
-        p2 = bar(1:length(successful_results), bic_values;
-                 xticks=(1:length(successful_results), model_names_plot),
-                 xlabel="Model", ylabel="BIC", title="BIC Comparison",
-                 legend=false, xrotation=45)
-        
-        # Model weights plot  
-        p3 = bar(1:length(successful_results), bic_weights;
-                 xticks=(1:length(successful_results), model_names_plot),
-                 xlabel="Model", ylabel="BIC Weight", title="Model Evidence",
-                 legend=false, xrotation=45)
-        
-        combined_plot = plot(p1, p2, p3; layout=(2,2), size=(900,600))
-        display(combined_plot)
-    end
     
     return (
         results = results,

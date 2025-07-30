@@ -1,9 +1,9 @@
 # GrowthParamEst.jl
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://kadinelbak.github.io/V1SimpleODE.jl/stable/)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://kadinelbak.github.io/V1SimpleODE.jl/dev/)
-[![Build Status](https://github.com/kadinelbak/V1SimpleODE.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/kadinelbak/V1SimpleODE.jl/actions/workflows/CI.yml?query=branch%3Amaster)
-[![Coverage](https://codecov.io/gh/kadinelbak/V1SimpleODE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/kadinelbak/V1SimpleODE.jl)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://kadinelbak.github.io/GrowthParamEst.jl/stable/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://kadinelbak.github.io/GrowthParamEst.jl/dev/)
+[![Build Status](https://github.com/kadinelbak/GrowthParamEst.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/kadinelbak/GrowthParamEst.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+[![Coverage](https://codecov.io/gh/kadinelbak/GrowthParamEst.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/kadinelbak/GrowthParamEst.jl)
 
 🧬 **GrowthParamEst.jl** – A comprehensive Julia package for modeling, fitting, and analyzing ordinary differential equation (ODE) systems with applications in biological research, population dynamics, and growth modeling. V1SimpleODE.jl was the first version please understand any missed references are discussing GrowthParamEst
 

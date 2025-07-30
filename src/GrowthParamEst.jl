@@ -1,4 +1,4 @@
-module V1SimpleODE
+module GrowthParamEst
 
 # Include submodules
 include("models.jl")
@@ -26,4 +26,4 @@ export
     leave_one_out_validation, k_fold_cross_validation, parameter_sensitivity_analysis,
     residual_analysis, enhanced_bic_analysis
 
-end # module V1SimpleODE
+end # module GrowthParamEst

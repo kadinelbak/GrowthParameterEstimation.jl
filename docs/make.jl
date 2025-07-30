@@ -1,14 +1,14 @@
-using V1SimpleODE
+using GrowthParamEst
 using Documenter
 
-DocMeta.setdocmeta!(V1SimpleODE, :DocTestSetup, :(using V1SimpleODE); recursive=true)
+DocMeta.setdocmeta!(GrowthParamEst, :DocTestSetup, :(using GrowthParamEst); recursive=true)
 
 makedocs(;
-    modules=[V1SimpleODE],
+    modules=[GrowthParamEst],
     authors="Kadin",
-    sitename="V1SimpleODE.jl",
+    sitename="GrowthParamEst.jl",
     format=Documenter.HTML(;
-        canonical="https://kadinelbak.github.io/V1SimpleODE.jl",
+        canonical="https://kadinelbak.github.io/GrowthParamEst.jl",
         edit_link="master",
         assets=String[],
     ),

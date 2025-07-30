@@ -1,4 +1,4 @@
-# Test data generation for V1SimpleODE tests
+# Test data generation for GrowthParamEst tests
 # Creates synthetic logistic growth data with realistic noise
 
 using Random

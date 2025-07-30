@@ -5,7 +5,7 @@
 cd("..")
 
 # Load the package
-using V1SimpleODE
+using GrowthParamEst
 
 # Go back to test directory
 cd("test")
