@@ -1,11 +1,11 @@
-# Demonstration script for GrowthParamEst package
+# Demonstration script for V1SimpleODE package
 # This script shows how to use the package with actual data and plots
 
-using GrowthParamEst
+using V1SimpleODE
 using Plots
 using Random
 
-println("🚀 GrowthParamEst Package Demonstration")
+println("🚀 V1SimpleODE Package Demonstration")
 println("="^50)
 
 # Set random seed for reproducibility
