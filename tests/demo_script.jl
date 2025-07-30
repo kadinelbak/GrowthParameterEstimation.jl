@@ -1,11 +1,10 @@
-# Demonstration script for V1SimpleODE package
-# This script shows how to use the package with actual data and plots
+# Demonstration script for GrowthParamEst package
+# This script shows how to use the package with actual data
 
-using V1SimpleODE
-using Plots
+using GrowthParamEst
 using Random
 
-println("🚀 V1SimpleODE Package Demonstration")
+println("🚀 GrowthParamEst Package Demonstration")
 println("="^50)
 
 # Set random seed for reproducibility
@@ -30,7 +29,7 @@ println("  True parameters: r=$(true_r), K=$(true_K)")
 # 1. Basic single fit demonstration
 println("\n🔧 1. Testing basic single fit...")
 p0 = [0.1, 80.0]  # Initial parameter guess
-result = run_single_fit(x_data, y_data, p0; show_stats=true)
+result = run_single_fit(x_data, y_data, p0)
 
 println("✓ Single fit completed!")
 println("  Fitted parameters: r=$(round(result.params[1], digits=4)), K=$(round(result.params[2], digits=2))")
@@ -42,8 +41,7 @@ println("\n🔧 2. Testing model comparison...")
 compare_models(
     x_data, y_data,
     "Logistic", logistic_growth!, [0.1, 80.0],
-    "Gompertz", gompertz_growth!, [0.1, 1.0, 80.0];
-    show_stats=true
+    "Gompertz", gompertz_growth!, [0.1, 1.0, 80.0]
 )
 
 println("✓ Model comparison completed!")
@@ -78,8 +76,7 @@ three_results = fit_three_datasets(
     x1, y1, "Fast Growth",
     x2, y2, "Slow Growth", 
     x3, y3, "Medium Growth",
-    [0.1, 70.0];
-    show_stats=true
+    [0.1, 70.0]
 )
 
 println("✓ Three datasets fitting completed!")
