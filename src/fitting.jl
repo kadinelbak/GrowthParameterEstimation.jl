@@ -5,7 +5,6 @@ using StatsBase
 using CSV
 using DataFrames
 using DifferentialEquations
-using SciMLSensitivity
 using LsqFit
 using RecursiveArrayTools
 using DiffEqParamEstim
