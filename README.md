@@ -5,7 +5,7 @@
 [![Build Status](https://github.com/kadinelbak/GrowthParamEst.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/kadinelbak/GrowthParamEst.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 [![Coverage](https://codecov.io/gh/kadinelbak/GrowthParamEst.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/kadinelbak/GrowthParamEst.jl)
 
-🧬 **GrowthParamEst.jl** – A comprehensive Julia package for modeling, fitting, and analyzing ordinary differential equation (ODE) systems with applications in biological research, population dynamics, and growth modeling. V1SimpleODE.jl was the first version please understand any missed references are discussing GrowthParamEst
+🧬 **GrowthParameterEstimation.jl** – A comprehensive Julia package for modeling, fitting, and analyzing ordinary differential equation (ODE) systems with applications in biological research, population dynamics, and growth modeling. V1SimpleODE.jl was the first version please understand any missed references are discussing GrowthParamEst
 
 ## 📖 Overview
 
@@ -22,7 +22,7 @@ Perfect for researchers working with biological time-series data including tumor
 
 ```julia
 using Pkg
-Pkg.add("V1SimpleODE")
+Pkg.add("GrowthParameterEstimation")
 ```
 
 ## 📊 Data Input Format
@@ -45,7 +45,7 @@ y = [10.0, 25.0, 45.0, 70.0, 90.0, 100.0]  # cell counts, areas, concentrations,
 
 ## 🧮 Available ODE Models
 
-V1SimpleODE includes 8 pre-built growth models:
+GrowthParameterEstimation includes 8 pre-built growth models:
 
 ### 1. **Logistic Growth**
 ```julia
