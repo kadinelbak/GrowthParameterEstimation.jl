@@ -1,4 +1,4 @@
-# GrowthParamEst.jl
+# GrowthParameterEstimation.jl
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://kadinelbak.github.io/GrowthParamEst.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://kadinelbak.github.io/GrowthParamEst.jl/dev/)
