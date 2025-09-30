@@ -1,4 +1,4 @@
-module GrowthParamEst
+module GrowthParameterEstimation
 
 # Include submodules
 include("models.jl")
