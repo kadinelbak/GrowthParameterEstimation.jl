@@ -129,7 +129,7 @@ result = run_single_fit(
 
 **Example:**
 ```julia
-using V1SimpleODE
+using GrowthParameterEstimation
 
 # Your data
 x = [0.0, 1.0, 2.0, 3.0, 4.0]
@@ -316,7 +316,7 @@ result = run_single_fit(x, y, p0; solver=Tsit5())
 ## 📋 Complete Example
 
 ```julia
-using V1SimpleODE
+using GrowthParameterEstimation
 
 # Generate or load your data
 x = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
@@ -362,9 +362,9 @@ println("Number of outliers: $(resid_results.statistics.n_outliers)")
 ## 🏗️ Package Structure
 
 ```
-V1SimpleODE.jl/
+GrowthParameterEstimation.jl/
 ├── src/
-│   ├── V1SimpleODE.jl     # Main module
+│   ├── GrowthParameterEstimation.jl     # Main module
 │   ├── models.jl          # ODE model definitions  
 │   ├── fitting.jl         # Parameter estimation functions
 │   └── analysis.jl        # Validation and diagnostic functions
@@ -378,7 +378,7 @@ Run the test suite to verify installation:
 
 ```julia
 using Pkg
-Pkg.test("V1SimpleODE")
+Pkg.test("GrowthParameterEstimation")
 ```
 
 Or run individual test components:
@@ -411,13 +411,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 📞 Citation
 
-If you use V1SimpleODE.jl in your research, please cite:
+If you use GrowthParameterEstimation.jl in your research, please cite:
 
 ```bibtex
-@software{v1simpleode,
-  title = {V1SimpleODE.jl: A Julia Package for ODE-Based Biological Modeling},
+@software{GrowthParameterEstimation,
+  title = {GrowthParameterEstimation.jl: A Julia Package for ODE-Based Biological Modeling},
   author = {[Your Name]},
-  url = {https://github.com/kadinelbak/V1SimpleODE.jl},
+  url = {https://github.com/kadinelbak/GrowthParameterEstimation.jl},
   year = {2025}
 }
 ```
