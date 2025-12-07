@@ -1,6 +1,6 @@
 # Extended test to verify all individual test functions work
 cd("..")
-using GrowthParamEst
+using GrowthParameterEstimation
 cd("test")
 include("individual_tests.jl")
 

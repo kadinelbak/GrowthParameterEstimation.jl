@@ -1,10 +1,10 @@
-# Demonstration script for GrowthParamEst package
+# Demonstration script for GrowthParameterEstimation package
 # This script shows how to use the package with actual data
 
-using GrowthParamEst
+using GrowthParameterEstimation
 using Random
 
-println("🚀 GrowthParamEst Package Demonstration")
+println("🚀 GrowthParameterEstimation Package Demonstration")
 println("="^50)
 
 # Set random seed for reproducibility

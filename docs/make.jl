@@ -1,14 +1,14 @@
-using GrowthParamEst
+using GrowthParameterEstimation
 using Documenter
 
-DocMeta.setdocmeta!(GrowthParamEst, :DocTestSetup, :(using GrowthParamEst); recursive=true)
+DocMeta.setdocmeta!(GrowthParameterEstimation, :DocTestSetup, :(using GrowthParameterEstimation); recursive=true)
 
 makedocs(;
-    modules=[GrowthParamEst],
+    modules=[GrowthParameterEstimation],
     authors="Kadin",
-    sitename="GrowthParamEst.jl",
+    sitename="GrowthParameterEstimation.jl",
     format=Documenter.HTML(;
-        canonical="https://kadinelbak.github.io/GrowthParamEst.jl",
+        canonical="https://kadinelbak.github.io/GrowthParameterEstimation.jl",
         edit_link="master",
         assets=String[],
     ),
@@ -18,6 +18,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/kadinelbak/V1SimpleODE.jl",
+    repo="github.com/kadinelbak/GrowthParameterEstimation.jl",
     devbranch="master",
 )

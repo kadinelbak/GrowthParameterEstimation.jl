@@ -1,7 +1,7 @@
-# Individual Test Functions for GrowthParamEst
+# Individual Test Functions for GrowthParameterEstimation
 # These functions can be run individually for testing specific functionality
 
-using GrowthParamEst
+using GrowthParameterEstimation
 using Test
 using Statistics
 using Random
@@ -18,9 +18,9 @@ function test_package_loading()
     
     @testset "Package Loading" begin
         # Test that all main modules are accessible
-        @test isdefined(GrowthParamEst, :Models)
-        @test isdefined(GrowthParamEst, :Fitting) 
-        @test isdefined(GrowthParamEst, :Analysis)
+        @test isdefined(GrowthParameterEstimation, :Models)
+        @test isdefined(GrowthParameterEstimation, :Fitting) 
+        @test isdefined(GrowthParameterEstimation, :Analysis)
         
         # Test that main functions are exported
         @test isdefined(Main, :run_single_fit)

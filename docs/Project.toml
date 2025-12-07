@@ -1,22 +1,11 @@
-name = "V1SimpleODE"
-uuid = "f2d48b76-d258-4732-aa20-f5a609aab424"
-authors = ["Kadin El Bakkouri elbakkouri.kadin@gmail.com"]
+name = "GrowthParameterEstimationDocs"
 version = "1.0.0"
+authors = ["Kadin"]
 
 [deps]
-BlackBoxOptim = "a134a8b2-14f0-5b4f-8cdc-3d2f503f5cda"
-CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
-DiffEqParamEstim = "49605926-b0a3-5d53-a972-eb5c9b0b8c2c"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
-Optimization = "bca83a33-5cc7-4d1f-bddc-0c7f2f432a24"
-OptimizationBBO = "67dcffd9-bb85-4cb0-bbc3-7c6b2d9fdc82"
-OptimizationOptimJL = "3634b633-3eab-46a4-98c4-7a7764d164d6"
-Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
-SciMLSensitivity = "30f210dd-522f-11e9-1fa2-ff5132fd8b89"
-StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-V1SimpleODE = "f2d48b76-d258-4732-aa20-f5a609aab424"
+GrowthParameterEstimation = "f2d48b76-d258-4732-aa20-f5a609aab424"
+
+[compat]
+Documenter = "0.27, 1"
+GrowthParameterEstimation = "1"

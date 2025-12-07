@@ -1,4 +1,4 @@
-using GrowthParamEst
+using GrowthParameterEstimation
 using Test
 using Statistics
 using Random
@@ -9,10 +9,10 @@ include("individual_tests.jl")
 # Set a global random seed for reproducible tests
 Random.seed!(12345)
 
-println("Starting GrowthParamEst test suite...")
-println("Testing package version: GrowthParamEst")
+println("Starting GrowthParameterEstimation test suite...")
+println("Testing package version: GrowthParameterEstimation")
 
-@testset "GrowthParamEst.jl Test Suite" begin
+@testset "GrowthParameterEstimation.jl Test Suite" begin
     
     # Run each test category using individual test functions
     @testset "Package Loading" begin
@@ -54,5 +54,5 @@ println("Testing package version: GrowthParamEst")
 end
 
 println("\n" * "="^60)
-println("✅ GrowthParamEst test suite completed successfully!")
+println("✅ GrowthParameterEstimation test suite completed successfully!")
 println("="^60)

@@ -1,6 +1,6 @@
-# GrowthParamEst Test Suite
+# GrowthParameterEstimation Test Suite
 
-This folder contains organized tests for the GrowthParamEst package.
+This folder contains organized tests for the GrowthParameterEstimation package.
 
 ## Test Structure
 

@@ -1,8 +1,8 @@
-# Focused Fitting Tests for GrowthParamEst
+# Focused Fitting Tests for GrowthParameterEstimation
 # Tests specific to the Fitting module functionality
 
 using Test
-using GrowthParamEst
+using GrowthParameterEstimation
 using DifferentialEquations
 
 include("test_data_generator.jl")

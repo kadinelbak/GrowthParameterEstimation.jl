@@ -1,8 +1,8 @@
-# Focused Analysis Tests for GrowthParamEst
+# Focused Analysis Tests for GrowthParameterEstimation
 # Tests specific to the Analysis module functionality
 
 using Test
-using GrowthParamEst
+using GrowthParameterEstimation
 using Statistics
 using Random
 

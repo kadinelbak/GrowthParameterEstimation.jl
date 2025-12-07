@@ -1,4 +1,4 @@
-name = "GrowthParamEst"
+name = "GrowthParameterEstimation"
 uuid = "f2d48b76-d258-4732-aa20-f5a609aab424"
 authors = ["Kadin"]
 version = "1.0.0"

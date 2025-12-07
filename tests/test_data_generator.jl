@@ -1,4 +1,4 @@
-# Test data generation for GrowthParamEst tests
+# Test data generation for GrowthParameterEstimation tests
 # Creates synthetic logistic growth data with realistic noise
 
 using Random

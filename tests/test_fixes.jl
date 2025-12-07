@@ -1,6 +1,6 @@
 # Quick test of fixed individual functions
 cd("..")
-using GrowthParamEst
+using GrowthParameterEstimation
 cd("test")
 include("individual_tests.jl")
 

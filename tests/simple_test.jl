@@ -1,4 +1,4 @@
-using V1SimpleODE
+using GrowthParameterEstimation
 
 # Test with very simple synthetic data that we know should work
 x_test = [0.0, 1.0, 2.0, 3.0, 4.0]

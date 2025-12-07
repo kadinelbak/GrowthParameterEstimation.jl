@@ -1,7 +1,7 @@
-using V1SimpleODE
+using GrowthParameterEstimation
 using Plots
 
-println("🚀 V1SimpleODE Package Demonstration")
+println("🚀 GrowthParameterEstimation Package Demonstration")
 println("="^50)
 
 # Generate realistic synthetic logistic growth data

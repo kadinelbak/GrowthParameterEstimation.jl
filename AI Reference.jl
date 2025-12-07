@@ -1,13 +1,13 @@
-# GrowthParamEst Package - Complete Reference Guide
+# GrowthParameterEstimation Package - Complete Reference Guide
 
 ## Package Overview
-GrowthParamEst is a Julia package for fitting and analyzing ordinary differential equation (ODE) models to biological growth data. It provides parameter estimation, model comparison, and statistical validation tools.
+GrowthParameterEstimation is a Julia package for fitting and analyzing ordinary differential equation (ODE) models to biological growth data. It provides parameter estimation, model comparison, and statistical validation tools.
 
 ## Installation & Basic Setup
 ```julia
 using Pkg
-Pkg.add("GrowthParamEst")
-using GrowthParamEst
+Pkg.add("GrowthParameterEstimation")
+using GrowthParameterEstimation
 ```
 
 ## Core Function Signatures
@@ -160,7 +160,7 @@ exponential_growth_with_death_and_delay!(du, u, p, t)
 
 ### Basic Workflow Example
 ```julia
-using GrowthParamEst
+using GrowthParameterEstimation
 
 # Your experimental data
 time_points = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
@@ -268,4 +268,4 @@ bounds = [(0.01, 3.0), (0.0, maximum(x)*0.5)]
 - No plotting dependencies (removed for simplicity)
 
 ---
-**Note**: This reference was created for AI assistants to understand the GrowthParamEst package API and usage patterns when working in new contexts.
+**Note**: This reference was created for AI assistants to understand the GrowthParameterEstimation package API and usage patterns when working in new contexts.

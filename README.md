@@ -1,15 +1,15 @@
 # GrowthParameterEstimation.jl
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://kadinelbak.github.io/GrowthParamEst.jl/stable/)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://kadinelbak.github.io/GrowthParamEst.jl/dev/)
-[![Build Status](https://github.com/kadinelbak/GrowthParamEst.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/kadinelbak/GrowthParamEst.jl/actions/workflows/CI.yml?query=branch%3Amaster)
-[![Coverage](https://codecov.io/gh/kadinelbak/GrowthParamEst.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/kadinelbak/GrowthParamEst.jl)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://kadinelbak.github.io/GrowthParameterEstimation.jl/stable/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://kadinelbak.github.io/GrowthParameterEstimation.jl/dev/)
+[![Build Status](https://github.com/kadinelbak/GrowthParameterEstimation.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/kadinelbak/GrowthParameterEstimation.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+[![Coverage](https://codecov.io/gh/kadinelbak/GrowthParameterEstimation.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/kadinelbak/GrowthParameterEstimation.jl)
 
-🧬 **GrowthParameterEstimation.jl** – A comprehensive Julia package for modeling, fitting, and analyzing ordinary differential equation (ODE) systems with applications in biological research, population dynamics, and growth modeling. V1SimpleODE.jl was the first version please understand any missed references are discussing GrowthParamEst
+🧬 **GrowthParameterEstimation.jl** – A comprehensive Julia package for modeling, fitting, and analyzing ordinary differential equation (ODE) systems with applications in biological research, population dynamics, and growth modeling. GrowthParameterEstimation.jl was the first version please understand any missed references are discussing GrowthParameterEstimation
 
 ## 📖 Overview
 
-GrowthParamEst.jl provides a complete toolkit for:
+GrowthParameterEstimation.jl provides a complete toolkit for:
 - **Parameter estimation** using global optimization algorithms
 - **Model comparison** with statistical criteria (BIC, AIC, R²)
 - **Cross-validation** and sensitivity analysis  

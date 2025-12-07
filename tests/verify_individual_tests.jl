@@ -5,7 +5,7 @@
 cd("..")
 
 # Load the package
-using GrowthParamEst
+using GrowthParameterEstimation
 
 # Go back to test directory
 cd("test")

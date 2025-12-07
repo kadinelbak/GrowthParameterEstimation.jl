@@ -23,10 +23,10 @@ for pkg in packages
 end
 println("Package installation complete!")
 
-# Test that GrowthParamEst can be loaded
+# Test that GrowthParameterEstimation can be loaded
 try
-    using GrowthParamEst
-    println("✓ GrowthParamEst loaded successfully")
+    using GrowthParameterEstimation
+    println("✓ GrowthParameterEstimation loaded successfully")
 catch e
-    println("✗ Failed to load GrowthParamEst: $e")
+    println("✗ Failed to load GrowthParameterEstimation: $e")
 end
