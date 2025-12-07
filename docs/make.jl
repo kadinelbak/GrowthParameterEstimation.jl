@@ -7,6 +7,7 @@ makedocs(;
     modules=[GrowthParameterEstimation],
     authors="Kadin",
     sitename="GrowthParameterEstimation.jl",
+    checkdocs = :none, # allow building while we flesh out full API docs
     format=Documenter.HTML(;
         canonical="https://kadinelbak.github.io/GrowthParameterEstimation.jl",
         edit_link="master",

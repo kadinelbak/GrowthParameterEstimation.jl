@@ -3,8 +3,8 @@
 *.jl.mem
 /docs/Manifest*.toml
 /docs/build/
-growthparameterestimationkey
-growthparameterestimationkey.pub
+compathelper
+compathelper.pub
 *.pem
 *.key
 

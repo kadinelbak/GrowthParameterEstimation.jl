@@ -1,10 +1,11 @@
+```
 # GrowthParameterEstimation Package - Complete Reference Guide
 
 ## Package Overview
 GrowthParameterEstimation is a Julia package for fitting and analyzing ordinary differential equation (ODE) models to biological growth data. It provides parameter estimation, model comparison, and statistical validation tools.
 
 ## Installation & Basic Setup
-```julia
+julia
 using Pkg
 Pkg.add("GrowthParameterEstimation")
 using GrowthParameterEstimation
@@ -238,7 +239,7 @@ println("Number of outliers: ", length(residuals.outliers))
     sensitivity_indices = sensitivity_measure_per_parameter,
     ranking = parameters_ranked_by_sensitivity
 )
-```
+
 
 ## Error Handling & Troubleshooting
 
@@ -249,7 +250,7 @@ println("Number of outliers: ", length(residuals.outliers))
 4. **Dimension mismatch**: Ensure x and y vectors have same length
 
 ### Recommended Parameter Bounds:
-```julia
+julia
 # For logistic growth [r, K]
 bounds = [(0.01, 5.0), (maximum(y)*0.8, maximum(y)*2.0)]
 
@@ -258,7 +259,6 @@ bounds = [(0.01, 2.0), (maximum(y)*0.8, maximum(y)*2.0)]
 
 # For exponential with delay [r, t_lag]
 bounds = [(0.01, 3.0), (0.0, maximum(x)*0.5)]
-```
 
 ## Dependencies & Compatibility
 - Julia ≥ 1.6
@@ -269,3 +269,4 @@ bounds = [(0.01, 3.0), (0.0, maximum(x)*0.5)]
 
 ---
 **Note**: This reference was created for AI assistants to understand the GrowthParameterEstimation package API and usage patterns when working in new contexts.
+```
