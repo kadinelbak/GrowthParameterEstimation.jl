@@ -3,3 +3,9 @@
 *.jl.mem
 /docs/Manifest*.toml
 /docs/build/
+growthparameterestimationkey
+growthparameterestimationkey.pub
+*.pem
+*.key
+
+
