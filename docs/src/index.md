@@ -1,5 +1,7 @@
 # GrowthParameterEstimation.jl
 
+Current release: `v0.2.0`.
+
 ```@meta
 CurrentModule = GrowthParameterEstimation
 ```
