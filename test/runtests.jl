@@ -16,7 +16,7 @@ using GrowthParameterEstimation
     # Smoke test fitting routine
     x = [0.0, 1.0, 2.0, 3.0]
     y = [1.0, 1.8, 2.6, 3.4]
-    fit = GrowthParameterEstimation.run_single_fit(x, y, [0.1, 5.0]; show_stats = false)
+    fit = GrowthParameterEstimation.run_single_fit(x, y, [0.1, 5.0]; max_time = 1.0, show_stats = false)
     @test length(fit.params) == 2
     @test isfinite(fit.bic)
 end

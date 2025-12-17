@@ -20,19 +20,19 @@ export setUpProblem, calculate_bic, pQuickStat, run_single_fit,
        compare_models, compare_datasets, compare_models_dict, fit_three_datasets
 
 """
-    setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
+    setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time=100.0, maxiters=10_000)
 
 Set up and solve an ODE fitting problem using BlackBoxOptim. Returns the
 optimized parameters, the dense solution, and the optimized problem.
 """
-function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
+function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time::Real = 100.0, maxiters::Integer = 10_000)
     prob = ODEProblem(model, u0, tspan, p0)
 
     loss = build_loss_objective(
         prob, solver,
         L2Loss(x, y),
         Optimization.AutoForwardDiff();
-        maxiters = 10_000,
+        maxiters = maxiters,
         verbose  = false,
     )
 
@@ -40,7 +40,7 @@ function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
         loss;
         SearchRange = collect(zip(first.(bounds), last.(bounds))),
         Method      = :de_rand_1_bin,
-        MaxTime     = 100.0,
+        MaxTime     = float(max_time),
         TraceMode   = :silent,
     )
 
@@ -80,7 +80,7 @@ end
 
 """
     run_single_fit(x, y, p0; model=Models.logistic_growth!, fixed_params=nothing,
-                   solver=Rodas5(), bounds=nothing, show_stats=true)
+                   solver=Rodas5(), bounds=nothing, max_time=100.0, show_stats=true)
 
 Fit a single model to `x`, `y` data with optional fixed parameters and bounds.
 """
@@ -92,6 +92,7 @@ function run_single_fit(
     fixed_params     = nothing,
     solver           = Rodas5(),
     bounds           = nothing,
+    max_time::Real   = 100.0,
     show_stats::Bool = true,
 )
     # Handle fixed parameters by wrapping the model
@@ -128,7 +129,7 @@ function run_single_fit(
     tspan  = (x[1], x[end])
     u0     = [y[1]]
 
-    p_opt, sol_opt, prob_opt = setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
+    p_opt, sol_opt, prob_opt = setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time = max_time)
     bic, ssr = calculate_bic(prob_opt, x, y, solver, p_opt)
     show_stats && pQuickStat(x, y, p_opt, sol_opt, prob_opt, bic, ssr)
 

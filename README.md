@@ -57,8 +57,8 @@ logistic_growth!(du, u, p, t)
 ### 2. **Logistic Growth with Death**
 ```julia
 logistic_growth_with_death!(du, u, p, t)
-# Parameters: p = [r, K, δ]
-# r = growth rate, K = carrying capacity, δ = death rate
+# Parameters: p = [r, K, death_rate]
+# r = growth rate, K = carrying capacity, death_rate = death rate
 ```
 
 ### 3. **Gompertz Growth**
@@ -71,8 +71,8 @@ gompertz_growth!(du, u, p, t)
 ### 4. **Gompertz Growth with Death**
 ```julia
 gompertz_growth_with_death!(du, u, p, t)
-# Parameters: p = [a, b, K, δ]
-# a = growth rate, b = shape parameter, K = carrying capacity, δ = death rate
+# Parameters: p = [a, b, K, death_rate]
+# a = growth rate, b = shape parameter, K = carrying capacity, death_rate = death rate
 ```
 
 ### 5. **Exponential Growth with Delay**
@@ -99,8 +99,8 @@ exponential_growth!(du, u, p, t)
 ### 8. **Exponential Growth with Death and Delay**
 ```julia
 exponential_growth_with_death_and_delay!(du, u, p, t)
-# Parameters: p = [r, K, δ, t_lag]
-# r = growth rate, K = carrying capacity, δ = death rate, t_lag = delay
+# Parameters: p = [r, K, death_rate, t_lag]
+# r = growth rate, K = carrying capacity, death_rate = death rate, t_lag = delay
 ```
 
 ## 🔧 Core Functions
