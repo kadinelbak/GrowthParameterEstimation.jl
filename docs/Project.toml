@@ -1,5 +1,5 @@
 name = "GrowthParameterEstimationDocs"
-version = "1.0.0"
+version = "0.1.0"
 authors = ["Kadin"]
 
 [deps]
@@ -8,4 +8,4 @@ GrowthParameterEstimation = "f2d48b76-d258-4732-aa20-f5a609aab424"
 
 [compat]
 Documenter = "0.27, 1"
-GrowthParameterEstimation = "1"
+GrowthParameterEstimation = "0.1"

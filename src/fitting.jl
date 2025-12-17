@@ -122,7 +122,20 @@ function run_single_fit(
     end
 
     nparams = length(p0)
-    bounds === nothing && (bounds = [(0.0, Inf) for _ in 1:nparams])
+
+    _default_upper(p::Real) = max(10.0, abs(Float64(p)) * 100)
+
+    if bounds === nothing
+        bounds = [(0.0, _default_upper(p0[i])) for i in 1:nparams]
+    else
+        length(bounds) == nparams || throw(ArgumentError("bounds must have length $nparams"))
+        bounds = [
+            (
+                isfinite(b[1]) ? Float64(b[1]) : 0.0,
+                isfinite(b[2]) ? Float64(b[2]) : _default_upper(p0[i]),
+            ) for (i, b) in enumerate(bounds)
+        ]
+    end
 
     x      = Float64.(x)
     y      = Float64.(y)
