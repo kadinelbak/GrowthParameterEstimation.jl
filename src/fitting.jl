@@ -26,12 +26,14 @@ Set up and solve an ODE fitting problem using BlackBoxOptim. Returns the
 optimized parameters, the dense solution, and the optimized problem.
 """
 function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time::Real = 100.0, maxiters::Integer = 10_000)
-    prob = ODEProblem(model, u0, tspan, p0)
+    # Ensure parameter vector has the expected concrete type
+    p_init = Vector{Float64}(p0)
+    prob = ODEProblem(model, u0, tspan, p_init)
 
     loss = build_loss_objective(
         prob, solver,
         L2Loss(x, y),
-        Optimization.AutoForwardDiff();
+        Optimization.AutoFiniteDiff();  # keep parameters as plain vectors to avoid dual-number scalarization
         maxiters = maxiters,
         verbose  = false,
     )
