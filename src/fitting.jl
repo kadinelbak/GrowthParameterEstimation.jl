@@ -28,25 +28,31 @@ optimized parameters, the dense solution, and the optimized problem.
 function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time::Real = 100.0, maxiters::Integer = 10_000)
     # Ensure parameter vector has the expected concrete type
     p_init = Vector{Float64}(p0)
+    num_dims = length(p_init)
     prob = ODEProblem(model, u0, tspan, p_init)
 
-    loss = build_loss_objective(
-        prob, solver,
-        L2Loss(x, y),
-        Optimization.AutoFiniteDiff();  # keep parameters as plain vectors to avoid dual-number scalarization
-        maxiters = maxiters,
-        verbose  = false,
-    )
+    # Hand-rolled loss to avoid scalarized parameters; keeps p as a vector
+    function loss(p_vec)
+        p_vec = p_vec isa AbstractVector ? Vector{Float64}(p_vec) : fill(Float64(p_vec), num_dims)
+        length(p_vec) == num_dims || throw(ArgumentError("expected $num_dims parameters, got $(length(p_vec))"))
+        sol = solve(remake(prob; p = p_vec), solver; reltol = 1e-8, abstol = 1e-8, saveat = x)
+        yhat = getindex.(sol.u, 1)
+        return sum((y .- yhat) .^ 2)
+    end
 
     result = bboptimize(
         loss;
         SearchRange = collect(zip(first.(bounds), last.(bounds))),
+        NumDimensions = num_dims,
         Method      = :de_rand_1_bin,
         MaxTime     = float(max_time),
         TraceMode   = :silent,
     )
 
-    p_opt, _ = best_candidate(result)
+    p_opt_raw = result.archive_output.best_candidate
+    p_opt = p_opt_raw isa AbstractVector ? Vector{Float64}(p_opt_raw) : [Float64(p_opt_raw)]
+    length(p_opt) == num_dims || throw(ArgumentError("expected $num_dims optimized parameters, got $(length(p_opt))"))
+
     prob_opt = remake(prob; p = p_opt, u0 = [y[1]], tspan = tspan)
     x_dense  = range(x[1], x[end], length = 1000)
     sol_opt  = solve(prob_opt, solver; reltol = 1e-12, abstol = 1e-12, saveat = x_dense)
