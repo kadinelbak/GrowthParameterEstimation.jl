@@ -1,7 +1,7 @@
 name = "GrowthParameterEstimation"
 uuid = "f2d48b76-d258-4732-aa20-f5a609aab424"
 authors = ["Kadin"]
-version = "0.2.1"
+version = "0.2.2"
 
 [deps]
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
@@ -21,7 +21,7 @@ OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
-julia = "1.9"
+julia = "1.10"
 BlackBoxOptim = "0.6"
 CSV = "0.10"
 DataFrames = "1"
