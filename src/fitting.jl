@@ -18,11 +18,12 @@ export setUpProblem, calculate_bic, pQuickStat, run_single_fit,
        compare_models, compare_datasets, compare_models_dict, fit_three_datasets
 
 """
-    setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
+    setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time=100.0, maxiters=10_000)
 
 Set up and solve an ODE fitting problem using Optimization.jl (BFGS/Fminbox).
 Returns the optimized parameters, the dense solution, and the optimized problem.
 """
+<<<<<<< HEAD
 function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
     p0_vec = collect(p0)  # ensure parameter container is a vector
     prob = ODEProblem(model, u0, tspan, p0_vec)
@@ -53,6 +54,36 @@ function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
               "Check the bounds/initial guess configuration.")
     end
 
+=======
+function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time::Real = 100.0, maxiters::Integer = 10_000)
+    # Ensure parameter vector has the expected concrete type
+    p_init = Vector{Float64}(p0)
+    num_dims = length(p_init)
+    prob = ODEProblem(model, u0, tspan, p_init)
+
+    # Hand-rolled loss to avoid scalarized parameters; keeps p as a vector
+    function loss(p_vec)
+        p_vec = p_vec isa AbstractVector ? Vector{Float64}(p_vec) : fill(Float64(p_vec), num_dims)
+        length(p_vec) == num_dims || throw(ArgumentError("expected $num_dims parameters, got $(length(p_vec))"))
+        sol = solve(remake(prob; p = p_vec), solver; reltol = 1e-8, abstol = 1e-8, saveat = x)
+        yhat = getindex.(sol.u, 1)
+        return sum((y .- yhat) .^ 2)
+    end
+
+    result = bboptimize(
+        loss;
+        SearchRange = collect(zip(first.(bounds), last.(bounds))),
+        NumDimensions = num_dims,
+        Method      = :de_rand_1_bin,
+        MaxTime     = float(max_time),
+        TraceMode   = :silent,
+    )
+
+    p_opt_raw = result.archive_output.best_candidate
+    p_opt = p_opt_raw isa AbstractVector ? Vector{Float64}(p_opt_raw) : [Float64(p_opt_raw)]
+    length(p_opt) == num_dims || throw(ArgumentError("expected $num_dims optimized parameters, got $(length(p_opt))"))
+
+>>>>>>> cdc3003645a2a0e60c91478724824fe346981435
     prob_opt = remake(prob; p = p_opt, u0 = [y[1]], tspan = tspan)
     x_dense  = range(x[1], x[end], length = 1000)
     sol_opt  = solve(prob_opt, solver; reltol = 1e-12, abstol = 1e-12, saveat = x_dense)
@@ -88,7 +119,7 @@ end
 
 """
     run_single_fit(x, y, p0; model=Models.logistic_growth!, fixed_params=nothing,
-                   solver=Rodas5(), bounds=nothing, show_stats=true)
+                   solver=Rodas5(), bounds=nothing, max_time=100.0, show_stats=true)
 
 Fit a single model to `x`, `y` data with optional fixed parameters and bounds.
 """
@@ -100,6 +131,7 @@ function run_single_fit(
     fixed_params     = nothing,
     solver           = Tsit5(),
     bounds           = nothing,
+    max_time::Real   = 100.0,
     show_stats::Bool = true,
 )
     # Handle fixed parameters by wrapping the model
@@ -129,14 +161,27 @@ function run_single_fit(
     end
 
     nparams = length(p0)
-    bounds === nothing && (bounds = [(0.0, Inf) for _ in 1:nparams])
+
+    _default_upper(p::Real) = max(10.0, abs(Float64(p)) * 100)
+
+    if bounds === nothing
+        bounds = [(0.0, _default_upper(p0[i])) for i in 1:nparams]
+    else
+        length(bounds) == nparams || throw(ArgumentError("bounds must have length $nparams"))
+        bounds = [
+            (
+                isfinite(b[1]) ? Float64(b[1]) : 0.0,
+                isfinite(b[2]) ? Float64(b[2]) : _default_upper(p0[i]),
+            ) for (i, b) in enumerate(bounds)
+        ]
+    end
 
     x      = Float64.(x)
     y      = Float64.(y)
     tspan  = (x[1], x[end])
     u0     = [y[1]]
 
-    p_opt, sol_opt, prob_opt = setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
+    p_opt, sol_opt, prob_opt = setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time = max_time)
     bic, ssr = calculate_bic(prob_opt, x, y, solver, p_opt)
     show_stats && pQuickStat(x, y, p_opt, sol_opt, prob_opt, bic, ssr)
 
