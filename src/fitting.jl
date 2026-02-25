@@ -11,8 +11,6 @@ using DiffEqParamEstim
 using Optimization
 using ForwardDiff
 using OptimizationOptimJL
-using OptimizationBBO
-using BlackBoxOptim
 
 using ..Models
 
@@ -22,29 +20,39 @@ export setUpProblem, calculate_bic, pQuickStat, run_single_fit,
 """
     setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
 
-Set up and solve an ODE fitting problem using BlackBoxOptim. Returns the
-optimized parameters, the dense solution, and the optimized problem.
+Set up and solve an ODE fitting problem using Optimization.jl (BFGS/Fminbox).
+Returns the optimized parameters, the dense solution, and the optimized problem.
 """
 function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
-    prob = ODEProblem(model, u0, tspan, p0)
+    p0_vec = collect(p0)  # ensure parameter container is a vector
+    prob = ODEProblem(model, u0, tspan, p0_vec)
+    ndims = length(p0_vec)
 
     loss = build_loss_objective(
         prob, solver,
         L2Loss(x, y),
         Optimization.AutoForwardDiff();
-        maxiters = 10_000,
+        maxiters = 500,
         verbose  = false,
     )
 
-    result = bboptimize(
-        loss;
-        SearchRange = collect(zip(first.(bounds), last.(bounds))),
-        Method      = :de_rand_1_bin,
-        MaxTime     = 100.0,
-        TraceMode   = :silent,
-    )
+    # Use a lightweight local optimizer; wrap in Fminbox if bounds are provided.
+    if bounds === nothing
+        optprob = Optimization.OptimizationProblem(loss, p0_vec)
+        result  = Optimization.solve(optprob, OptimizationOptimJL.BFGS(); maxiters = 500)
+    else
+        lb = Float64[first(b) for b in bounds]
+        ub = Float64[last(b) for b in bounds]
+        optprob = Optimization.OptimizationProblem(loss, p0_vec; lb = lb, ub = ub)
+        result  = Optimization.solve(optprob, OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS()); maxiters = 500)
+    end
 
-    p_opt, _ = best_candidate(result)
+    p_opt = collect(result.u)  # normalize to a vector, even if optimizer returns a static array
+    if length(p_opt) != ndims
+        error("Optimizer returned $(length(p_opt)) parameters but $(ndims) were expected. ",
+              "Check the bounds/initial guess configuration.")
+    end
+
     prob_opt = remake(prob; p = p_opt, u0 = [y[1]], tspan = tspan)
     x_dense  = range(x[1], x[end], length = 1000)
     sol_opt  = solve(prob_opt, solver; reltol = 1e-12, abstol = 1e-12, saveat = x_dense)
@@ -90,7 +98,7 @@ function run_single_fit(
     p0::Vector{<:Real};
     model            = Models.logistic_growth!,
     fixed_params     = nothing,
-    solver           = Rodas5(),
+    solver           = Tsit5(),
     bounds           = nothing,
     show_stats::Bool = true,
 )
