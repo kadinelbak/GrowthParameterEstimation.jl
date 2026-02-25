@@ -458,10 +458,15 @@ function plot_topk(
 )
     mkpath(output_dir)
     ranking = rank_result.ranking
-    top_models = ranking.model[1:min(top_k, nrow(ranking))]
+    ranked_models = ranking.model[1:min(top_k, nrow(ranking))]
+    top_models = [m for m in ranked_models if haskey(rank_result.fits, m)]
 
     has_plots = _load_plots_or_nothing()
     generated = String[]
+
+    if isempty(top_models)
+        return generated
+    end
 
     for cond in conditions
         overlay = DataFrame(time=cond.time, observed=cond.count)
@@ -478,17 +483,54 @@ function plot_topk(
         push!(generated, csv_path)
 
         if has_plots
-            p = Plots.plot(cond.time, cond.count; seriestype=:scatter, label="data", title=cond.name, xlabel="time", ylabel="count")
+            p = Plots.plot(
+                cond.time,
+                cond.count;
+                seriestype=:scatter,
+                label="Observed",
+                title=cond.name,
+                xlabel="Time",
+                ylabel="Count",
+                legend=:topleft,
+                linewidth=2,
+                markersize=4,
+                size=(1200, 700),
+                foreground_color_legend=nothing,
+            )
             for m in top_models
                 col = Symbol("pred_" * m)
                 if col in names(overlay)
-                    Plots.plot!(p, overlay.time, overlay[!, col]; label=m)
+                    Plots.plot!(p, overlay.time, overlay[!, col]; label=m, linewidth=2.5)
                 end
             end
             png_path = replace(csv_path, ".csv" => ".png")
             Plots.savefig(p, png_path)
             push!(generated, png_path)
         end
+    end
+
+    bic_rows = [(model=m, bic=ranking[findfirst(==(m), ranking.model), :bic]) for m in top_models]
+    bic_df = DataFrame(bic_rows)
+    bic_csv = joinpath(output_dir, "top_models_bic.csv")
+    CSV.write(bic_csv, bic_df)
+    push!(generated, bic_csv)
+
+    if has_plots
+        p_bic = Plots.bar(
+            bic_df.model,
+            bic_df.bic;
+            legend=false,
+            xlabel="Model",
+            ylabel="BIC",
+            title="Top Model BIC Comparison",
+            size=(1200, 700),
+            linecolor=:black,
+            linewidth=0.8,
+            bar_width=0.6,
+        )
+        bic_png = joinpath(output_dir, "top_models_bic.png")
+        Plots.savefig(p_bic, bic_png)
+        push!(generated, bic_png)
     end
 
     return generated
@@ -510,8 +552,13 @@ function export_results(
     ranking_path = joinpath(tables_dir, "model_ranking.csv")
     CSV.write(ranking_path, rank_result.ranking)
 
-    best_model = rank_result.ranking.model[1]
+    ranked_models = collect(rank_result.ranking.model)
+    successful_models = [m for m in ranked_models if haskey(rank_result.fits, m)]
+    isempty(successful_models) && error("No successful model fits available to export.")
+
+    best_model = successful_models[1]
     best_fit = rank_result.fits[best_model]
+    best_bic = rank_result.ranking[findfirst(==(best_model), rank_result.ranking.model), :bic]
 
     starts_df = DataFrame(best_fit.top_fits)
     starts_path = joinpath(tables_dir, "top_fit_starts.csv")
@@ -526,7 +573,7 @@ function export_results(
 
     summary = DataFrame(
         key=["best_model", "best_bic", "generated_at"],
-        value=[best_model, string(rank_result.ranking.bic[1]), string(now())],
+        value=[best_model, string(best_bic), string(now())],
     )
     summary_path = joinpath(output_dir, "best_model_summary.csv")
     CSV.write(summary_path, summary)
@@ -574,6 +621,18 @@ function run_pipeline(
         abstol=config.abstol,
         seed=config.seed,
     )
+
+    successful_models = [m for m in rank_result.ranking.model if haskey(rank_result.fits, m)]
+    if isempty(successful_models)
+        return (
+            config=config,
+            conditions=conditions,
+            ranking=rank_result.ranking,
+            failures=rank_result.failures,
+            plots=String[],
+            exports=nothing,
+        )
+    end
 
     plot_paths = plot_topk(rank_result; conditions=conditions, top_k=config.top_k, output_dir=joinpath(config.output_dir, "figures"))
     export_paths = export_results(rank_result; output_dir=config.output_dir)

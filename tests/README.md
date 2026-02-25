@@ -88,6 +88,20 @@ include("test/simple_test.jl")
 include("test/working_demo.jl")
 ```
 
+## Full API Walkthrough (Console + Notebook)
+
+- Console walkthrough script (touches data/exposure/registry/simulation/observation/fitting/analysis/workflow):
+
+```julia
+julia --project=. tests/api_tour.jl
+```
+
+- Interactive notebook walkthrough:
+
+Open `tests/function_tour.ipynb` and run cells top-to-bottom.
+
+The final notebook cell runs the same full console tour script.
+
 ## Test Organization Benefits
 
 1. **Individual Testing**: Each function can be tested in isolation

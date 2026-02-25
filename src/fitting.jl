@@ -23,9 +23,8 @@ export setUpProblem, calculate_bic, pQuickStat, run_single_fit,
 Set up and solve an ODE fitting problem using Optimization.jl (BFGS/Fminbox).
 Returns the optimized parameters, the dense solution, and the optimized problem.
 """
-<<<<<<< HEAD
-function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
-    p0_vec = collect(p0)  # ensure parameter container is a vector
+function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time::Real = 100.0, maxiters::Integer = 10_000)
+    p0_vec = collect(p0)
     prob = ODEProblem(model, u0, tspan, p0_vec)
     ndims = length(p0_vec)
 
@@ -33,57 +32,24 @@ function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds)
         prob, solver,
         L2Loss(x, y),
         Optimization.AutoForwardDiff();
-        maxiters = 500,
+        maxiters = maxiters,
         verbose  = false,
     )
 
-    # Use a lightweight local optimizer; wrap in Fminbox if bounds are provided.
     if bounds === nothing
         optprob = Optimization.OptimizationProblem(loss, p0_vec)
-        result  = Optimization.solve(optprob, OptimizationOptimJL.BFGS(); maxiters = 500)
+        result  = Optimization.solve(optprob, OptimizationOptimJL.BFGS(); maxiters = maxiters)
     else
         lb = Float64[first(b) for b in bounds]
         ub = Float64[last(b) for b in bounds]
         optprob = Optimization.OptimizationProblem(loss, p0_vec; lb = lb, ub = ub)
-        result  = Optimization.solve(optprob, OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS()); maxiters = 500)
+        result  = Optimization.solve(optprob, OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS()); maxiters = maxiters)
     end
 
-    p_opt = collect(result.u)  # normalize to a vector, even if optimizer returns a static array
+    p_opt = collect(result.u)
     if length(p_opt) != ndims
-        error("Optimizer returned $(length(p_opt)) parameters but $(ndims) were expected. ",
-              "Check the bounds/initial guess configuration.")
+        error("Optimizer returned $(length(p_opt)) parameters but $(ndims) were expected. Check bounds/initial guess configuration.")
     end
-
-=======
-function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time::Real = 100.0, maxiters::Integer = 10_000)
-    # Ensure parameter vector has the expected concrete type
-    p_init = Vector{Float64}(p0)
-    num_dims = length(p_init)
-    prob = ODEProblem(model, u0, tspan, p_init)
-
-    # Hand-rolled loss to avoid scalarized parameters; keeps p as a vector
-    function loss(p_vec)
-        p_vec = p_vec isa AbstractVector ? Vector{Float64}(p_vec) : fill(Float64(p_vec), num_dims)
-        length(p_vec) == num_dims || throw(ArgumentError("expected $num_dims parameters, got $(length(p_vec))"))
-        sol = solve(remake(prob; p = p_vec), solver; reltol = 1e-8, abstol = 1e-8, saveat = x)
-        yhat = getindex.(sol.u, 1)
-        return sum((y .- yhat) .^ 2)
-    end
-
-    result = bboptimize(
-        loss;
-        SearchRange = collect(zip(first.(bounds), last.(bounds))),
-        NumDimensions = num_dims,
-        Method      = :de_rand_1_bin,
-        MaxTime     = float(max_time),
-        TraceMode   = :silent,
-    )
-
-    p_opt_raw = result.archive_output.best_candidate
-    p_opt = p_opt_raw isa AbstractVector ? Vector{Float64}(p_opt_raw) : [Float64(p_opt_raw)]
-    length(p_opt) == num_dims || throw(ArgumentError("expected $num_dims optimized parameters, got $(length(p_opt))"))
-
->>>>>>> cdc3003645a2a0e60c91478724824fe346981435
     prob_opt = remake(prob; p = p_opt, u0 = [y[1]], tspan = tspan)
     x_dense  = range(x[1], x[end], length = 1000)
     sol_opt  = solve(prob_opt, solver; reltol = 1e-12, abstol = 1e-12, saveat = x_dense)

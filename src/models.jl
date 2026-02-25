@@ -15,13 +15,9 @@ end
 
 # 2) logistic + death: p = (r, K, death_rate)
 function logistic_growth_with_death!(du,u,p,t)
-<<<<<<< HEAD
-  r,K,δ = p
+  r,K,death_rate = p
   K = max(K, eps(eltype(u)))
-  du[1] = r*u[1]*(1 - u[1]/K) - δ*u[1]
-=======
-  r,K,death_rate = p; du[1] = r*u[1]*(1 - u[1]/K) - death_rate*u[1]
->>>>>>> cdc3003645a2a0e60c91478724824fe346981435
+  du[1] = r*u[1]*(1 - u[1]/K) - death_rate*u[1]
 end
 
 # 3) Gompertz: p = (a, b, K) - safe implementation
@@ -65,13 +61,9 @@ end
 
 # 8) exponential with death and delay: p = (r, K, death_rate, t_lag)
 function exponential_growth_with_death_and_delay!(du,u,p,t)
-<<<<<<< HEAD
-  r,K,δ,tlag = p
+  r,K,death_rate,tlag = p
   K = max(K, eps(eltype(u)))
-  du[1] = (t>=tlag ? r : 0.0)*u[1]*(1 - u[1]/K) - δ*u[1]
-=======
-  r,K,death_rate,tlag = p; du[1] = (t>=tlag ? r : 0.0)*u[1]*(1 - u[1]/K) - death_rate*u[1]
->>>>>>> cdc3003645a2a0e60c91478724824fe346981435
+  du[1] = (t>=tlag ? r : 0.0)*u[1]*(1 - u[1]/K) - death_rate*u[1]
 end
 
 end # module Models
