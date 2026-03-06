@@ -179,6 +179,15 @@ function k_fold_cross_validation(
         # Split data
         x_train, y_train = x[train_indices], y[train_indices]
         x_val, y_val = x[val_indices], y[val_indices]
+
+        # Ensure monotonic time order for ODE fitting/prediction
+        train_order = sortperm(x_train)
+        x_train = x_train[train_order]
+        y_train = y_train[train_order]
+
+        val_order = sortperm(x_val)
+        x_val = x_val[val_order]
+        y_val = y_val[val_order]
         
         try
             # Fit on training data

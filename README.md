@@ -1,11 +1,13 @@
 # GrowthParameterEstimation.jl
 
-Tools for fitting simple growth ODE models to time‑series data. Provides a handful of built‑in models, a global optimizer–based fitting routine, and convenience helpers for basic model comparison and diagnostics.
+Tools for fitting growth ODE models to time‑series data, with utilities for model comparison, diagnostics, workflow ranking, and joint fitting across multiple related datasets.
 
 ## Features
-- Eight built‑in growth ODEs (logistic, Gompertz, exponential variants, with optional death and delay).
-- Global parameter search via `BlackBoxOptim.jl` on top of `DifferentialEquations.jl`.
-- Convenience utilities for BIC/SSR calculation, model comparison, and simple cross‑validation/sensitivity checks.
+- Built-in growth ODEs (logistic, Gompertz, exponential variants with death/delay options).
+- Single-dataset fitting and model comparison utilities.
+- Multi-condition workflow APIs (`build_conditions`, `rank_models`, `run_pipeline`).
+- Joint fitting APIs for shared-parameter multi-state/multi-dataset models.
+- Analysis helpers (LOO CV, k-fold CV, sensitivity, residual diagnostics, enhanced BIC analysis).
 
 ## Installation
 ```julia
@@ -26,6 +28,28 @@ fit = run_single_fit(x, y, [0.1, 5.0]; solver=Tsit5(), show_stats=false)
 @show fit.params  # fitted parameters
 @show fit.bic     # Bayesian information criterion
 @show fit.ssr     # sum of squared residuals
+```
+
+### Joint fit quick start
+```julia
+using GrowthParameterEstimation, OrdinaryDiffEq
+
+function logistic_joint!(du, u, p, t)
+    r, K = p
+    du[1] = r * u[1] * (1 - u[1] / K)
+    du[2] = r * u[2] * (1 - u[2] / K)
+end
+
+datasets = [
+    (x = collect(0.0:1.0:5.0), y = [1.0, 1.4, 2.0, 2.7, 3.4, 4.0], state_index = 1),
+    (x = collect(0.0:1.0:5.0), y = [2.0, 2.7, 3.8, 5.0, 6.3, 7.6], state_index = 2),
+]
+
+fit = run_joint_fit(logistic_joint!, datasets, [1.0, 2.0], [0.2, 20.0];
+    solver = Tsit5(), bounds = [(0.01, 1.5), (5.0, 100.0)])
+
+@show fit.params
+@show fit.bic
 ```
 
 ### Compare two models
@@ -56,7 +80,7 @@ bic, ssr = calculate_bic(prob, x, y, Tsit5(), [0.1, 5.0])
 - `exponential_growth_with_death_and_delay!(du,u,p,t)` # p = [r, K, death_rate, t_lag]
 
 ## Key exported helpers (in `GrowthParameterEstimation`)
-- Fitting: `run_single_fit`, `compare_models`, `compare_datasets`, `compare_models_dict`, `fit_three_datasets`, `calculate_bic`.
+- Fitting: `run_single_fit`, `compare_models`, `compare_datasets`, `compare_models_dict`, `fit_three_datasets`, `run_joint_fit`, `compare_joint_models_dict`, `calculate_bic`.
 - Analysis: `leave_one_out_validation`, `k_fold_cross_validation`, `parameter_sensitivity_analysis`, `residual_analysis`, `enhanced_bic_analysis`.
 
 `run_single_fit` returns a NamedTuple:
@@ -70,10 +94,21 @@ using Pkg
 Pkg.test("GrowthParameterEstimation")
 ```
 
+Equivalent command from repo root:
+
+```julia
+julia --project=. test/runtests.jl
+```
+
+## Practice notebook
+
+- One maintained practice notebook is provided at `tests/function_tour.ipynb`.
+- It includes API walkthrough plus a synthetic joint-fitting example.
+
 ## Dependencies (main)
 - `DifferentialEquations.jl`
 - `OrdinaryDiffEq.jl`
-- `BlackBoxOptim.jl`
+- `Optimization.jl`, `OptimizationOptimJL.jl`
 - `DataFrames.jl`, `CSV.jl`, `StatsBase.jl`
 
 ## License

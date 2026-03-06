@@ -45,6 +45,7 @@ export
     # Fitting functions
     setUpProblem, calculate_bic, pQuickStat, run_single_fit,
     compare_models, compare_datasets, compare_models_dict, fit_three_datasets,
+    run_joint_fit, compare_joint_models_dict,
 
     # Analysis functions
     leave_one_out_validation, k_fold_cross_validation, parameter_sensitivity_analysis,

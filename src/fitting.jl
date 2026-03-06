@@ -15,7 +15,8 @@ using OptimizationOptimJL
 using ..Models
 
 export setUpProblem, calculate_bic, pQuickStat, run_single_fit,
-       compare_models, compare_datasets, compare_models_dict, fit_three_datasets
+    compare_models, compare_datasets, compare_models_dict, fit_three_datasets,
+    run_joint_fit, compare_joint_models_dict
 
 """
     setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time=100.0, maxiters=10_000)
@@ -343,8 +344,8 @@ end
 Convenience wrapper for fitting the same model to many datasets at once.
 """
 function fit_three_datasets(
-    x_datasets::Vector{Vector{<:Real}},
-    y_datasets::Vector{Vector{<:Real}};
+    x_datasets::Vector{<:Vector{<:Real}},
+    y_datasets::Vector{<:Vector{<:Real}};
     p0::Vector{<:Real}     = [0.1, 100.0],
     model                  = Models.logistic_growth!,
     fixed_params           = nothing,
@@ -398,6 +399,164 @@ function fit_three_datasets(
     end
 
     return (individual_fits = individual_fits, summary = summary)
+end
+
+"""
+    run_joint_fit(model, dataset_specs, u0, p0; solver=Tsit5(), bounds=nothing, show_stats=false, maxiters=10_000)
+
+Fit a single parameter vector `p` for a multi-state ODE model against multiple datasets.
+
+`dataset_specs` is a vector of NamedTuples with fields:
+- `x`: observation times
+- `y`: observations
+- `state_index`: 1-based state index in solution vector
+
+Returns `(params, bic, sse, solution, predictions, save_times)`.
+"""
+function run_joint_fit(
+    model::Function,
+    dataset_specs::Vector{<:NamedTuple},
+    u0::Vector{<:Real},
+    p0::Vector{<:Real};
+    solver            = Tsit5(),
+    bounds            = nothing,
+    show_stats::Bool  = false,
+    maxiters::Integer = 10_000,
+)
+    isempty(dataset_specs) && throw(ArgumentError("dataset_specs cannot be empty"))
+
+    processed = [
+        (
+            x = Float64.(collect(ds.x)),
+            y = Float64.(collect(ds.y)),
+            state_index = Int(ds.state_index),
+        ) for ds in dataset_specs
+    ]
+
+    n_states = length(u0)
+    for ds in processed
+        ds.state_index >= 1 || throw(ArgumentError("state_index must be >= 1"))
+        ds.state_index <= n_states || throw(ArgumentError("state_index $(ds.state_index) exceeds u0 length $n_states"))
+        length(ds.x) == length(ds.y) || throw(ArgumentError("x and y length mismatch in dataset_specs"))
+    end
+
+    save_times = sort(unique(vcat([ds.x for ds in processed]...)))
+    tspan = (save_times[1], save_times[end])
+    prob = ODEProblem(model, Float64.(u0), tspan, Float64.(p0))
+
+    function objective(p)
+        sol = solve(remake(prob; p = p), solver; saveat = save_times, reltol = 1e-10, abstol = 1e-10)
+        if sol.retcode != ReturnCode.Success
+            return 1e12
+        end
+
+        sse = 0.0
+        for ds in processed
+            for (xi, yi) in zip(ds.x, ds.y)
+                idx = findfirst(t -> isapprox(t, xi; atol = 1e-10, rtol = 1e-10), save_times)
+                idx === nothing && return 1e12
+                yhat = sol.u[idx][ds.state_index]
+                isfinite(yhat) || return 1e12
+                sse += (yi - yhat)^2
+            end
+        end
+        return sse
+    end
+
+    nparams = length(p0)
+    _default_upper(p::Real) = max(10.0, abs(Float64(p)) * 100)
+
+    if bounds === nothing
+        bounds = [(0.0, _default_upper(p0[i])) for i in 1:nparams]
+    else
+        length(bounds) == nparams || throw(ArgumentError("bounds must have length $nparams"))
+        bounds = [
+            (
+                isfinite(b[1]) ? Float64(b[1]) : 0.0,
+                isfinite(b[2]) ? Float64(b[2]) : _default_upper(p0[i]),
+            ) for (i, b) in enumerate(bounds)
+        ]
+    end
+
+    loss = Optimization.OptimizationFunction((x, _) -> objective(x), Optimization.AutoForwardDiff())
+    lb = Float64[first(b) for b in bounds]
+    ub = Float64[last(b) for b in bounds]
+    optprob = Optimization.OptimizationProblem(loss, Float64.(p0); lb = lb, ub = ub)
+    result = Optimization.solve(optprob, OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS()); maxiters = maxiters)
+
+    p_opt = collect(result.u)
+    sse = objective(p_opt)
+    n = sum(length(ds.x) for ds in processed)
+    k = length(p_opt)
+    bic = n * log(max(sse, 1e-12) / n) + k * log(n)
+
+    sol_opt = solve(remake(prob; p = p_opt), solver; saveat = save_times, reltol = 1e-10, abstol = 1e-10)
+    predictions = [
+        [sol_opt.u[findfirst(t -> isapprox(t, xi; atol = 1e-10, rtol = 1e-10), save_times)][ds.state_index] for xi in ds.x]
+        for ds in processed
+    ]
+
+    if show_stats
+        println("Optimized params: ", p_opt)
+        println("Joint SSE: ", sse)
+        println("Joint BIC: ", bic)
+    end
+
+    return (
+        params = p_opt,
+        bic = bic,
+        sse = sse,
+        solution = sol_opt,
+        predictions = predictions,
+        save_times = save_times,
+    )
+end
+
+"""
+    compare_joint_models_dict(dataset_specs, u0, specs; default_solver=Tsit5(), show_stats=false, output_csv="joint_model_comparison.csv")
+
+Fit multiple joint models and write a BIC/SSE summary CSV.
+
+`specs` maps model names to NamedTuples like `(model=<f!>, p0=<vector>, bounds=<vector>)`.
+"""
+function compare_joint_models_dict(
+    dataset_specs::Vector{<:NamedTuple},
+    u0::Vector{<:Real},
+    specs::Dict{String,<:NamedTuple};
+    default_solver      = Tsit5(),
+    show_stats::Bool    = false,
+    output_csv::String  = "joint_model_comparison.csv",
+)
+    fits = Dict{String,Any}()
+    rows = NamedTuple[]
+
+    for (name, spec) in specs
+        solver_i = haskey(spec, :solver) ? spec.solver : default_solver
+        fit = run_joint_fit(
+            spec.model,
+            dataset_specs,
+            u0,
+            spec.p0;
+            solver = solver_i,
+            bounds = get(spec, :bounds, nothing),
+            show_stats = show_stats,
+        )
+        fits[name] = fit
+        push!(rows, (Model = name, Params = fit.params, BIC = fit.bic, SSE = fit.sse))
+    end
+
+    df_summary = DataFrame(
+        Model = [r.Model for r in rows],
+        Params = [string(r.Params) for r in rows],
+        BIC = [r.BIC for r in rows],
+        SSE = [r.SSE for r in rows],
+    )
+
+    sort!(df_summary, :BIC)
+    CSV.write(output_csv, df_summary)
+    println("Joint comparison summary saved to $output_csv")
+
+    return fits
 end
 
 end # module Fitting
