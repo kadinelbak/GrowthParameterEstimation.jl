@@ -23,15 +23,16 @@ using .Workflow
 
 export
     # Data layer
-    REQUIRED_COLUMNS, load_timeseries, normalize_schema, validate_timeseries,
+    REQUIRED_COLUMNS, STRICT_REQUIRED_METADATA, load_timeseries, normalize_schema, validate_timeseries,
 
+    validate_required_metadata,
     # Drug exposure layer
     AbstractExposure, ConstantExposure, PulseExposure, SteppedExposure, DecayingExposure,
     build_exposure, evaluate_exposure,
 
     # Model registry + simulation API
     ModelSpec, register_model, get_model, list_models,
-    SimulationResult, simulate,
+    SimulationResult, SweepGrid, SweepResult, simulate, run_sweep,
 
     # Observation API
     ObservationSpec, observed_signal, viable_total, sum_states,
@@ -52,9 +53,12 @@ export
     residual_analysis, enhanced_bic_analysis,
 
     # End-to-end workflow APIs
-    FitCondition, PipelineConfig,
+    FitCondition, PipelineConfig, PipelineStage,
     default_config, save_config, load_config,
-    build_conditions, fit, rank_models, plot_topk, export_results, run_pipeline
+    default_stages, default_population_stages, default_population_cellline_stages, summarize_datasets,
+    validate_strict_schema, generate_qc_report, save_qc_report,
+    save_run_manifest, load_run_manifest, bootstrap_stage_uncertainty,
+    build_conditions, fit, rank_models, plot_topk, export_results, run_pipeline, run_staged_pipeline
 
 function __init__()
     Registry.register_builtin_models!()

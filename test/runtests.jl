@@ -34,6 +34,12 @@ using Random
         norm = normalize_schema(raw)
         @test validate_timeseries(norm)
         @test all(c -> c in Symbol.(names(norm)), REQUIRED_COLUMNS)
+        @test all(norm.treatment_amount .== norm.dose)
+
+        raw_treatment = DataFrame(time = [0.0, 1.0], count = [2.0, 3.0], treatment_amount = [1.5, 1.5], cell_line = ["A", "A"], density = [1.0, 1.0], replicate = [1, 1])
+        norm_treatment = normalize_schema(raw_treatment)
+        @test all(norm_treatment.dose .== 1.5)
+        @test all(norm_treatment.treatment_amount .== 1.5)
 
         csv_path = joinpath(tempdir(), "gpe_test_timeseries.csv")
         CSV.write(csv_path, norm)
@@ -90,6 +96,9 @@ using Random
     @testset "Registry + Simulation" begin
         models = list_models()
         @test "logistic_growth" in models
+        @test "null_coculture" in models
+        @test "lotka_volterra_competition" in models
+        @test "lotka_volterra_hill_competition" in models
 
         spec = get_model("theta_logistic_hill_inhibition")
         times = collect(0.0:1.0:5.0)
@@ -98,6 +107,14 @@ using Random
         @test sim.success
         @test length(sim.observed) == length(times)
         @test all(isfinite, sim.observed)
+
+        sweep = run_sweep(
+            get_model("sensitive_resistant"),
+            [0.4, 0.2, 100.0, 0.05, 0.7, 0.5, 2.0],
+            SweepGrid([10.0, 20.0], [0.1, 0.3], [0.0, 1.0], collect(0.0:1.0:4.0)),
+        )
+        @test nrow(sweep.summary) == 8
+        @test all(col -> col in Symbol.(names(sweep.summary)), [:seed_total, :resistant_fraction, :dose, :final_total])
     end
 
     @testset "Pipeline Fit + Ranking" begin
@@ -145,6 +162,151 @@ using Random
 
         pipe = run_pipeline(df; config = cfg_loaded, include_models = ["logistic_growth"])
         @test nrow(pipe.ranking) == 1
+
+        df_stage = DataFrame(
+            time = vcat(collect(0.0:1.0:5.0), collect(0.0:1.0:5.0)),
+            count = vcat([1.0, 1.6, 2.4, 3.1, 3.7, 4.2], [1.0, 1.3, 1.7, 2.0, 2.3, 2.5]),
+            error = fill(0.15, 12),
+            dose = vcat(fill(0.0, 6), fill(0.8, 6)),
+            cell_line = fill("A549", 12),
+            density = fill(1.0, 12),
+            replicate = vcat(fill(1, 6), fill(1, 6)),
+            unit_time = fill("h", 12),
+            unit_count = fill("count", 12),
+            culture_type = fill("monoculture", 12),
+            population_type = fill("naive", 12),
+        )
+
+        stages = [
+            PipelineStage(
+                "untreated_monoculture",
+                "Untreated mono",
+                row -> row[:culture_type] == "monoculture" && row[:dose] == 0.0,
+                [:cell_line, :population_type, :replicate],
+                ["logistic_growth"],
+                Symbol[],
+                Dict{Symbol,Float64}(),
+                Dict{Symbol,Tuple{String,Symbol}}(),
+            ),
+            PipelineStage(
+                "treated_monoculture",
+                "Treated mono",
+                row -> row[:culture_type] == "monoculture" && row[:dose] > 0.0,
+                [:dose, :cell_line, :population_type, :replicate],
+                ["theta_logistic_hill_inhibition"],
+                [:ic50, :hill],
+                Dict{Symbol,Float64}(:theta => 1.0),
+                Dict(
+                    :r => ("untreated_monoculture", :r),
+                    :K => ("untreated_monoculture", :K),
+                ),
+            ),
+        ]
+
+        staged = run_staged_pipeline(df_stage; stages=stages, config=cfg_loaded, selection_mode=:best_bic, export_stage_results=false)
+        @test staged.completed
+        @test length(staged.stages) == 2
+        @test staged.stages[1].selected_model == "logistic_growth"
+        @test haskey(staged.parameter_bank, "untreated_monoculture")
+
+        staged_checkpoint = run_staged_pipeline(df_stage; stages=stages, config=cfg_loaded, selection_mode=:manual, manual_choices=Dict("untreated_monoculture" => "logistic_growth"), export_stage_results=false)
+        @test staged_checkpoint.halted_stage == "treated_monoculture"
+        @test staged_checkpoint.stages[end].status == "awaiting_selection"
+
+        pop_stages = default_population_stages(["naive", "resistant"])
+        @test any(s -> s.name == "untreated_monoculture_naive", pop_stages)
+        @test any(s -> s.name == "treated_monoculture_resistant", pop_stages)
+
+        df_cellline = DataFrame(
+            time = vcat(collect(0.0:1.0:3.0), collect(0.0:1.0:3.0)),
+            count = vcat([1.0, 1.3, 1.8, 2.2], [0.9, 1.2, 1.5, 1.8]),
+            error = fill(0.1, 8),
+            treatment_amount = vcat(fill(0.0, 4), fill(1.0, 4)),
+            cell_line = vcat(fill("A549", 4), fill("H1975", 4)),
+            density = fill(1.0, 8),
+            replicate = fill(1, 8),
+            culture_type = fill("monoculture", 8),
+            population_type = fill("naive", 8),
+        )
+
+        cl_stages = default_population_cellline_stages(df_cellline; populations=["naive", "resistant"])
+        @test any(s -> s.name == "treated_monoculture_naive_a549", cl_stages)
+        @test any(s -> s.name == "treated_monoculture_naive_h1975", cl_stages)
+        @test any(s -> s.name == "treated_coculture_a549", cl_stages)
+
+        st_a549 = only(filter(s -> s.name == "treated_coculture_a549", cl_stages))
+        @test st_a549.inherited_params[:ic50S] == ("treated_monoculture_naive_a549", :ic50)
+        @test st_a549.inherited_params[:ic50R] == ("treated_monoculture_resistant_a549", :ic50)
+        @test st_a549.inherited_params[:rS] == ("untreated_monoculture_naive", :r)
+        @test st_a549.inherited_params[:rR] == ("untreated_monoculture_resistant", :r)
+
+        df_summary = copy(df_stage)
+        df_summary.culture_type .= "monoculture"
+        df_summary.population_type .= "naive"
+        df_summary.treatment_amount = df_summary.dose
+        df_summary.ic50_reference = fill(2.2, nrow(df_summary))
+        summary_table = summarize_datasets(df_summary)
+        @test nrow(summary_table) >= 1
+        @test all(col -> col in Symbol.(names(summary_table)), [:duration_days, :treatment_amount, :ic50_reference, :n_timepoints])
+        @test all(summary_table.duration_days .>= 0)
+
+        strict_df = copy(df_summary)
+        @test validate_strict_schema(strict_df)
+
+        strict_bad = select(strict_df, Not(:culture_type))
+        @test_throws ErrorException validate_strict_schema(strict_bad)
+
+        qc = generate_qc_report(strict_df)
+        @test all(col -> col in Symbol.(names(qc.missingness)), [:column, :n_missing, :frac_missing])
+        qc_paths = save_qc_report(qc; output_dir=joinpath(tempdir(), "gpe_qc_test"))
+        @test isfile(qc_paths.missingness)
+        @test isfile(qc_paths.condition_summary)
+
+        boot_spec = get_model("logistic_growth")
+        boot_unc = bootstrap_stage_uncertainty(
+            boot_spec,
+            df_stage[df_stage.dose .== 0.0, :];
+            condition_cols=[:cell_line, :population_type, :replicate],
+            shared_params=[:r, :K],
+            n_bootstrap=3,
+            n_starts=2,
+            maxiters=60,
+            seed=21,
+        )
+        @test haskey(boot_unc, :r)
+        @test haskey(boot_unc[:r], "ci_lower")
+
+        cfg_resume = default_config(output_dir = joinpath(tempdir(), "gpe_resume_test"))
+        staged_resume_source = run_staged_pipeline(
+            df_stage;
+            stages=stages,
+            config=cfg_resume,
+            selection_mode=:manual,
+            manual_choices=Dict("untreated_monoculture" => "logistic_growth"),
+            export_stage_results=true,
+            strict_schema=true,
+            n_bootstrap=2,
+        )
+        @test isfile(staged_resume_source.manifest_path)
+
+        manifest = load_run_manifest(staged_resume_source.manifest_path)
+        @test haskey(manifest.parameter_bank, "untreated_monoculture")
+
+        staged_resumed = run_staged_pipeline(
+            df_stage;
+            stages=stages,
+            config=cfg_resume,
+            selection_mode=:manual,
+            manual_choices=Dict(
+                "untreated_monoculture" => "logistic_growth",
+                "treated_monoculture" => "theta_logistic_hill_inhibition",
+            ),
+            export_stage_results=false,
+            resume_manifest_path=staged_resume_source.manifest_path,
+            resume_from_stage="treated_monoculture",
+        )
+        @test staged_resumed.completed
+        @test haskey(staged_resumed.parameter_bank, "untreated_monoculture")
     end
 
     @testset "Fitting Compare APIs" begin

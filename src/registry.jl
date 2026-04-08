@@ -68,6 +68,35 @@ function _sensitive_resistant!(du, u, p, t, exposure)
     du[2] = rR * R * common + kSR * S
 end
 
+function _null_coculture!(du, u, p, t, exposure)
+    rS, KS, rR, KR = p
+    S = max(u[1], 0.0)
+    R = max(u[2], 0.0)
+    du[1] = rS * S * max(0.0, 1 - S / max(KS, 1e-8))
+    du[2] = rR * R * max(0.0, 1 - R / max(KR, 1e-8))
+end
+
+function _lotka_volterra_competition!(du, u, p, t, exposure)
+    rS, KS, alpha_SR, rR, KR, alpha_RS = p
+    S = max(u[1], 0.0)
+    R = max(u[2], 0.0)
+    du[1] = rS * S * max(0.0, 1 - (S + alpha_SR * R) / max(KS, 1e-8))
+    du[2] = rR * R * max(0.0, 1 - (R + alpha_RS * S) / max(KR, 1e-8))
+end
+
+function _lotka_volterra_hill_competition!(du, u, p, t, exposure)
+    rS, KS, alpha_SR, rR, KR, alpha_RS, emaxS, ic50S, emaxR, ic50R, hill = p
+    S = max(u[1], 0.0)
+    R = max(u[2], 0.0)
+    drug = max(exposure(t), 0.0)
+    effectS = emaxS * (drug^hill / (ic50S^hill + drug^hill + 1e-12))
+    effectR = emaxR * (drug^hill / (ic50R^hill + drug^hill + 1e-12))
+    growthS = rS * S * max(0.0, 1 - (S + alpha_SR * R) / max(KS, 1e-8))
+    growthR = rR * R * max(0.0, 1 - (R + alpha_RS * S) / max(KR, 1e-8))
+    du[1] = growthS - effectS * S
+    du[2] = growthR - effectR * R
+end
+
 function _damage_repair_arrest!(du, u, p, t, exposure)
     r, K, k_damage, k_repair, k_death, ic50, hill = p
     S = max(u[1], 0.0)
@@ -169,6 +198,39 @@ function register_builtin_models!()
         (u, p, t) -> u[1],
         :ode,
         Dict(:family => :baseline_hill),
+    ))
+
+    register_model(ModelSpec(
+        "null_coculture",
+        _null_coculture!,
+        [:rS, :KS, :rR, :KR],
+        [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 5.0), (1e-3, 1e7)],
+        [:S, :R],
+        (u, p, t) -> u[1] + u[2],
+        :ode,
+        Dict(:family => :coculture_null),
+    ))
+
+    register_model(ModelSpec(
+        "lotka_volterra_competition",
+        _lotka_volterra_competition!,
+        [:rS, :KS, :alpha_SR, :rR, :KR, :alpha_RS],
+        [(1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0)],
+        [:S, :R],
+        (u, p, t) -> u[1] + u[2],
+        :ode,
+        Dict(:family => :coculture_competition),
+    ))
+
+    register_model(ModelSpec(
+        "lotka_volterra_hill_competition",
+        _lotka_volterra_hill_competition!,
+        [:rS, :KS, :alpha_SR, :rR, :KR, :alpha_RS, :emaxS, :ic50S, :emaxR, :ic50R, :hill],
+        [(1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (0.0, 20.0), (1e-8, 1e4), (0.0, 20.0), (1e-8, 1e4), (0.1, 8.0)],
+        [:S, :R],
+        (u, p, t) -> u[1] + u[2],
+        :ode,
+        Dict(:family => :coculture_competition_hill),
     ))
 
     register_model(ModelSpec(
