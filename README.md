@@ -105,6 +105,11 @@ julia --project=. test/runtests.jl
 - One maintained practice notebook is provided at `tests/function_tour.ipynb`.
 - It includes API walkthrough plus a synthetic joint-fitting example.
 
+## Pipeline templates
+
+- End-to-end one-shot template script: `examples/pipeline_one_shot_template.jl`.
+- Step-by-step staged template notebook: `tests/pipeline_step_by_step_template.ipynb`.
+
 ## Dependencies (main)
 - `DifferentialEquations.jl`
 - `OrdinaryDiffEq.jl`

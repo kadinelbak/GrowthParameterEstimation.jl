@@ -1,10 +1,16 @@
 # Practice Notebook
 
-This folder now contains one maintained practice notebook:
+This folder now contains maintained practice notebooks:
 
 - `function_tour.ipynb`
+- `pipeline_step_by_step_template.ipynb`
 
-It provides a guided API walkthrough and includes a synthetic joint-fitting example.
+They provide a guided API walkthrough, a synthetic joint-fitting example, and a
+step-by-step staged pipeline template.
+
+For a script-based end-to-end template, see:
+
+- `../examples/pipeline_one_shot_template.jl`
 
 ## Canonical automated tests
 
