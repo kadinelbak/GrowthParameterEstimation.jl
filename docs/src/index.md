@@ -1,12 +1,25 @@
 # GrowthParameterEstimation.jl
 
-Current release: `v0.2.0`.
+Current release: `v0.3.0`.
 
 ```@meta
 CurrentModule = GrowthParameterEstimation
 ```
 
 Welcome to the in-progress documentation for `GrowthParameterEstimation.jl`. The package provides ODE models and utilities for fitting, comparing, and analyzing growth dynamics. The documentation site is generated with [Documenter.jl](https://juliadocs.github.io/Documenter.jl/) directly from the package sources so it can track the public API as it evolves.
+
+## What's New In v0.3.0
+
+- Hardened staged workflows with strict schema checks, QC generation, and persisted manifests.
+- Resume support for long-running staged pipelines.
+- Bootstrap uncertainty estimation at stage level.
+- Population and cell-line stage templates with parameter inheritance helpers.
+- Coculture competition model support and simulation sweep utilities.
+
+See template assets in the repository for practical entry points:
+
+- `examples/pipeline_one_shot_template.jl`
+- `tests/pipeline_step_by_step_template.ipynb`
 
 ## Getting Started
 

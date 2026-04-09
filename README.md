@@ -2,10 +2,17 @@
 
 Tools for fitting growth ODE models to time‑series data, with utilities for model comparison, diagnostics, workflow ranking, and joint fitting across multiple related datasets.
 
+Current release target: `v0.3.0`.
+
 ## Features
 - Built-in growth ODEs (logistic, Gompertz, exponential variants with death/delay options).
 - Single-dataset fitting and model comparison utilities.
 - Multi-condition workflow APIs (`build_conditions`, `rank_models`, `run_pipeline`).
+- Staged fitting pipeline (`run_staged_pipeline`) with auto-select and checkpoint/manual modes.
+- Population/cell-line stage templates for inherited parameter workflows.
+- Strict schema validation, QC report generation, run manifest persistence, and resume-from-stage.
+- Bootstrap uncertainty summaries at stage level.
+- Simulation sweep engine for scenario grids.
 - Joint fitting APIs for shared-parameter multi-state/multi-dataset models.
 - Analysis helpers (LOO CV, k-fold CV, sensitivity, residual diagnostics, enhanced BIC analysis).
 
@@ -82,6 +89,9 @@ bic, ssr = calculate_bic(prob, x, y, Tsit5(), [0.1, 5.0])
 ## Key exported helpers (in `GrowthParameterEstimation`)
 - Fitting: `run_single_fit`, `compare_models`, `compare_datasets`, `compare_models_dict`, `fit_three_datasets`, `run_joint_fit`, `compare_joint_models_dict`, `calculate_bic`.
 - Analysis: `leave_one_out_validation`, `k_fold_cross_validation`, `parameter_sensitivity_analysis`, `residual_analysis`, `enhanced_bic_analysis`.
+- Workflow/core pipeline: `run_pipeline`, `run_staged_pipeline`, `default_stages`, `default_population_stages`, `default_population_cellline_stages`, `summarize_datasets`.
+- Hardening: `validate_required_metadata`, `validate_strict_schema`, `generate_qc_report`, `save_qc_report`, `save_run_manifest`, `load_run_manifest`, `bootstrap_stage_uncertainty`.
+- Simulation: `simulate`, `run_sweep`.
 
 `run_single_fit` returns a NamedTuple:
 ```julia

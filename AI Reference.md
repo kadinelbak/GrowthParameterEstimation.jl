@@ -319,6 +319,56 @@ z_i=\frac{r_i}{s_r},
 \]
 outlier if \(|z_i|>\tau\).
 
+---
+
+## 8) Staged workflow + hardening (v0.3.0)
+
+### `run_pipeline(df; config, models_to_compare, selection_mode, manual_choices, strict_schema, qc_before_fit, ...)`
+**English:** End-to-end convenience workflow for condition construction, fitting, and ranking across all conditions.
+
+**Math:** Per condition/model objective remains weighted least squares over trajectory mismatch:
+\[
+\min_p \sum_{i=1}^{n} w_i\left(y_i-\hat y_i(p)\right)^2,
+\]
+with model ranking typically based on BIC.
+
+### `run_staged_pipeline(df; stages, selection_mode, manual_choices, strict_schema, qc_before_fit, n_bootstrap, resume_manifest_path, resume_from_stage, ...)`
+**English:** Multi-stage orchestration where selected parameters/models are inherited by downstream stages. Supports fully automatic ranking or checkpoint/manual decisions at each stage.
+
+**Math:** For stage index \(s\), downstream parameter vector can be decomposed as:
+\[
+p^{(s)} = \left[p^{(s)}_{free},\; p^{(s)}_{inherited}\right],
+\]
+where inherited components are fixed to estimates from prior stages.
+
+### `default_population_stages(...)` and `default_population_cellline_stages(df; ...)`
+**English:** Build biologically structured stage templates (for example, population-global growth terms and per-cell-line treatment potency terms).
+
+### `validate_required_metadata(df)` and `validate_strict_schema(df)`
+**English:** Fail-fast preflight checks for required metadata and strict schema consistency.
+
+**Math:** Implements constraint checks such as domain-validity predicates:
+\[
+\forall i:\; t_i\in\mathbb{R}_{\ge 0},\; y_i\in\mathbb{R}_{\ge 0},\; \sigma_i\in\mathbb{R}_{>0}
+\]
+plus required metadata presence by row/condition.
+
+### `generate_qc_report(df)` and `save_qc_report(report; output_dir=...)`
+**English:** Summarizes data quality and condition coverage before model fitting.
+
+### `save_run_manifest(...)` and `load_run_manifest(path)`
+**English:** Persist and reload provenance metadata (config, selected models, inherited maps, timestamps, stage status) to make staged runs reproducible and resumable.
+
+### `bootstrap_stage_uncertainty(stage_result; n_bootstrap, rng, ...)`
+**English:** Estimates uncertainty around stage-level parameter estimates via bootstrap resampling.
+
+**Math:** If \(\hat p^{(b)}\) is the estimate from bootstrap replicate \(b\), then summary moments are:
+\[
+\bar p = \frac{1}{B}\sum_{b=1}^{B}\hat p^{(b)},
+\quad
+\widehat{\mathrm{SE}}(p) = \sqrt{\frac{1}{B-1}\sum_{b=1}^{B}(\hat p^{(b)}-\bar p)^2}.
+\]
+
 Durbin–Watson:
 \[
 DW=\frac{\sum_{i=2}^{n}(r_i-r_{i-1})^2}{\sum_{i=1}^{n}r_i^2}.
