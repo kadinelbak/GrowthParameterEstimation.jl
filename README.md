@@ -4,6 +4,8 @@ Tools for fitting growth ODE models to time‑series data, with utilities for mo
 
 Current release target: `v0.3.0`.
 
+Changelog: see `CHANGELOG.md` for release notes, including the breaking changes in `v0.3.0`.
+
 ## Features
 - Built-in growth ODEs (logistic, Gompertz, exponential variants with death/delay options).
 - Single-dataset fitting and model comparison utilities.

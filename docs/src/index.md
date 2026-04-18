@@ -16,6 +16,12 @@ Welcome to the in-progress documentation for `GrowthParameterEstimation.jl`. The
 - Population and cell-line stage templates with parameter inheritance helpers.
 - Coculture competition model support and simulation sweep utilities.
 
+## Breaking Changes
+
+- `v0.3.0` is a breaking pre-1.0 minor release relative to `v0.2.x`.
+- Staged and workflow-oriented entry points now expect stricter canonical metadata and schema handling.
+- Workflow exports now use the structured output layout documented in `CHANGELOG.md`.
+
 See template assets in the repository for practical entry points:
 
 - `examples/pipeline_one_shot_template.jl`
