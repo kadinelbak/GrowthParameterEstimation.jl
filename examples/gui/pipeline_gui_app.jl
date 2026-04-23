@@ -2,9 +2,10 @@ using Dash
 using CSV
 using DataFrames
 using GrowthParameterEstimation
+using Statistics
 
 const HOST = "127.0.0.1"
-const PORT = 8050
+const PORT = parse(Int, get(ENV, "GPE_GUI_PORT", "8050"))
 
 function _parse_model_list(txt::AbstractString)
     raw = split(txt, ',')
@@ -39,6 +40,14 @@ function _timing_guidance()
     ])
 end
 
+function _triggered_step_id()
+    ctx = callback_context()
+    isempty(ctx.triggered) && return nothing
+
+    prop_id = ctx.triggered[1].prop_id
+    return first(split(String(prop_id), "."))
+end
+
 function _as_table(df::DataFrame; limit::Int = 10)
     shown = nrow(df) > limit ? first(df, limit) : df
     header = html_tr([html_th(string(c)) for c in names(shown)])
@@ -51,6 +60,164 @@ function _as_table(df::DataFrame; limit::Int = 10)
             html_tbody(rows),
         ]; style=Dict("width" => "100%", "borderCollapse" => "collapse")),
         html_small("Showing $(nrow(shown)) of $(nrow(df)) rows"),
+    ])
+end
+
+function _condition_lookup(conditions::Vector{FitCondition})
+    return Dict(c.name => c for c in conditions)
+end
+
+function _read_csv_or_empty(path::AbstractString)
+    if isfile(path)
+        return CSV.read(path, DataFrame)
+    end
+    return DataFrame(message=["Missing file: $(path)"])
+end
+
+function _residual_diagnostics_df(cond::FitCondition, pred::Vector{Float64}; outlier_threshold::Float64 = 2.0)
+    residual = cond.count .- pred
+    resid_std = std(residual)
+    std_resid = resid_std > 0 ? residual ./ resid_std : fill(0.0, length(residual))
+
+    return DataFrame(
+        time=cond.time,
+        observed=cond.count,
+        predicted=pred,
+        residual=residual,
+        standardized_residual=std_resid,
+        outlier=abs.(std_resid) .> outlier_threshold,
+    )
+end
+
+function _sensitivity_df(spec::ModelSpec, cond::FitCondition, params::Vector{Float64}; perturbation::Float64 = 0.1)
+    baseline = simulate(
+        spec,
+        cond.time,
+        params;
+        u0=cond.u0,
+        exposure=cond.exposure,
+    )
+
+    if !baseline.success
+        return DataFrame(
+            parameter=String[],
+            value=Float64[],
+            max_rel_change=Float64[],
+            mean_rel_change=Float64[],
+            sensitivity_index=Float64[],
+            status=String[],
+        )
+    end
+
+    base_obs = baseline.observed
+    out = DataFrame(
+        parameter=String[],
+        value=Float64[],
+        max_rel_change=Float64[],
+        mean_rel_change=Float64[],
+        sensitivity_index=Float64[],
+        status=String[],
+    )
+
+    for i in eachindex(params)
+        p_up = copy(params)
+        p_down = copy(params)
+
+        delta = max(abs(params[i]) * perturbation, 1e-8)
+        p_up[i] = params[i] + delta
+        p_down[i] = max(1e-12, params[i] - delta)
+
+        up = simulate(spec, cond.time, p_up; u0=cond.u0, exposure=cond.exposure)
+        down = simulate(spec, cond.time, p_down; u0=cond.u0, exposure=cond.exposure)
+
+        pname = i <= length(spec.param_names) ? String(spec.param_names[i]) : "p$(i)"
+
+        if up.success && down.success
+            rel_up = abs.(up.observed .- base_obs) ./ (abs.(base_obs) .+ 1e-10)
+            rel_down = abs.(down.observed .- base_obs) ./ (abs.(base_obs) .+ 1e-10)
+            max_rel = max(maximum(rel_up), maximum(rel_down))
+            mean_rel = mean(vcat(rel_up, rel_down))
+            push!(out, (
+                pname,
+                params[i],
+                max_rel,
+                mean_rel,
+                max_rel / perturbation,
+                "ok",
+            ))
+        else
+            push!(out, (
+                pname,
+                params[i],
+                NaN,
+                NaN,
+                NaN,
+                "solver_failed",
+            ))
+        end
+    end
+
+    sort!(out, :sensitivity_index; rev=true)
+    return out
+end
+
+function _analysis_panel(ranked, conditions::Vector{FitCondition}, selected_condition::String, selected_model::String)
+    c_lookup = _condition_lookup(conditions)
+    cond = get(c_lookup, selected_condition, nothing)
+    isnothing(cond) && return html_div([html_h4("Diagnostics & Sensitivity"), html_p("Condition not found in grouped conditions.")])
+
+    haskey(ranked.fits, selected_model) || return html_div([html_h4("Diagnostics & Sensitivity"), html_p("Selected model has no successful fit object.")])
+    fit_info = ranked.fits[selected_model]
+    hit = findfirst(pc -> pc.condition == selected_condition, fit_info.per_condition)
+    isnothing(hit) && return html_div([html_h4("Diagnostics & Sensitivity"), html_p("No per-condition fit details were found for this condition.")])
+
+    pc = fit_info.per_condition[hit]
+    pred = Float64.(pc.observed)
+    resid_df = _residual_diagnostics_df(cond, pred)
+
+    rmse = sqrt(mean((resid_df.residual) .^ 2))
+    mae = mean(abs.(resid_df.residual))
+    mean_resid = mean(resid_df.residual)
+    max_abs_resid = maximum(abs.(resid_df.residual))
+    n_outliers = sum(resid_df.outlier)
+
+    spec = get_model(selected_model)
+    sens_df = _sensitivity_df(spec, cond, Float64.(pc.params))
+
+    sens_fig = if nrow(sens_df) == 0
+        Dict(
+            "data" => Any[],
+            "layout" => Dict("title" => "Sensitivity unavailable for selected model/condition"),
+        )
+    else
+        valid = filter(row -> !isnan(row.sensitivity_index), sens_df)
+        Dict(
+            "data" => Any[
+                Dict(
+                    "x" => valid.parameter,
+                    "y" => valid.sensitivity_index,
+                    "type" => "bar",
+                    "name" => "Sensitivity Index",
+                ),
+            ],
+            "layout" => Dict(
+                "title" => "Parameter Sensitivity Index (Condition: $(selected_condition))",
+                "xaxis" => Dict("title" => "Parameter"),
+                "yaxis" => Dict("title" => "Sensitivity Index"),
+            ),
+        )
+    end
+
+    return html_div([
+        html_h4("Diagnostics & Sensitivity"),
+        html_p("Model: $(selected_model) | Condition: $(selected_condition)"),
+        html_p("Residual summary: RMSE=$(round(rmse, digits=4)), MAE=$(round(mae, digits=4)), mean residual=$(round(mean_resid, digits=4)), max |residual|=$(round(max_abs_resid, digits=4)), outliers=$(n_outliers)"),
+        html_h5("Residual Diagnostics Table"),
+        _as_table(resid_df; limit=50),
+        html_h5("Sensitivity Table"),
+        _as_table(sens_df; limit=50),
+        html_h5("Sensitivity Plot"),
+        dcc_graph(id="sensitivity-plot", figure=sens_fig),
     ])
 end
 
@@ -158,6 +325,7 @@ function _rank_and_plot(path::AbstractString, model_txt::AbstractString, cond_na
         _as_table(ranked.ranking; limit=20),
         html_h4("Failure Log"),
         _as_table(ranked.failures; limit=20),
+        _analysis_panel(ranked, conditions, selected_condition, selected_model),
     ])
 
     return ranking_panel, fig
@@ -177,12 +345,35 @@ function _pipeline_panel(path::AbstractString, model_txt::AbstractString)
         preflight_before_fit=true,
     )
 
+    ranking_preview = !isnothing(run.exports) && haskey(run.exports, :ranking) ? _read_csv_or_empty(run.exports.ranking) : run.ranking
+    summary_preview = !isnothing(run.exports) && haskey(run.exports, :summary) ? _read_csv_or_empty(run.exports.summary) : DataFrame()
+    preflight_issues = !isnothing(run.preflight_report) ? run.preflight_report.issues : DataFrame()
+    qc_issues = !isnothing(run.qc_report) ? run.qc_report.issues : DataFrame()
+    artifact_rows = NamedTuple[]
+    if !isnothing(run.exports)
+        for (k, v) in pairs(run.exports)
+            push!(artifact_rows, (artifact=String(k), path=String(v), exists=ispath(String(v))))
+        end
+    end
+    artifact_df = DataFrame(artifact_rows)
+
     return html_div([
         html_h4("Pipeline Result"),
         html_p("Rows in ranking: $(nrow(run.ranking))"),
         html_p("Failures: $(nrow(run.failures))"),
         html_p("Preflight ready: $(run.preflight_report.ready_for_fit)"),
+        html_h5("Live Ranking"),
         _as_table(run.ranking; limit=20),
+        html_h5("Exported Ranking Preview"),
+        _as_table(ranking_preview; limit=20),
+        html_h5("Best Model Summary"),
+        _as_table(summary_preview; limit=20),
+        html_h5("Preflight Issues"),
+        _as_table(preflight_issues; limit=20),
+        html_h5("QC Issues"),
+        _as_table(qc_issues; limit=20),
+        html_h5("Generated Artifacts"),
+        _as_table(artifact_df; limit=50),
         html_h4("Pipeline Failures"),
         _as_table(run.failures; limit=20),
     ])
@@ -313,23 +504,22 @@ callback!(
     end
 
     path = String(csv_path)
-    steps = [Int(n_pre), Int(n_cond), Int(n_rank), Int(n_pipe), Int(n_staged)]
-    step_idx = argmax(steps)
+    triggered_id = _triggered_step_id()
 
     try
-        if step_idx == 1
+        if triggered_id == "btn-preflight"
             panel = _preflight_panel(path)
             return panel, base_fig
-        elseif step_idx == 2
+        elseif triggered_id == "btn-conditions"
             panel = _conditions_panel(path)
             return panel, base_fig
-        elseif step_idx == 3
+        elseif triggered_id == "btn-rank"
             panel, fig = _rank_and_plot(path, String(models), String(cond_name), Int(n_starts), Int(maxiters))
             return panel, fig
-        elseif step_idx == 4
+        elseif triggered_id == "btn-pipeline"
             panel = _pipeline_panel(path, String(models))
             return panel, base_fig
-        elseif step_idx == 5
+        elseif triggered_id == "btn-staged"
             panel = _staged_panel(path)
             return panel, base_fig
         else
@@ -345,5 +535,16 @@ callback!(
     end
 end
 
-println("Pipeline GUI running at http://$(HOST):$(PORT)")
-run_server(app, HOST, PORT; debug=false)
+if abspath(PROGRAM_FILE) == @__FILE__
+    println("Pipeline GUI running at http://$(HOST):$(PORT)")
+    try
+        run_server(app, HOST, PORT; debug=false)
+    catch err
+        msg = sprint(showerror, err)
+        if occursin("EADDRINUSE", msg)
+            println("Port $(PORT) is already in use. Set GPE_GUI_PORT to another port, for example:")
+            println("GPE_GUI_PORT=8051 julia --project=examples/gui examples/gui/pipeline_gui_app.jl")
+        end
+        rethrow(err)
+    end
+end

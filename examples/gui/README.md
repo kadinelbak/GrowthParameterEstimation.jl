@@ -13,6 +13,12 @@ julia --project=examples/gui examples/gui/pipeline_gui_app.jl
 
 Open <http://127.0.0.1:8050> in your browser.
 
+If port 8050 is busy, launch on a different port:
+
+```bash
+GPE_GUI_PORT=8051 julia --project=examples/gui examples/gui/pipeline_gui_app.jl
+```
+
 ## Expected Input Data
 
 Provide a CSV path in the app. Recommended columns:
@@ -41,6 +47,8 @@ For staged workflows, include metadata such as `culture_type` and `population_ty
 - Fits selected models.
 - Displays ranking and failure logs.
 - Renders observed vs predicted trajectories.
+- Shows in-GUI residual diagnostics for the selected model/condition.
+- Shows parameter sensitivity analysis (table + bar chart) directly in the app.
 - This is usually the slowest interactive step.
 - Runtime grows with the number of models, grouped conditions, optimization starts, and max iterations.
 - With the default settings on the sample CSVs, expect anything from a few seconds to tens of seconds.
