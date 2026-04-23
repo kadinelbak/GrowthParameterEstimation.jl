@@ -19,6 +19,7 @@ export FitCondition, PipelineConfig,
        default_config, save_config, load_config,
     default_stages, default_population_stages, default_population_cellline_stages, summarize_datasets,
     validate_strict_schema, generate_qc_report, save_qc_report,
+    preflight_data_quality, save_preflight_report,
     save_run_manifest, load_run_manifest,
     bootstrap_stage_uncertainty,
     build_conditions, fit, rank_models, plot_topk, export_results, run_pipeline, run_staged_pipeline
@@ -76,10 +77,11 @@ function _stage_filter(; culture_type=nothing, treated=nothing, population_types
     expected_culture = isnothing(culture_type) ? nothing : lowercase(String(culture_type))
     expected_populations = Set(lowercase.(population_types))
     expected_cell_lines = Set(lowercase.(cell_lines))
+    _has_col(row, col::Symbol) = col in propertynames(row)
 
     return function (row)
         if expected_culture !== nothing
-            if !haskey(parent(row), :culture_type)
+            if !_has_col(row, :culture_type)
                 return false
             end
             row_culture = lowercase(string(row[:culture_type]))
@@ -89,7 +91,7 @@ function _stage_filter(; culture_type=nothing, treated=nothing, population_types
         end
 
         if treated !== nothing
-            dose_value = haskey(parent(row), :dose) ? Float64(row[:dose]) : 0.0
+            dose_value = _has_col(row, :dose) ? Float64(row[:dose]) : 0.0
             if treated && dose_value <= 0.0
                 return false
             elseif !treated && dose_value > 0.0
@@ -98,7 +100,7 @@ function _stage_filter(; culture_type=nothing, treated=nothing, population_types
         end
 
         if !isempty(expected_populations)
-            if !haskey(parent(row), :population_type)
+            if !_has_col(row, :population_type)
                 return false
             end
             population_value = lowercase(string(row[:population_type]))
@@ -108,7 +110,7 @@ function _stage_filter(; culture_type=nothing, treated=nothing, population_types
         end
 
         if !isempty(expected_cell_lines)
-            if !haskey(parent(row), :cell_line)
+            if !_has_col(row, :cell_line)
                 return false
             end
             row_cell_line = lowercase(string(row[:cell_line]))
@@ -563,6 +565,234 @@ function save_qc_report(qc_report; output_dir::String)
     )
 end
 
+function _new_preflight_issues()
+    return DataFrame(
+        severity=String[],
+        scope=String[],
+        code=String[],
+        condition=String[],
+        detail=String[],
+        recommendation=String[],
+    )
+end
+
+function _add_preflight_issue!(issues::DataFrame; severity::AbstractString, scope::AbstractString, code::AbstractString, condition::AbstractString="all", detail::AbstractString="", recommendation::AbstractString="")
+    push!(issues, (
+        severity=String(severity),
+        scope=String(scope),
+        code=String(code),
+        condition=String(condition),
+        detail=String(detail),
+        recommendation=String(recommendation),
+    ))
+    return issues
+end
+
+function preflight_data_quality(
+    data_input;
+    condition_cols::Vector{Symbol} = [:dose, :cell_line, :density, :replicate],
+    stages::Vector{PipelineStage} = PipelineStage[],
+    min_points_per_condition::Int = 4,
+    min_unique_times_per_condition::Int = 4,
+    min_time_span::Float64 = 1.0,
+    min_relative_signal_span::Float64 = 0.05,
+)
+    df = if data_input isa DataFrame
+        DataLayer.normalize_schema(data_input)
+    elseif data_input isa AbstractString
+        DataLayer.load_timeseries(data_input)
+    else
+        error("data_input must be a DataFrame or file path")
+    end
+
+    issues = _new_preflight_issues()
+
+    try
+        DataLayer.validate_timeseries(df)
+    catch err
+        _add_preflight_issue!(issues;
+            severity="error",
+            scope="dataset",
+            code="timeseries_validation_failed",
+            detail=sprint(showerror, err),
+            recommendation="Run normalize_schema/validate_timeseries and fix schema, monotonic time, nonnegative count, and positive error columns.",
+        )
+    end
+
+    resolved_cols = _resolve_condition_cols(df, condition_cols)
+    grouped = groupby(df, resolved_cols)
+
+    condition_quality = DataFrame(
+        condition=String[],
+        n_points=Int[],
+        n_unique_timepoints=Int[],
+        time_span=Float64[],
+        min_time_step=Float64[],
+        rel_signal_span=Float64[],
+        error_median=Float64[],
+        warning_count=Int[],
+    )
+
+    for g in grouped
+        cname = join(["$(c)=$(g[1, c])" for c in resolved_cols], " | ")
+        times = Float64.(g.time)
+        counts = Float64.(g.count)
+        errs = Float64.(g.error)
+
+        n_points = length(times)
+        n_unique = length(unique(times))
+        span = maximum(times) - minimum(times)
+        min_step = n_points >= 2 ? minimum(diff(sort(times))) : NaN
+        cmin = minimum(counts)
+        cmax = maximum(counts)
+        rel_span = (cmax - cmin) / max(abs(cmax), 1e-12)
+        err_med = median(errs)
+        warn_count = 0
+
+        if n_points < min_points_per_condition
+            warn_count += 1
+            _add_preflight_issue!(issues;
+                severity="warning",
+                scope="condition",
+                code="few_points",
+                condition=cname,
+                detail="Only $(n_points) observations available.",
+                recommendation="Add timepoints per condition or reduce model complexity/number of free parameters.",
+            )
+        end
+
+        if n_unique < min_unique_times_per_condition
+            warn_count += 1
+            _add_preflight_issue!(issues;
+                severity="warning",
+                scope="condition",
+                code="few_unique_timepoints",
+                condition=cname,
+                detail="Only $(n_unique) unique timepoints available.",
+                recommendation="Ensure distinct measurement times to improve identifiability.",
+            )
+        end
+
+        if isfinite(span) && span < min_time_span
+            warn_count += 1
+            _add_preflight_issue!(issues;
+                severity="warning",
+                scope="condition",
+                code="short_time_span",
+                condition=cname,
+                detail="Time span $(round(span, digits=6)) is below recommended minimum $(min_time_span).",
+                recommendation="Extend observation window so growth/response dynamics are visible.",
+            )
+        end
+
+        if isfinite(rel_span) && rel_span < min_relative_signal_span
+            warn_count += 1
+            _add_preflight_issue!(issues;
+                severity="warning",
+                scope="condition",
+                code="low_dynamic_range",
+                condition=cname,
+                detail="Relative signal span $(round(rel_span, digits=6)) is low.",
+                recommendation="Check assay sensitivity/normalization or avoid highly parameterized models for this condition.",
+            )
+        end
+
+        if !(isfinite(err_med) && err_med > 0)
+            warn_count += 1
+            _add_preflight_issue!(issues;
+                severity="warning",
+                scope="condition",
+                code="invalid_error_scale",
+                condition=cname,
+                detail="Median error is non-finite or non-positive.",
+                recommendation="Use strictly positive uncertainty estimates; fallback constant error if unknown.",
+            )
+        end
+
+        push!(condition_quality, (cname, n_points, n_unique, span, min_step, rel_span, err_med, warn_count))
+    end
+
+    stage_coverage = DataFrame(
+        stage=String[],
+        matched_rows=Int[],
+        matched_conditions=Int[],
+        status=String[],
+        detail=String[],
+        recommendation=String[],
+    )
+
+    if !isempty(stages)
+        for stage in stages
+            mask = [stage.condition_filter(row) for row in eachrow(df)]
+            matched_rows = count(mask)
+            if matched_rows == 0
+                push!(stage_coverage, (
+                    stage.name,
+                    0,
+                    0,
+                    "error",
+                    "No rows match this stage filter.",
+                    "Check culture_type/population_type/cell_line and treatment columns used by stage filters.",
+                ))
+                _add_preflight_issue!(issues;
+                    severity="error",
+                    scope="stage",
+                    code="no_stage_matches",
+                    condition=stage.name,
+                    detail="No rows match stage filter.",
+                    recommendation="Align input metadata with stage filter expectations or customize stages.",
+                )
+                continue
+            end
+
+            stage_df = df[mask, :]
+            stage_cols = _resolve_condition_cols(stage_df, stage.condition_cols)
+            n_cond = length(groupby(stage_df, stage_cols))
+            status = n_cond == 0 ? "error" : "ok"
+            detail = "Matched $(matched_rows) rows across $(n_cond) conditions."
+            recommendation = n_cond >= 1 ? "Coverage is sufficient to attempt fitting." : "Ensure stage condition columns are available and non-missing."
+
+            push!(stage_coverage, (stage.name, matched_rows, n_cond, status, detail, recommendation))
+        end
+    end
+
+    n_errors = count(==("error"), issues.severity)
+    n_warnings = count(==("warning"), issues.severity)
+    summary = DataFrame(
+        metric=["n_rows", "n_conditions", "n_preflight_errors", "n_preflight_warnings", "recommended_ready_for_fit"],
+        value=[string(nrow(df)), string(length(grouped)), string(n_errors), string(n_warnings), string(n_errors == 0)],
+    )
+
+    return (
+        summary=summary,
+        condition_quality=condition_quality,
+        stage_coverage=stage_coverage,
+        issues=issues,
+        resolved_condition_cols=resolved_cols,
+        ready_for_fit=n_errors == 0,
+    )
+end
+
+function save_preflight_report(preflight_report; output_dir::String)
+    mkpath(output_dir)
+    summary_path = joinpath(output_dir, "preflight_summary.csv")
+    condition_quality_path = joinpath(output_dir, "preflight_condition_quality.csv")
+    stage_coverage_path = joinpath(output_dir, "preflight_stage_coverage.csv")
+    issues_path = joinpath(output_dir, "preflight_issues.csv")
+
+    CSV.write(summary_path, preflight_report.summary)
+    CSV.write(condition_quality_path, preflight_report.condition_quality)
+    CSV.write(stage_coverage_path, preflight_report.stage_coverage)
+    CSV.write(issues_path, preflight_report.issues)
+
+    return (
+        summary=summary_path,
+        condition_quality=condition_quality_path,
+        stage_coverage=stage_coverage_path,
+        issues=issues_path,
+    )
+end
+
 function _bootstrap_resample(df::DataFrame, condition_cols::Vector{Symbol}, rng::AbstractRNG)
     grouped = groupby(df, condition_cols)
     parts = DataFrame[]
@@ -822,6 +1052,7 @@ function run_staged_pipeline(
     bootstrap_seed::Int = 2026,
     resume_from_stage = nothing,
     resume_manifest_path = nothing,
+    preflight_before_fit::Bool = true,
 )
     df = if data_input isa DataFrame
         DataLayer.normalize_schema(data_input)
@@ -838,11 +1069,16 @@ function run_staged_pipeline(
     end
 
     qc_report = qc_before_fit ? generate_qc_report(df) : nothing
+    preflight_report = preflight_before_fit ? preflight_data_quality(df; stages=stages) : nothing
     failure_log = _new_failure_log()
     qc_paths = nothing
+    preflight_paths = nothing
 
     if qc_before_fit && export_stage_results
         qc_paths = save_qc_report(qc_report; output_dir=joinpath(config.output_dir, "diagnostics"))
+    end
+    if preflight_before_fit && export_stage_results
+        preflight_paths = save_preflight_report(preflight_report; output_dir=joinpath(config.output_dir, "diagnostics"))
     end
 
     parameter_bank = Dict{String,Dict{Symbol,Float64}}()
@@ -1050,6 +1286,8 @@ function run_staged_pipeline(
         completed=isnothing(halted_stage),
         qc_report=qc_report,
         qc_paths=qc_paths,
+        preflight_report=preflight_report,
+        preflight_paths=preflight_paths,
         failures=failure_log,
         manifest_path=export_stage_results ? joinpath(config.output_dir, "run_manifest.toml") : nothing,
     )
@@ -1508,6 +1746,7 @@ function run_pipeline(
     strict_schema::Bool = false,
     required_metadata::Vector{Symbol} = copy(DataLayer.STRICT_REQUIRED_METADATA),
     qc_before_fit::Bool = true,
+    preflight_before_fit::Bool = true,
 )
     df = if data_input isa DataFrame
         DataLayer.normalize_schema(data_input)
@@ -1523,7 +1762,9 @@ function run_pipeline(
     end
 
     qc_report = qc_before_fit ? generate_qc_report(df) : nothing
+    preflight_report = preflight_before_fit ? preflight_data_quality(df) : nothing
     qc_paths = qc_before_fit ? save_qc_report(qc_report; output_dir=joinpath(config.output_dir, "diagnostics")) : nothing
+    preflight_paths = preflight_before_fit ? save_preflight_report(preflight_report; output_dir=joinpath(config.output_dir, "diagnostics")) : nothing
     conditions = build_conditions(df)
 
     model_names = isempty(include_models) ? copy(config.model_names) : include_models
@@ -1552,6 +1793,8 @@ function run_pipeline(
             failures=rank_result.failures,
             qc_report=qc_report,
             qc_paths=qc_paths,
+            preflight_report=preflight_report,
+            preflight_paths=preflight_paths,
             plots=String[],
             exports=nothing,
         )
@@ -1567,6 +1810,8 @@ function run_pipeline(
         failures=rank_result.failures,
         qc_report=qc_report,
         qc_paths=qc_paths,
+        preflight_report=preflight_report,
+        preflight_paths=preflight_paths,
         plots=plot_paths,
         exports=export_paths,
     )

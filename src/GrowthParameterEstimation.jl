@@ -57,6 +57,7 @@ export
     default_config, save_config, load_config,
     default_stages, default_population_stages, default_population_cellline_stages, summarize_datasets,
     validate_strict_schema, generate_qc_report, save_qc_report,
+    preflight_data_quality, save_preflight_report,
     save_run_manifest, load_run_manifest, bootstrap_stage_uncertainty,
     build_conditions, fit, rank_models, plot_topk, export_results, run_pipeline, run_staged_pipeline
 

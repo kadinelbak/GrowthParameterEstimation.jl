@@ -1,0 +1,9 @@
+time,count,error,treatment_amount,dose,cell_line,density,replicate,unit_time,unit_count,culture_type,population_type
+0.0,1.0,0.1,0.0,0.0,A549,1.0,1,h,count,monoculture,naive
+1.0,1.3,0.1,0.0,0.0,A549,1.0,1,h,count,monoculture,naive
+2.0,1.8,0.1,0.0,0.0,A549,1.0,1,h,count,monoculture,naive
+3.0,2.2,0.1,0.0,0.0,A549,1.0,1,h,count,monoculture,naive
+0.0,0.9,0.1,1.0,1.0,H1975,1.0,1,h,count,monoculture,naive
+1.0,1.2,0.1,1.0,1.0,H1975,1.0,1,h,count,monoculture,naive
+2.0,1.5,0.1,1.0,1.0,H1975,1.0,1,h,count,monoculture,naive
+3.0,1.8,0.1,1.0,1.0,H1975,1.0,1,h,count,monoculture,naive

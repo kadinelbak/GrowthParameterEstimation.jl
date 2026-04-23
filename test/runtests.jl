@@ -262,6 +262,33 @@ using Random
         @test isfile(qc_paths.missingness)
         @test isfile(qc_paths.condition_summary)
 
+        preflight = preflight_data_quality(df_stage; stages=stages)
+        @test all(col -> col in Symbol.(names(preflight.summary)), [:metric, :value])
+        @test all(col -> col in Symbol.(names(preflight.condition_quality)), [:condition, :n_points, :warning_count])
+        @test all(col -> col in Symbol.(names(preflight.stage_coverage)), [:stage, :matched_rows, :status])
+        @test all(col -> col in Symbol.(names(preflight.issues)), [:severity, :scope, :code, :recommendation])
+
+        preflight_paths = save_preflight_report(preflight; output_dir=joinpath(tempdir(), "gpe_preflight_test"))
+        @test isfile(preflight_paths.summary)
+        @test isfile(preflight_paths.condition_quality)
+        @test isfile(preflight_paths.stage_coverage)
+        @test isfile(preflight_paths.issues)
+
+        sparse_df = DataFrame(
+            time = [0.0, 0.5, 0.0, 0.5],
+            count = [1.0, 1.01, 1.0, 1.02],
+            error = [0.1, 0.1, 0.1, 0.1],
+            dose = [0.0, 0.0, 1.0, 1.0],
+            cell_line = ["A", "A", "A", "A"],
+            density = [1.0, 1.0, 1.0, 1.0],
+            replicate = [1, 1, 1, 1],
+            culture_type = ["monoculture", "monoculture", "monoculture", "monoculture"],
+            population_type = ["naive", "naive", "naive", "naive"],
+        )
+        sparse_preflight = preflight_data_quality(sparse_df; stages=stages)
+        @test nrow(sparse_preflight.issues) > 0
+        @test any(sparse_preflight.issues.code .== "few_points")
+
         boot_spec = get_model("logistic_growth")
         boot_unc = bootstrap_stage_uncertainty(
             boot_spec,

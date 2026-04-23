@@ -1,0 +1,17 @@
+name = "GrowthParameterEstimationGUI"
+uuid = "3fa4ee3a-3ac0-4e53-9d87-70e29f87a34b"
+authors = ["GrowthParameterEstimation contributors"]
+version = "0.1.0"
+
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+Dash = "1b08a953-4be3-4667-9a23-3db579824955"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+GrowthParameterEstimation = "f2d48b76-d258-4732-aa20-f5a609aab424"
+
+[compat]
+julia = "1.10"
+CSV = "0.10"
+Dash = "1"
+DataFrames = "1"
+GrowthParameterEstimation = "0.3"

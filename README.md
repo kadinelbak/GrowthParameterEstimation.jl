@@ -289,6 +289,27 @@ Equivalent command from repo root:
 julia --project=. test/runtests.jl
 ```
 
+## Interactive GUI (Web App)
+
+If you want an interactive environment outside notebooks, use the standalone Dash app in [examples/gui/README.md](examples/gui/README.md).
+
+It supports an end-to-end visual workflow:
+
+- Step 1: data preflight diagnostics with actionable issues and recommendations.
+- Step 2: condition construction summary.
+- Step 3: model ranking plus observed-vs-predicted plotting.
+- Step 4: full pipeline execution summary.
+- Step 5: staged pipeline execution summary.
+
+Quick start from repo root:
+
+```julia
+julia --project=examples/gui -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
+julia --project=examples/gui examples/gui/pipeline_gui_app.jl
+```
+
+Then open `http://127.0.0.1:8050`.
+
 ## Practice notebook
 
 - One maintained practice notebook is provided at `tests/function_tour.ipynb`.
