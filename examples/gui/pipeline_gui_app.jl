@@ -221,6 +221,62 @@ function _analysis_panel(ranked, conditions::Vector{FitCondition}, selected_cond
     ])
 end
 
+function _pipeline_figure_and_key(run)
+    overlay_paths = [p for p in run.plots if endswith(p, "_overlay.csv")]
+    if isempty(overlay_paths)
+        fig = Dict(
+            "data" => Any[],
+            "layout" => Dict("title" => "No overlay data available from pipeline exports"),
+        )
+        key_df = DataFrame(series=String[], meaning=String[])
+        return fig, key_df
+    end
+
+    overlay_df = CSV.read(first(overlay_paths), DataFrame)
+    if !(:time in Symbol.(names(overlay_df))) || !(:observed in Symbol.(names(overlay_df)))
+        fig = Dict(
+            "data" => Any[],
+            "layout" => Dict("title" => "Overlay CSV is missing required columns"),
+        )
+        key_df = DataFrame(series=["observed"], meaning=["Observed data points from input CSV"])
+        return fig, key_df
+    end
+
+    traces = Any[
+        Dict(
+            "x" => overlay_df.time,
+            "y" => overlay_df.observed,
+            "mode" => "markers",
+            "name" => "Observed",
+        ),
+    ]
+
+    key_rows = NamedTuple[(series="Observed", meaning="Observed data points from input CSV")]
+    pred_cols = [c for c in names(overlay_df) if startswith(String(c), "pred_")]
+    for c in pred_cols
+        model_name = replace(String(c), "pred_" => "")
+        push!(traces, Dict(
+            "x" => overlay_df.time,
+            "y" => overlay_df[!, c],
+            "mode" => "lines",
+            "name" => "Predicted: $(model_name)",
+        ))
+        push!(key_rows, (series="Predicted: $(model_name)", meaning="Model trajectory from pipeline export"))
+    end
+
+    fig = Dict(
+        "data" => traces,
+        "layout" => Dict(
+            "title" => "Pipeline Export Overlay (first condition)",
+            "xaxis" => Dict("title" => "Time"),
+            "yaxis" => Dict("title" => "Count"),
+            "legend" => Dict("orientation" => "h", "y" => -0.2),
+        ),
+    )
+
+    return fig, DataFrame(key_rows)
+end
+
 function _issue_color(severity::AbstractString)
     if severity == "error"
         return "#9f1239"
@@ -356,8 +412,9 @@ function _pipeline_panel(path::AbstractString, model_txt::AbstractString)
         end
     end
     artifact_df = DataFrame(artifact_rows)
+    pipeline_fig, key_df = _pipeline_figure_and_key(run)
 
-    return html_div([
+    panel = html_div([
         html_h4("Pipeline Result"),
         html_p("Rows in ranking: $(nrow(run.ranking))"),
         html_p("Failures: $(nrow(run.failures))"),
@@ -372,11 +429,15 @@ function _pipeline_panel(path::AbstractString, model_txt::AbstractString)
         _as_table(preflight_issues; limit=20),
         html_h5("QC Issues"),
         _as_table(qc_issues; limit=20),
+        html_h5("Pipeline Visualization Key"),
+        _as_table(key_df; limit=20),
         html_h5("Generated Artifacts"),
         _as_table(artifact_df; limit=50),
         html_h4("Pipeline Failures"),
         _as_table(run.failures; limit=20),
     ])
+
+    return panel, pipeline_fig
 end
 
 function _staged_panel(path::AbstractString)
@@ -517,8 +578,8 @@ callback!(
             panel, fig = _rank_and_plot(path, String(models), String(cond_name), Int(n_starts), Int(maxiters))
             return panel, fig
         elseif triggered_id == "btn-pipeline"
-            panel = _pipeline_panel(path, String(models))
-            return panel, base_fig
+            panel, fig = _pipeline_panel(path, String(models))
+            return panel, fig
         elseif triggered_id == "btn-staged"
             panel = _staged_panel(path)
             return panel, base_fig
