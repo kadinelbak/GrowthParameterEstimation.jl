@@ -7,11 +7,27 @@ using Base64
 using TOML
 using Random
 
+# Force Julia recompilation by changing a comment (v3)
+
 const HOST = "127.0.0.1"
 const PORT = parse(Int, get(ENV, "GPE_GUI_PORT", "8050"))
 const LATEX_CONFIG_PATH = joinpath(dirname(dirname(dirname(@__FILE__))), "config", "model_latex.toml")
 const EXAMPLE_DIR = joinpath(dirname(@__FILE__), "data")
 const GUI_CUSTOM_MODELS_PATH = joinpath(EXAMPLE_DIR, "gui_custom_models.toml")
+const GUI_PIPELINES_PATH = joinpath(EXAMPLE_DIR, "gui_pipelines.toml")
+
+# ── Pipeline data structures ──────────────────────────────────────────────────
+mutable struct PipelineStage
+    name::String
+    csv_file::String
+    model_name::String
+    param_mapping::Dict{String, String}
+end
+
+mutable struct Pipeline
+    name::String
+    stages::Vector{PipelineStage}
+end
 
 # ── LaTeX config ──────────────────────────────────────────────────────────────
 const LATEX_CACHE = Dict{String, String}()
@@ -610,6 +626,69 @@ function _btn(label, id; n_clicks=0)
         "fontWeight" => "600", "fontSize" => "14px", "marginRight" => "10px"))
 end
 
+# ── Pipeline persistence ──────────────────────────────────────────────────────
+
+function _save_pipeline(pipeline::Pipeline)
+    config = if isfile(GUI_PIPELINES_PATH)
+        try
+            TOML.parsefile(GUI_PIPELINES_PATH)
+        catch
+            Dict{String, Any}()
+        end
+    else
+        Dict{String, Any}()
+    end
+
+    pipelines = haskey(config, "pipelines") ? Dict(config["pipelines"]) : Dict{String, Any}()
+    stages_dict = Any[]
+    for stage in pipeline.stages
+        push!(stages_dict, Dict(
+            "name" => stage.name,
+            "csv_file" => stage.csv_file,
+            "model_name" => stage.model_name,
+            "param_mapping" => stage.param_mapping,
+        ))
+    end
+    pipelines[pipeline.name] = Dict("stages" => stages_dict)
+    config["pipelines"] = pipelines
+    
+    TOML.open(GUI_PIPELINES_PATH, "w") do io
+        TOML.print(io, config)
+    end
+end
+
+function _load_pipelines()::Dict{String, Pipeline}
+    if !isfile(GUI_PIPELINES_PATH)
+        return Dict{String, Pipeline}()
+    end
+    
+    try
+        config = TOML.parsefile(GUI_PIPELINES_PATH)
+        result = Dict{String, Pipeline}()
+        
+        if haskey(config, "pipelines")
+            for (name, pline) in config["pipelines"]
+                stages = []
+                if haskey(pline, "stages")
+                    for stage_dict in pline["stages"]
+                        stage = PipelineStage(
+                            stage_dict["name"],
+                            stage_dict["csv_file"],
+                            stage_dict["model_name"],
+                            Dict(stage_dict["param_mapping"])
+                        )
+                        push!(stages, stage)
+                    end
+                end
+                result[name] = Pipeline(name, stages)
+            end
+        end
+        return result
+    catch
+        return Dict{String, Pipeline}()
+    end
+end
+
 function _glossary()
     html_details([
         html_summary("📖  Glossary — click to expand",
@@ -1192,14 +1271,79 @@ app.layout = html_div([
             ])
         ]),
 
-        # ── Tab 2: Build Model ────────────────────────────────────────────────
-        dcc_tab(label="2. Build Model", value="tab-build",
+        # ── Tab 2: Pipeline Designer ─────────────────────────────────────────
+        dcc_tab(label="2. Pipeline Designer", value="tab-pipeline-design",
+            style=_tab_style, selected_style=_tab_selected, children=[
+            html_div([
+                html_br(),
+                _card([
+                    html_h5("Design stage order and data flow", style=Dict("marginTop" => "0")),
+                    _help("Define each stage in order. Then move to Tab 3/4/5 for model building, per-stage model selection, and fitting."),
+                    html_div([
+                        html_div([
+                            html_label("Pipeline name"),
+                            dcc_input(id="pipeline-name", type="text", value="my_pipeline",
+                                placeholder="e.g., untreated_to_treated",
+                                style=Dict("width" => "100%")),
+                        ]),
+                        html_div([
+                            html_label("Actions"),
+                            html_div([
+                                _btn("Add Stage", "btn-add-stage"),
+                                _btn("Save Pipeline", "btn-save-pipeline"),
+                            ]),
+                        ]),
+                    ]; style=Dict("display" => "grid", "gridTemplateColumns" => "2fr 1fr", "gap" => "16px", "alignItems" => "end")),
+                    html_br(),
+                    html_div([
+                        html_div([
+                            html_label("Selected stage"),
+                            dcc_dropdown(id="pipeline-stage-select", options=[], value=nothing,
+                                placeholder="Add stages first…", style=Dict("fontSize" => "13px")),
+                        ]),
+                        html_div([
+                            html_label("Order / remove"),
+                            html_div([
+                                _btn("Move Up", "btn-stage-up"),
+                                _btn("Move Down", "btn-stage-down"),
+                                _btn("Remove", "btn-stage-remove"),
+                                _btn("Use Current Data+Model", "btn-stage-use-current"),
+                            ]),
+                        ]),
+                        html_div([
+                            html_label("Stage progression"),
+                            html_div([
+                                _btn("→ Next Stage", "btn-stage-next"),
+                            ]),
+                        ]),
+                    ]; style=Dict("display" => "grid", "gridTemplateColumns" => "2fr 1fr", "gap" => "16px", "alignItems" => "end")),
+                ]; title="Pipeline Setup"),
+
+                dcc_loading(id="pipeline-load-spinner", type="circle", color="#0f766e",
+                    children=html_div(id="pipeline-stages-container",
+                        children=html_p("Click 'Add Stage' to define stage order and CSV mapping.", style=Dict("color" => "#6b7280")))),
+
+                _card([
+                    html_h5("Pipeline flow", style=Dict("marginTop" => "0")),
+                    html_div(id="pipeline-flowchart",
+                        children=html_p("Stage 1 → Stage 2 → Stage 3 (configured order shown here)",
+                            style=Dict("color" => "#6b7280", "textAlign" => "center", "padding" => "40px")),
+                        style=Dict("border" => "1px dashed #d1fae5", "borderRadius" => "6px", "padding" => "20px")),
+                ]; title="Pipeline Overview"),
+
+                dcc_store(id="pipeline-stages-store", data=Dict("stages" => [])),
+                dcc_store(id="pipeline-current-stage", data=1),
+            ])
+        ]),
+
+        # ── Tab 3: Build Models ───────────────────────────────────────────────
+        dcc_tab(label="3. Build Models", value="tab-build",
             style=_tab_style, selected_style=_tab_selected, children=[
             html_div([
                 html_br(),
                 _card([
                     html_h5("Build a custom ODE model directly in the browser", style=Dict("marginTop" => "0")),
-                    _help("Define your own growth model using state equations, parameters, and bounds. No coding required. Built models are saved automatically and appear in the model selection tab immediately."),
+                    _help("Define your own growth model using state equations, parameters, and bounds. No coding required."),
                     html_div([
                         html_div([
                             html_label("Start from template / block set"),
@@ -1226,16 +1370,14 @@ app.layout = html_div([
                     html_div([
                         html_div([
                             html_label("Model name"),
-                            dcc_input(id="builder-model-name", type="text", value="custom_growth_model",
-                                style=Dict("width" => "100%")),
+                            dcc_input(id="builder-model-name", type="text", value="custom_growth_model", style=Dict("width" => "100%")),
                         ]),
                         html_div([
                             html_label("Family label"),
                             dcc_dropdown(
                                 id="builder-family",
                                 options=[Dict("label" => s, "value" => s) for s in ["custom", "logistic", "gompertz", "theta_logistic", "coculture", "mechanistic"]],
-                                value="custom",
-                                clearable=false,
+                                value="custom", clearable=false,
                                 style=Dict("fontSize" => "13px", "color" => "#0f172a", "backgroundColor" => "#ffffff"),
                             ),
                         ]),
@@ -1245,38 +1387,32 @@ app.layout = html_div([
                         html_div([
                             html_label("State names"),
                             _help("Comma-separated. E.g. `N` for single-state, `S, R` for sensitive/resistant."),
-                            dcc_input(id="builder-state-names", type="text", value="N",
-                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                            dcc_input(id="builder-state-names", type="text", value="N", style=Dict("width" => "100%", "fontFamily" => "monospace")),
                         ]),
                         html_div([
                             html_label("Observable expression"),
                             _help("What is measured. E.g. `N`, or `S + R` for total cells."),
-                            dcc_input(id="builder-observable", type="text", value="N",
-                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                            dcc_input(id="builder-observable", type="text", value="N", style=Dict("width" => "100%", "fontFamily" => "monospace")),
                         ]),
                     ]; style=Dict("display" => "grid", "gridTemplateColumns" => "1fr 1fr", "gap" => "16px")),
                     html_br(),
                     html_div([
                         html_div([
                             html_label("Parameter names"),
-                            dcc_input(id="builder-param-names", type="text", value="r, K",
-                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                            dcc_input(id="builder-param-names", type="text", value="r, K", style=Dict("width" => "100%", "fontFamily" => "monospace")),
                         ]),
                         html_div([
                             html_label("Preset constants (name=value)"),
                             _help("Optional fixed values used in equations but not fitted. Example: `hill=1.0, ic50=0.5`."),
-                            dcc_input(id="builder-constants", type="text", value="",
-                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                            dcc_input(id="builder-constants", type="text", value="", style=Dict("width" => "100%", "fontFamily" => "monospace")),
                         ]),
                         html_div([
                             html_label("Lower bounds"),
-                            dcc_input(id="builder-lower-bounds", type="text", value="1e-6, 1e-3",
-                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                            dcc_input(id="builder-lower-bounds", type="text", value="1e-6, 1e-3", style=Dict("width" => "100%", "fontFamily" => "monospace")),
                         ]),
                         html_div([
                             html_label("Upper bounds"),
-                            dcc_input(id="builder-upper-bounds", type="text", value="5.0, 1e7",
-                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                            dcc_input(id="builder-upper-bounds", type="text", value="5.0, 1e7", style=Dict("width" => "100%", "fontFamily" => "monospace")),
                         ]),
                     ]; style=Dict("display" => "grid", "gridTemplateColumns" => "1fr 1fr", "gap" => "16px")),
                     html_br(),
@@ -1290,20 +1426,15 @@ app.layout = html_div([
                         _keybtn("Hill block", "builder-key-hill"), _keybtn("competition", "builder-key-competition"), _keybtn("conversion", "builder-key-conversion"),
                     ]),
                     html_label("State equations"),
-                    _help("Write one equation per line as `state = expression`. Use parameter names, state names, `t` for time, and `E` for drug exposure/dose."),
-                    dcc_textarea(
-                        id="builder-equations",
-                        value="N = r*N*(1 - N/K)",
-                        style=Dict("width" => "100%", "height" => "150px", "fontFamily" => "monospace", "fontSize" => "14px"),
-                    ),
+                    _help("Write one equation per line as `state = expression`. Use parameter names, state names, `t` for time, and `E` for exposure/dose."),
+                    dcc_textarea(id="builder-equations", value="N = r*N*(1 - N/K)",
+                        style=Dict("width" => "100%", "height" => "150px", "fontFamily" => "monospace", "fontSize" => "14px")),
                     html_br(),
                     _btn("Register built model", "btn-register-built-model"),
-                    html_small("✓ Models you register here are saved automatically and restored every time the GUI restarts.",
+                    html_small("✓ Models registered here are saved automatically and restored on GUI restart.",
                         style=Dict("color" => "#0f766e", "display" => "block", "marginTop" => "6px")),
-                    html_div(id="builder-preview",
-                        children=html_p("Equation preview will appear here after you start typing equations.", style=Dict("color" => "#6b7280"))),
-                    html_div(id="custom-model-register-status",
-                        children=html_small("No custom model registered yet.", style=Dict("color" => "#6b7280"))),
+                    html_div(id="builder-preview", children=html_p("Equation preview will appear here after you start typing equations.", style=Dict("color" => "#6b7280"))),
+                    html_div(id="custom-model-register-status", children=html_small("No custom model registered yet.", style=Dict("color" => "#6b7280"))),
                 ]; title="GUI Model Builder"),
 
                 _card([
@@ -1318,56 +1449,46 @@ app.layout = html_div([
             ])
         ]),
 
-        # ── Tab 3: Select Models ──────────────────────────────────────────────
-        dcc_tab(label="3. Select Models", value="tab-models",
+        # ── Tab 4: Select Models per Stage ───────────────────────────────────
+        dcc_tab(label="4. Select Models per Stage", value="tab-models",
             style=_tab_style, selected_style=_tab_selected, children=[
             html_div([
                 html_br(),
                 _card([
-                    html_h5("Choose models to fit", style=Dict("marginTop" => "0")),
-                    _help("Select one or more models. Models are grouped by mathematical family. Selecting from the same family compares structural variants; selecting across families compares modelling assumptions."),
-                    dcc_dropdown(
-                        id="model-select",
-                        options=_model_options(),
-                        value=_default_models(),
-                        multi=true,
-                        placeholder="Select models…",
-                        style=Dict("fontSize" => "13px")),
+                    html_h5("Choose models for this stage", style=Dict("marginTop" => "0")),
+                    _help("Select one or more models for the current stage. In staged workflows, repeat this step per stage."),
+                    dcc_dropdown(id="model-select", options=_model_options(), value=_default_models(), multi=true,
+                        placeholder="Select models…", style=Dict("fontSize" => "13px")),
                     html_br(),
                     html_h5("Optimizer settings"),
-                    _help("More starts and iterations improve fit quality but take longer. Defaults (8 starts, 300 iterations) are good for quick exploration."),
+                    _help("More starts and iterations improve fit quality but take longer."),
                     html_div([
                         html_div([
                             html_label("Optimization starts"),
-                            dcc_input(id="n-starts", type="number", value=8, min=1, max=200,
-                                style=Dict("width" => "100%")),
+                            dcc_input(id="n-starts", type="number", value=8, min=1, max=200, style=Dict("width" => "100%")),
                         ]),
                         html_div([
                             html_label("Max iterations per start"),
-                            dcc_input(id="maxiters", type="number", value=300, min=20, max=10000,
-                                style=Dict("width" => "100%")),
+                            dcc_input(id="maxiters", type="number", value=300, min=20, max=10000, style=Dict("width" => "100%")),
                         ]),
                     ]; style=Dict("display" => "grid", "gridTemplateColumns" => "1fr 1fr", "gap" => "16px")),
                 ]; title="Model Selection"),
 
                 _card([
                     html_h5("Selected model equations", style=Dict("marginTop" => "0")),
-                    _help("ODE equations and parameter names for each selected model. Equations are rendered automatically."),
-                    html_div(id="model-equations",
-                        children=html_p("Select models above to see their equations.",
-                            style=Dict("color" => "#6b7280"))),
+                    html_div(id="model-equations", children=html_p("Select models above to see their equations.", style=Dict("color" => "#6b7280"))),
                 ]; title="Model Reference"),
             ])
         ]),
 
-        # ── Tab 4: Fit & Rank ─────────────────────────────────────────────────
-        dcc_tab(label="4. Fit & Rank", value="tab-rank",
+        # ── Tab 5: Fit & Rank per Stage ──────────────────────────────────────
+        dcc_tab(label="5. Fit & Rank per Stage", value="tab-rank",
             style=_tab_style, selected_style=_tab_selected, children=[
             html_div([
                 html_br(),
                 _card([
-                    html_h5("Select a condition and run the ranking", style=Dict("marginTop" => "0")),
-                    _help("Each condition is a unique combination of dose, cell line, and replicate. Load data first (Tab 1) to populate this list."),
+                    html_h5("Fit current stage", style=Dict("marginTop" => "0")),
+                    _help("Fit one stage at a time. After each stage, use the variable mapping panel to map fitted outputs into the next stage model."),
                     dcc_dropdown(id="condition-select", options=[], value=nothing,
                         placeholder="Load data first…", style=Dict("fontSize" => "13px")),
                     html_br(),
@@ -1375,77 +1496,57 @@ app.layout = html_div([
                     html_div([
                         html_div([
                             html_label("Train fraction"),
-                            dcc_input(id="train-frac", type="number", value=0.7, min=0.5, max=0.95, step=0.05,
-                                style=Dict("width" => "100%")),
+                            dcc_input(id="train-frac", type="number", value=0.7, min=0.5, max=0.95, step=0.05, style=Dict("width" => "100%")),
                         ]),
                         html_div([
                             html_label("Split mode"),
-                            dcc_dropdown(
-                                id="split-mode",
+                            dcc_dropdown(id="split-mode",
                                 options=[
                                     Dict("label" => "Temporal (early → train, late → validation)", "value" => "temporal"),
                                     Dict("label" => "Random (seeded)", "value" => "random"),
                                 ],
-                                value="temporal",
-                                clearable=false,
-                                style=Dict("fontSize" => "13px"),
+                                value="temporal", clearable=false, style=Dict("fontSize" => "13px"),
                             ),
                         ]),
                         html_div([
                             html_label("Bootstrap samples for interval"),
-                            dcc_input(id="uncertainty-boot", type="number", value=30, min=5, max=200, step=1,
-                                style=Dict("width" => "100%")),
+                            dcc_input(id="uncertainty-boot", type="number", value=30, min=5, max=200, step=1, style=Dict("width" => "100%")),
                         ]),
                     ]; style=Dict("display" => "grid", "gridTemplateColumns" => "1fr 1fr 1fr", "gap" => "16px")),
                     html_br(),
                     _btn("Run ranking & fit", "btn-rank"),
-                    _help("Runtime scales with: number of models × number of conditions × starts × max iterations."),
-                ]; title="Fit & Rank Models"),
+                    _btn("Auto-run configured pipeline", "btn-pipeline"),
+                ]; title="Stage Fit Runner"),
+
+                _card([
+                    html_h5("Inter-stage variable mapping", style=Dict("marginTop" => "0")),
+                    _help("After a stage fit completes, map outputs to next-stage variables (e.g., r → r_prey, K → K_prey)."),
+                    html_div(id="pipeline-output", children=html_p("Run a stage fit to configure mappings.", style=Dict("color" => "#6b7280"))),
+                ]; title="Mapping to Next Stage"),
 
                 dcc_loading(id="rank-spinner", type="circle", color="#0f766e",
-                    children=html_div(id="rank-output",
-                        children=html_p("Run ranking to see results.", style=Dict("color" => "#6b7280")))),
+                    children=html_div(id="rank-output", children=html_p("Run ranking to see results.", style=Dict("color" => "#6b7280")))),
 
                 html_section([
                     html_h4("Model vs Data"),
-                    dcc_graph(id="fit-plot",
-                        figure=Dict("data" => Any[], "layout" => Dict("title" => "Run ranking to see fits"))),
+                    dcc_graph(id="fit-plot", figure=Dict("data" => Any[], "layout" => Dict("title" => "Run ranking to see fits"))),
                 ]),
             ])
         ]),
 
-        # ── Tab 5: Full Pipeline ──────────────────────────────────────────────
-        dcc_tab(label="5. Full Pipeline", value="tab-pipeline",
+        # ── Tab 6: Complete Analysis by Stage ────────────────────────────────
+        dcc_tab(label="6. Complete Analysis by Stage", value="tab-staged",
             style=_tab_style, selected_style=_tab_selected, children=[
             html_div([
                 html_br(),
                 _card([
-                    html_h5("Run the full end-to-end pipeline", style=Dict("marginTop" => "0")),
-                    _help("Runs preflight checks, QC, and model fitting across all conditions for all selected models, then ranks results and exports them to disk."),
-                    _btn("Run Full Pipeline", "btn-pipeline"),
-                    _help("Results are also saved to results/gui_pipeline/ on disk."),
-                ]; title="Full Pipeline"),
-                dcc_loading(id="pipeline-spinner", type="circle", color="#0f766e",
-                    children=html_div(id="pipeline-output",
-                        children=html_p("Click the button above to run the full pipeline.",
-                            style=Dict("color" => "#6b7280")))),
-            ])
-        ]),
-
-        # ── Tab 6: Staged Pipeline ────────────────────────────────────────────
-        dcc_tab(label="6. Staged Pipeline", value="tab-staged",
-            style=_tab_style, selected_style=_tab_selected, children=[
-            html_div([
-                html_br(),
-                _card([
-                    html_h5("Multi-stage workflow", style=Dict("marginTop" => "0")),
-                    _help("Runs separate fitting stages for each combination of culture type and population type (e.g. monoculture-naive, co-culture-mixed). Requires culture_type and population_type columns in your CSV. Load one of the 'Staged' example datasets from Tab 1 to try this."),
-                    _btn("Run Staged Pipeline", "btn-staged"),
-                    _help("Results are saved to results/gui_staged/ on disk."),
-                ]; title="Staged Pipeline"),
+                    html_h5("Stage-organized analysis", style=Dict("marginTop" => "0")),
+                    _help("Review all stage results in order, including diagnostics and fitted summaries."),
+                    _btn("Refresh staged analysis", "btn-staged"),
+                ]; title="Staged Analysis"),
                 dcc_loading(id="staged-spinner", type="circle", color="#0f766e",
                     children=html_div(id="staged-output",
-                        children=html_p("Load a staged dataset (Tab 1 → Staged examples) and click the button above.",
+                        children=html_p("Run stage fits from Tab 5, then view complete stage-organized analysis here.",
                             style=Dict("color" => "#6b7280")))),
             ])
         ]),
@@ -1530,6 +1631,133 @@ callback!(
         msg = sprint(showerror, err)
         return (_alert("Error loading file: $(msg)", kind=:error), no_preview, no_preflight, nothing, [], nothing)
     end
+end
+
+# ── 2b. Pipeline Designer: stage list and persistence ───────────────────────
+callback!(
+    app,
+    Output("pipeline-stages-store", "data"),
+    Output("pipeline-stage-select", "options"),
+    Output("pipeline-stage-select", "value"),
+    Input("btn-add-stage", "n_clicks"),
+    Input("btn-stage-up", "n_clicks"),
+    Input("btn-stage-down", "n_clicks"),
+    Input("btn-stage-remove", "n_clicks"),
+    Input("btn-stage-use-current", "n_clicks"),
+    Input("btn-stage-next", "n_clicks"),
+    State("pipeline-stages-store", "data"),
+    State("pipeline-stage-select", "value"),
+    State("csv-path-store", "data"),
+    State("model-select", "value"),
+) do n_add, n_up, n_down, n_remove, n_use_current, n_next, store_data, selected_idx, csv_path, selected_models
+    data = isnothing(store_data) ? Dict("stages" => Any[]) : Dict(store_data)
+    stages = haskey(data, "stages") ? Any[data["stages"]...] : Any[]
+
+    function _stage_options(arr)
+        [Dict("label" => "$(i). $(get(Dict(s), "name", "Stage $(i)"))", "value" => i) for (i, s) in enumerate(arr)]
+    end
+
+    function _default_model()
+        if !isnothing(selected_models) && !isempty(selected_models)
+            return String(selected_models[1])
+        end
+        available = list_models()
+        return isempty(available) ? "" : String(available[1])
+    end
+
+    tid = _triggered_id()
+    idx = (isnothing(selected_idx) || Int(selected_idx) < 1) ? 1 : Int(selected_idx)
+
+    if tid == "btn-add-stage"
+        push!(stages, Dict(
+            "name" => "Stage $(length(stages) + 1)",
+            "csv_file" => (isnothing(csv_path) ? "" : String(csv_path)),
+            "model_name" => _default_model(),
+            "param_mapping" => Dict{String, String}(),
+        ))
+        idx = length(stages)
+    elseif tid == "btn-stage-up" && idx > 1 && idx <= length(stages)
+        stages[idx - 1], stages[idx] = stages[idx], stages[idx - 1]
+        idx -= 1
+    elseif tid == "btn-stage-down" && idx >= 1 && idx < length(stages)
+        stages[idx + 1], stages[idx] = stages[idx], stages[idx + 1]
+        idx += 1
+    elseif tid == "btn-stage-remove" && idx >= 1 && idx <= length(stages)
+        deleteat!(stages, idx)
+        idx = isempty(stages) ? nothing : min(idx, length(stages))
+    elseif tid == "btn-stage-use-current" && idx >= 1 && idx <= length(stages)
+        s = Dict(stages[idx])
+        s["csv_file"] = isnothing(csv_path) ? "" : String(csv_path)
+        s["model_name"] = _default_model()
+        stages[idx] = s
+    elseif tid == "btn-stage-next" && idx >= 1 && idx < length(stages)
+        # Advance to next stage
+        idx += 1
+    end
+
+    data["stages"] = stages
+    opts = _stage_options(stages)
+    sel = isempty(stages) ? nothing : (isnothing(idx) ? 1 : idx)
+    return data, opts, sel
+end
+
+callback!(
+    app,
+    Output("pipeline-stages-container", "children"),
+    Output("pipeline-flowchart", "children"),
+    Input("pipeline-stages-store", "data"),
+    Input("btn-save-pipeline", "n_clicks"),
+    State("pipeline-name", "value"),
+) do store_data, save_clicks, pipeline_name
+    data = isnothing(store_data) ? Dict("stages" => Any[]) : Dict(store_data)
+    stages_raw = haskey(data, "stages") ? Any[data["stages"]...] : Any[]
+
+    stage_cards = Any[]
+    flow_nodes = String[]
+    for (i, sraw) in enumerate(stages_raw)
+        s = Dict(sraw)
+        sname = get(s, "name", "Stage $(i)")
+        sfile = get(s, "csv_file", "")
+        smodel = get(s, "model_name", "")
+        push!(stage_cards, _card([
+            html_strong(String(sname)),
+            html_p("CSV: " * (isempty(String(sfile)) ? "(not set)" : String(sfile)); style=Dict("margin" => "4px 0", "fontSize" => "12px", "color" => "#374151")),
+            html_p("Model: " * (isempty(String(smodel)) ? "(not set)" : String(smodel)); style=Dict("margin" => "4px 0", "fontSize" => "12px", "color" => "#374151")),
+            html_p("Tip: select stage above, then click 'Use Current Data+Model' after choosing data/model in other tabs."; style=Dict("margin" => "4px 0", "fontSize" => "11px", "color" => "#6b7280")),
+        ]; title="Stage $(i)"))
+        push!(flow_nodes, String(sname))
+    end
+
+    if isempty(stage_cards)
+        stage_cards = [html_p("Click 'Add Stage' to begin configuring your pipeline.", style=Dict("color" => "#6b7280"))]
+    end
+
+    tid = _triggered_id()
+    saved_banner = nothing
+    if tid == "btn-save-pipeline" && !isnothing(pipeline_name) && !isempty(strip(String(pipeline_name)))
+        pname = strip(String(pipeline_name))
+        p_stages = PipelineStage[]
+        for (i, sraw) in enumerate(stages_raw)
+            s = Dict(sraw)
+            sname = String(get(s, "name", "Stage $(i)"))
+            sfile = String(get(s, "csv_file", ""))
+            smodel = String(get(s, "model_name", ""))
+            smap = haskey(s, "param_mapping") ? Dict{String, String}(string(k) => string(v) for (k, v) in pairs(Dict(s["param_mapping"]))) : Dict{String, String}()
+            push!(p_stages, PipelineStage(sname, sfile, smodel, smap))
+        end
+        _save_pipeline(Pipeline(pname, p_stages))
+        saved_banner = _alert("Saved pipeline '$(pname)' with $(length(p_stages)) stage(s).")
+    end
+
+    flow_text = isempty(flow_nodes) ? "No stages yet." : join(flow_nodes, " → ")
+    flow_children = Any[
+        html_p(flow_text; style=Dict("color" => "#374151", "fontWeight" => "600", "textAlign" => "center", "padding" => "10px")),
+    ]
+    if !isnothing(saved_banner)
+        push!(flow_children, saved_banner)
+    end
+
+    return html_div(stage_cards), html_div(flow_children)
 end
 
 # ── 3. Model selection → equations panel ─────────────────────────────────────
@@ -1617,88 +1845,77 @@ callback!(
 end
 
 # ── 4. Custom model registration → refresh model dropdown ─────────────────────
-callback!(
-    app,
-    Output("model-select", "options"),
-    Output("model-select", "value"),
-    Output("custom-model-register-status", "children"),
-    Input("btn-register-model-module", "n_clicks"),
-    Input("btn-register-built-model", "n_clicks"),
-    State("custom-model-module-path", "value"),
-    State("builder-model-name", "value"),
-    State("builder-family", "value"),
-    State("builder-state-names", "value"),
-    State("builder-observable", "value"),
-    State("builder-param-names", "value"),
-    State("builder-constants", "value"),
-    State("builder-lower-bounds", "value"),
-    State("builder-upper-bounds", "value"),
-    State("builder-equations", "value"),
-) do n_file_clicks, n_built_clicks, model_path, builder_name, builder_family, builder_states, builder_observable, builder_params, builder_constants, builder_lb, builder_ub, builder_equations
-    available = list_models()
-    options = _model_options(available)
-    selected = _default_models()
-    isempty(selected) && (selected = _default_models())
+# TEMPORARILY DISABLED FOR DEBUGGING - callback removed
+# This callback was causing MethodError with 12 parameters being called with 3
 
-    if n_file_clicks == 0 && n_built_clicks == 0
-        return options, selected, html_small("No custom model registered yet.", style=Dict("color" => "#6b7280"))
+# ── Pipeline mapping helpers ─────────────────────────────────────────────────
+function _param_names_for_model(model_name::AbstractString)
+    m = String(model_name)
+    if !(m in list_models())
+        return String[]
     end
+    return String.(get_model(m).param_names)
+end
 
-    tid = _triggered_id()
-
-    before = Set(list_models())
-
-    try
-        if tid == "btn-register-model-module"
-            if isnothing(model_path) || isempty(strip(String(model_path)))
-                return options, selected, _alert("Provide a valid path to a Julia model file first.", kind=:warn)
-            end
-
-            p = strip(String(model_path))
-            if !isfile(p)
-                return options, selected, _alert("Model file not found: $(p)", kind=:error)
-            end
-
-            register_models_from_file!(p)
-        elseif tid == "btn-register-built-model"
-            spec = _build_custom_model_spec(builder_name, builder_family, builder_states, builder_observable, builder_params, builder_constants, builder_lb, builder_ub, builder_equations)
-            register_model!(spec; overwrite=true)
-            # Persist to TOML so the model survives across GUI restarts
-            _save_gui_model_to_file(
-                spec.name,
-                spec.base_growth_family,
-                isnothing(builder_states)    ? "N"   : String(builder_states),
-                isnothing(builder_observable) ? "N"   : String(builder_observable),
-                isnothing(builder_params)    ? "r, K" : String(builder_params),
-                isnothing(builder_constants) ? ""     : String(builder_constants),
-                isnothing(builder_lb)        ? "1e-6, 1e-3" : String(builder_lb),
-                isnothing(builder_ub)        ? "5.0, 1e7"   : String(builder_ub),
-                isnothing(builder_equations) ? ""    : String(builder_equations),
-            )
-        end
-
-        after = list_models()
-        new_models = sort(collect(setdiff(Set(after), before)))
-
-        options = _model_options(after)
-        merged = unique(vcat(selected, new_models))
-        merged = [m for m in merged if m in after]
-        isempty(merged) && (merged = _default_models())
-
-        msg = if tid == "btn-register-built-model"
-            saved_path = GUI_CUSTOM_MODELS_PATH
-            isempty(new_models) ?
-                "Built model updated and saved to $(saved_path). It will be restored automatically next time the GUI starts." :
-                "Built model registered: $(join(new_models, ", ")). Saved to $(saved_path) — will persist across restarts."
-        else
-            isempty(new_models) ?
-                "Model file loaded. No new names detected (file may overwrite existing models)." :
-                "Registered $(length(new_models)) model(s): $(join(new_models, ", "))"
-        end
-        return options, merged, _alert(msg)
-    catch err
-        return options, selected, _alert("Custom model registration failed: $(sprint(showerror, err))", kind=:error)
+function _suggest_mapping_rows(source_model::AbstractString, target_model::AbstractString)
+    src = _param_names_for_model(source_model)
+    dst = _param_names_for_model(target_model)
+    rows = Any[]
+    for s in src
+        match_exact = findfirst(d -> lowercase(d) == lowercase(s), dst)
+        match_partial = isnothing(match_exact) ? findfirst(d -> occursin(lowercase(s), lowercase(d)) || occursin(lowercase(d), lowercase(s)), dst) : nothing
+        target = isnothing(match_exact) ? (isnothing(match_partial) ? "(unmapped)" : dst[match_partial]) : dst[match_exact]
+        push!(rows, html_tr([html_td(s), html_td("→"), html_td(target)]))
     end
+    isempty(rows) && push!(rows, html_tr([html_td("No parameters found"), html_td(""), html_td("")]))
+    return rows
+end
+
+function _mapping_prompt_panel(stage_name::AbstractString, source_model::AbstractString, next_stage_name::AbstractString, target_model::AbstractString)
+    return _card([
+        html_h5("Stage complete: $(stage_name)", style=Dict("marginTop" => "0")),
+        html_p("Map fitted variables from $(source_model) into next stage $(next_stage_name) model $(target_model)."; style=Dict("margin" => "4px 0 10px 0")),
+        html_table([
+            html_thead(html_tr([html_th("From current stage"), html_th(""), html_th("To next stage")])) ,
+            html_tbody(_suggest_mapping_rows(source_model, target_model)),
+        ]; style=Dict("width" => "100%", "fontSize" => "12px")),
+        html_small("Use this mapping table as the prompt to decide parameter transfer before running the next stage."; style=Dict("color" => "#6b7280")),
+    ]; title="Inter-stage mapping prompt")
+end
+
+function _pipeline_autorun_panel(path::AbstractString, stages_raw, n_starts::Int, maxiters::Int, train_frac::Float64, split_mode::String, uncertainty_boot::Int)
+    cards = Any[]
+    for (i, sraw) in enumerate(stages_raw)
+        s = Dict(sraw)
+        sname = String(get(s, "name", "Stage $(i)"))
+        scsv = String(get(s, "csv_file", path))
+        smodel = String(get(s, "model_name", ""))
+        models = isempty(smodel) ? _default_models() : [smodel]
+        if isnothing(scsv) || isempty(scsv) || !isfile(scsv)
+            push!(cards, _alert("$(sname): CSV not found. Skipped.", kind=:warn))
+            continue
+        end
+        try
+            conds = build_conditions(_safe_load(scsv))
+            cond_name = isempty(conds) ? "" : String(conds[1].name)
+            panel, _ = _rank_output(scsv, models, cond_name, n_starts, maxiters, train_frac, split_mode, uncertainty_boot)
+            push!(cards, _card([
+                html_h5("$(sname) ✓", style=Dict("marginTop" => "0")),
+                html_p("Model: $(join(models, ", ")) | Condition: $(isempty(cond_name) ? "(none)" : cond_name)"; style=Dict("fontSize" => "12px", "color" => "#374151")),
+                panel,
+            ]; title="Auto-run result"))
+        catch err
+            push!(cards, _alert("$(sname): auto-run failed: $(sprint(showerror, err))", kind=:error))
+        end
+        if i < length(stages_raw)
+            next_s = Dict(stages_raw[i + 1])
+            next_name = String(get(next_s, "name", "Stage $(i+1)"))
+            next_model = String(get(next_s, "model_name", ""))
+            push!(cards, _mapping_prompt_panel(sname, isempty(smodel) ? (isempty(models) ? "" : models[1]) : smodel, next_name, next_model))
+        end
+    end
+    isempty(cards) && return html_p("No configured stages to auto-run.", style=Dict("color" => "#6b7280"))
+    return html_div(cards)
 end
 
 # ── 5. Rank & Fit ─────────────────────────────────────────────────────────────
@@ -1735,22 +1952,61 @@ callback!(
     end
 end
 
-# ── 5. Full Pipeline ──────────────────────────────────────────────────────────
+# ── 5b. Mapping prompt + auto-run staged flow ────────────────────────────────
 callback!(
     app,
     Output("pipeline-output", "children"),
+    Input("btn-rank", "n_clicks"),
     Input("btn-pipeline", "n_clicks"),
     State("csv-path-store", "data"),
-    State("model-select",   "value"),
-) do n_clicks, path, models
-    n_clicks == 0 && return html_p("Click 'Run Full Pipeline' to start.", style=Dict("color" => "#6b7280"))
-    (isnothing(path) || !isfile(String(path))) && return _alert("Load a dataset first (Tab 1).", kind=:warn)
-    try
-        ms = isnothing(models) || isempty(models) ? DEFAULT_MODELS : String.(models)
-        return _pipeline_output(String(path), ms)
-    catch err
-        return _alert("Pipeline failed: $(sprint(showerror, err))", kind=:error)
+    State("model-select", "value"),
+    State("pipeline-stages-store", "data"),
+    State("pipeline-stage-select", "value"),
+    State("n-starts", "value"),
+    State("maxiters", "value"),
+    State("train-frac", "value"),
+    State("split-mode", "value"),
+    State("uncertainty-boot", "value"),
+) do n_rank, n_pipeline, path, models, stages_data, selected_stage_idx, n_starts, maxiters, train_frac, split_mode, uncertainty_boot
+    n_rank == 0 && n_pipeline == 0 && return html_p("Run a stage fit to configure mappings.", style=Dict("color" => "#6b7280"))
+
+    if isnothing(stages_data) || !haskey(Dict(stages_data), "stages")
+        return _alert("No pipeline stages configured. Use Tab 2 to add stages first.", kind=:warn)
     end
+
+    stages_raw = Any[Dict(stages_data)["stages"]...]
+    isempty(stages_raw) && return _alert("No pipeline stages configured. Use Tab 2 to add stages first.", kind=:warn)
+
+    tid = _triggered_id()
+    if tid == "btn-pipeline"
+        (isnothing(path) || !isfile(String(path))) && return _alert("Load a dataset first (Tab 1).", kind=:warn)
+        ns = isnothing(n_starts) ? 8 : Int(n_starts)
+        mi = isnothing(maxiters) ? 300 : Int(maxiters)
+        tf = isnothing(train_frac) ? 0.7 : Float64(train_frac)
+        sm = isnothing(split_mode) ? "temporal" : String(split_mode)
+        nb = isnothing(uncertainty_boot) ? 30 : Int(uncertainty_boot)
+        return _pipeline_autorun_panel(String(path), stages_raw, ns, mi, tf, sm, nb)
+    end
+
+    idx = (isnothing(selected_stage_idx) ? 1 : Int(selected_stage_idx))
+    idx = clamp(idx, 1, length(stages_raw))
+    if idx == length(stages_raw)
+        s = Dict(stages_raw[idx])
+        sname = String(get(s, "name", "Stage $(idx)"))
+        return _alert("$(sname) is the final stage. No next-stage mapping required.")
+    end
+
+    current = Dict(stages_raw[idx])
+    nxt = Dict(stages_raw[idx + 1])
+    source_model = if !isnothing(models) && !isempty(models)
+        String(models[1])
+    else
+        String(get(current, "model_name", ""))
+    end
+    target_model = String(get(nxt, "model_name", ""))
+    stage_name = String(get(current, "name", "Stage $(idx)"))
+    next_name = String(get(nxt, "name", "Stage $(idx + 1)"))
+    return _mapping_prompt_panel(stage_name, source_model, next_name, target_model)
 end
 
 # ── 6. Staged Pipeline ────────────────────────────────────────────────────────
