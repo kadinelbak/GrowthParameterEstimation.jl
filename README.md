@@ -118,6 +118,90 @@ These are available, but they are not the best first-stop APIs for most users:
 - `setUpProblem`, `calculate_bic`, and `pQuickStat` are lower-level fitting/statistics helpers.
 - Submodule internals and underscore-prefixed helpers such as `_stage_filter` or `_build_layout` are implementation details and should not be treated as stable public API.
 
+## Custom Model Registration and Unified Fitting
+
+The package now supports public custom model registration and unified fitting through `ModelSpec`, `register_model!`, `fit_model`, and `fit_condition`.
+
+### Register a custom model
+
+```julia
+using GrowthParameterEstimation
+using OrdinaryDiffEq
+
+function hill_death_ode!(du, u, p, t, exposure)
+    r, K, emax, ec50, hill_n = p
+    N = max(u[1], 0.0)
+    C = max(exposure(t), 0.0)
+    kill = emax * (C^hill_n / (ec50^hill_n + C^hill_n + 1e-12))
+    growth = r * N * max(0.0, 1 - N / max(K, 1e-8))
+    du[1] = growth - kill * N
+end
+
+hill_spec = ModelSpec(
+    name = "hill_death_instantaneous",
+    ode! = hill_death_ode!,
+    param_names = [:r, :K, :emax, :ec50, :hill_n],
+    bounds = [(1e-6, 5.0), (1e-3, 1e7), (0.0, 1.0), (1e-3, 10.0), (0.1, 5.0)],
+    n_states = 1,
+    observable = u -> u[1],
+    base_growth_family = "logistic",
+    default_solver = Rodas5(),
+    p0_factory = (r0, K0, dose) -> [r0, K0, 0.3, max(dose, 1e-3), 1.0],
+)
+
+register_model!(hill_spec)
+```
+
+### Fit with anchoring and dose handling
+
+```julia
+x = [0.0, 1.0, 2.0, 3.0, 4.0]
+y = [1.0, 1.4, 2.1, 2.7, 3.2]
+
+fit = fit_model(
+    get_model("hill_death_instantaneous"),
+    x,
+    y,
+    0.8;
+    anchor_params = Dict(1 => 0.22, 2 => 48.0),
+    optimizer_method = :de_rand_1_bin,
+)
+
+@show fit.params fit.bic fit.ssr fit.retcode
+
+# Time-varying exposure also works
+exposure_fn = t -> (t < 2.0 ? 0.0 : 1.0)
+fit_tv = fit_model(get_model("hill_death_instantaneous"), x, y, exposure_fn)
+```
+
+### Batch-fit per condition/group
+
+```julia
+using DataFrames
+
+result_df = fit_condition(
+    df,
+    "monoculture_treated",
+    [get_model("hill_death_instantaneous")];
+    time_col = :time,
+    measurement_col = :count,
+    dose_col = :dose,
+    group_cols = [:cell_line, :density, :replicate],
+    untreated_baseline = (r = 0.22, K = 48.0),
+)
+```
+
+### Sensitivity for custom models
+
+```julia
+sens = parameter_sensitivity_analysis(
+    df,
+    "hill_death_instantaneous";
+    fitted_params = fit.params,
+    perturbation = 0.1,
+)
+```
+
 ## Staged Workflow Example
 
 Use `run_staged_pipeline` when parameters from one stage should feed into later stages.

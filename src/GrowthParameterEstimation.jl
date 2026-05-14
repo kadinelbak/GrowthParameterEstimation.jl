@@ -31,7 +31,7 @@ export
     build_exposure, evaluate_exposure,
 
     # Model registry + simulation API
-    ModelSpec, register_model, get_model, list_models,
+    ModelSpec, register_model!, register_model, register_models_from_file!, get_model, list_models, models_by_family,
     SimulationResult, SweepGrid, SweepResult, simulate, run_sweep,
 
     # Observation API
@@ -45,7 +45,7 @@ export
 
     # Fitting functions
     setUpProblem, calculate_bic, pQuickStat, run_single_fit,
-    compare_models, compare_datasets, compare_models_dict, fit_three_datasets,
+    compare_models, compare_datasets, compare_models_dict, fit_three_datasets, fit_model, fit_condition,
     run_joint_fit, compare_joint_models_dict,
 
     # Analysis functions

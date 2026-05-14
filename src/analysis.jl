@@ -5,10 +5,12 @@ using StatsBase
 using DifferentialEquations
 using Distributions
 using Random
+using DataFrames
 
 # Import models and fitting from other modules
 using ..Models
 using ..Fitting
+using ..Registry
 
 export leave_one_out_validation, k_fold_cross_validation, parameter_sensitivity_analysis,
        residual_analysis, enhanced_bic_analysis
@@ -391,6 +393,93 @@ function parameter_sensitivity_analysis(
         baseline_predictions = baseline_pred,
         x_dense = x_dense
     )
+end
+
+function _analysis_measurement_col(df::DataFrame)
+    cols = Set(Symbol.(names(df)))
+    for col in (:count, :measurement, :value, :y)
+        if col in cols
+            return col
+        end
+    end
+    error("Could not auto-detect measurement column. Provide a count/measurement/value column.")
+end
+
+"""
+parameter_sensitivity_analysis(
+    data::DataFrame,
+    model_name::String;
+    fitted_params::Vector{Float64},
+    perturbation::Float64 = 0.1,
+)
+
+Sensitivity analysis for registered custom models using the model registry.
+"""
+function parameter_sensitivity_analysis(
+    data::DataFrame,
+    model_name::String;
+    fitted_params::Vector{Float64},
+    perturbation::Float64 = 0.1,
+)
+    spec = Registry.get_model(model_name)
+    time_col = :time
+    y_col = _analysis_measurement_col(data)
+    data_cols = Set(Symbol.(names(data)))
+    dose_col = :dose in data_cols ? :dose : nothing
+
+    x = Float64.(data[!, time_col])
+    y = Float64.(data[!, y_col])
+    sort_idx = sortperm(x)
+    x = x[sort_idx]
+    y = y[sort_idx]
+
+    dose_value = isnothing(dose_col) ? 0.0 : mean(Float64.(collect(skipmissing(data[!, dose_col]))))
+    exposure_fn = _ -> dose_value
+
+    function simulate_with(params::Vector{Float64})
+        ode4! = function (du, u, p, t)
+            spec.ode!(du, u, p, t, exposure_fn)
+            return nothing
+        end
+        u0 = zeros(Float64, spec.n_states)
+        u0[1] = max(y[1], 1e-12)
+        prob = ODEProblem(ode4!, u0, (x[1], x[end]), params)
+        sol = solve(prob, spec.default_solver; saveat=x)
+        return [Float64(spec.observable(u)) for u in sol.u]
+    end
+
+    baseline = simulate_with(fitted_params)
+    rows = NamedTuple[]
+
+    for i in 1:length(fitted_params)
+        p_up = copy(fitted_params)
+        p_down = copy(fitted_params)
+        p_up[i] *= (1 + perturbation)
+        p_down[i] *= (1 - perturbation)
+
+        pred_up = simulate_with(p_up)
+        pred_down = simulate_with(p_down)
+
+        abs_change_up = abs.(pred_up .- baseline)
+        abs_change_down = abs.(pred_down .- baseline)
+        rel_change_up = abs_change_up ./ abs.(baseline .+ 1e-10)
+        rel_change_down = abs_change_down ./ abs.(baseline .+ 1e-10)
+
+        max_rel_change = max(maximum(rel_change_up), maximum(rel_change_down))
+        sensitivity_index = max_rel_change / perturbation
+
+        push!(rows, (
+            param_index = i,
+            param_name = String(spec.param_names[i]),
+            param_value = fitted_params[i],
+            sensitivity_index = sensitivity_index,
+            max_relative_change = max_rel_change,
+        ))
+    end
+
+    out = DataFrame(rows)
+    sort!(out, :sensitivity_index, rev=true)
+    return out
 end
 
 """

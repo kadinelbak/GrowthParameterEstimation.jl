@@ -1,0 +1,5 @@
+time,observed,pred_theta_logistic_hill_kill,pred_theta_logistic_hill_inhibition,pred_transit_chain_erlang
+0.0,0.9,0.9,0.9,NaN
+1.0,1.2,1.1971477666823156,1.165998074619108,NaN
+2.0,1.5,1.5026305231929107,1.4746922058494725,NaN
+3.0,1.8,1.7991547760098074,1.8239382883634803,NaN

@@ -138,6 +138,17 @@ using Random
         finite_deltas = filter(isfinite, ranked.ranking.delta_bic)
         @test all(finite_deltas .>= 0)
 
+        successful_models = [m for m in ranked.ranking.model if haskey(ranked.fits, m) && any(pc -> pc.success, ranked.fits[m].per_condition)]
+        @test !isempty(successful_models)
+
+        for model_name in successful_models
+            fit_info = ranked.fits[model_name]
+            successful_conditions = filter(pc -> pc.success, fit_info.per_condition)
+            @test !isempty(successful_conditions)
+            @test all(pc -> all(isfinite, pc.observed), successful_conditions)
+            @test all(pc -> length(pc.observed) == length(conditions[findfirst(c -> c.name == pc.condition, conditions)].time), successful_conditions)
+        end
+
         # Workflow config + plotting + export + pipeline run
         cfg = default_config(output_dir = joinpath(tempdir(), "gpe_pipeline_test"))
         cfg_path = save_config(joinpath(tempdir(), "gpe_cfg_test.toml"), cfg)
@@ -387,6 +398,129 @@ using Random
         y_many = [collect(y), collect(y .* 0.95)]
         three_many = fit_three_datasets(x_many, y_many; model = logistic_growth!, solver = Tsit5(), bounds = [(0.01, 2.0), (2.0, 100.0)])
         @test three_many.summary.n_total == 2
+    end
+
+    @testset "Custom Model Registration + Unified Fitting" begin
+        function test_hill_like!(du, u, p, t, exposure)
+            r, K, emax, ec50, hill_n = p
+            N = max(u[1], 0.0)
+            C = max(exposure(t), 0.0)
+            kill = emax * (C^hill_n / (ec50^hill_n + C^hill_n + 1e-12))
+            growth = r * N * max(0.0, 1 - N / max(K, 1e-8))
+            du[1] = growth - kill * N
+        end
+
+        hill_spec = ModelSpec(
+            name = "test_hill_death",
+            ode! = test_hill_like!,
+            param_names = [:r, :K, :emax, :ec50, :hill_n],
+            bounds = [(1e-3, 2.0), (1.0, 200.0), (0.0, 1.0), (1e-3, 10.0), (0.2, 4.0)],
+            n_states = 1,
+            observable = u -> u[1],
+            base_growth_family = "logistic",
+            default_solver = Tsit5(),
+            p0_factory = (r0, K0, dose) -> [r0, K0, 0.2, max(dose, 0.1), 1.0],
+            fixed_params = Dict{Int,Float64}(),
+        )
+
+        register_model!(hill_spec; overwrite=true)
+        @test get_model("test_hill_death").name == "test_hill_death"
+        @test "test_hill_death" in list_models()
+        @test any(s -> s.name == "test_hill_death", models_by_family("logistic"))
+
+        x = Float64.(collect(0.0:1.0:6.0))
+        y = [1.0, 1.5, 2.2, 2.9, 3.5, 3.9, 4.2]
+
+        fitted = fit_model(
+            get_model("test_hill_death"),
+            x,
+            y,
+            0.5;
+            optimizer_method = :bfgs,
+            maxiters = 120,
+            max_time = 2.0,
+        )
+        @test length(fitted.params) == 5
+        @test isfinite(fitted.bic)
+        @test fitted.ssr >= 0
+
+        anchored = fit_model(
+            get_model("test_hill_death"),
+            x,
+            y,
+            0.5;
+            optimizer_method = :bfgs,
+            maxiters = 120,
+            max_time = 2.0,
+            anchor_params = Dict(1 => 0.25, 2 => 60.0),
+        )
+        @test anchored.params[1] == 0.25
+        @test anchored.params[2] == 60.0
+
+        exposure_fit = fit_model(
+            get_model("test_hill_death"),
+            x,
+            y,
+            t -> (t >= 3.0 ? 0.8 : 0.0);
+            optimizer_method = :bfgs,
+            maxiters = 120,
+            max_time = 2.0,
+        )
+        @test isfinite(exposure_fit.bic)
+
+        function two_state_obs!(du, u, p, t, exposure)
+            r, K = p
+            du[1] = r * u[1] * (1 - u[1] / max(K, 1e-8))
+            du[2] = 0.0
+        end
+
+        obs_spec = ModelSpec(
+            name = "test_observable_sum",
+            ode! = two_state_obs!,
+            param_names = [:r, :K],
+            bounds = [(1e-3, 2.0), (1.0, 200.0)],
+            n_states = 2,
+            observable = u -> u[1] + u[2],
+            base_growth_family = "logistic",
+            default_solver = Tsit5(),
+        )
+        register_model!(obs_spec; overwrite=true)
+
+        fit_obs = fit_model(
+            get_model("test_observable_sum"),
+            x,
+            y,
+            0.0;
+            optimizer_method = :bfgs,
+            maxiters = 80,
+            max_time = 2.0,
+        )
+        @test length(fit_obs.params) == 2
+
+        df = DataFrame(
+            time = vcat(x, x),
+            count = vcat(y, y .* 0.9),
+            dose = vcat(fill(0.5, length(x)), fill(0.5, length(x))),
+            replicate = vcat(fill(1, length(x)), fill(2, length(x))),
+            condition = vcat(fill("mono_treated", length(x)), fill("mono_treated", length(x))),
+        )
+
+        cond_fits = fit_condition(
+            df,
+            "mono_treated",
+            [get_model("test_hill_death")];
+            time_col = :time,
+            measurement_col = :count,
+            dose_col = :dose,
+            group_cols = [:replicate],
+            untreated_baseline = (r = 0.2, K = 50.0),
+        )
+        @test nrow(cond_fits) == 2
+        @test all(cond_fits.model .== "test_hill_death")
+
+        sens_df = parameter_sensitivity_analysis(df[df.replicate .== 1, :], "test_hill_death"; fitted_params = fitted.params, perturbation = 0.1)
+        @test nrow(sens_df) == length(fitted.params)
+        @test :param_name in Symbol.(names(sens_df))
     end
 
     @testset "Analysis APIs" begin

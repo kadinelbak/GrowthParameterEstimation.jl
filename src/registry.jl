@@ -4,13 +4,34 @@ using DifferentialEquations
 
 using ..Models
 
-export ModelSpec, register_model, get_model, list_models, clear_registry!, register_builtin_models!
+export ModelSpec, register_model!, register_model, register_models_from_file!, get_model, list_models, models_by_family, clear_registry!, register_builtin_models!
 
+"""
+    ModelSpec
+
+Public model specification used for registration, simulation, and fitting.
+
+Primary fields:
+- `name`, `ode!`, `param_names`, `bounds`, `n_states`, `observable`
+- `base_growth_family`, `default_solver`, `p0_factory`, `fixed_params`
+
+Compatibility fields are kept so legacy workflow/simulation APIs continue to work:
+- `dynamics!`, `state_names`, `observation`, `solver_type`, `metadata`
+"""
 struct ModelSpec
     name::String
-    dynamics!::Function
+    ode!::Function
     param_names::Vector{Symbol}
     bounds::Vector{Tuple{Float64,Float64}}
+    n_states::Int
+    observable::Function
+    base_growth_family::String
+    default_solver
+    p0_factory::Union{Function,Nothing}
+    fixed_params::Dict{Int,Float64}
+
+    # Legacy compatibility fields
+    dynamics!::Function
     state_names::Vector{Symbol}
     observation::Function
     solver_type::Symbol
@@ -19,16 +40,216 @@ end
 
 const MODEL_REGISTRY = Dict{String,ModelSpec}()
 
-function register_model(spec::ModelSpec; overwrite::Bool=false)
+function _solver_to_symbol(solver)
+    if solver isa Rodas5 || solver isa Rosenbrock23 || solver isa TRBDF2
+        return :stiff_ode
+    end
+    return :ode
+end
+
+function _solver_from_symbol(kind::Symbol)
+    if kind == :stiff_ode
+        return Rodas5()
+    end
+    return Tsit5()
+end
+
+function _normalize_bounds(bounds)
+    return [(Float64(first(b)), Float64(last(b))) for b in bounds]
+end
+
+function _default_state_names(n_states::Int)
+    return [Symbol("x", i) for i in 1:n_states]
+end
+
+"""
+    ModelSpec(; ...)
+
+Preferred constructor for custom model registration.
+"""
+function ModelSpec(
+    ;
+    name::AbstractString,
+    ode!::Function,
+    param_names::AbstractVector{Symbol},
+    bounds::AbstractVector,
+    n_states::Integer,
+    observable::Function = u -> u[1],
+    base_growth_family::AbstractString = "custom",
+    default_solver = Tsit5(),
+    p0_factory::Union{Function,Nothing} = nothing,
+    fixed_params::Dict{Int,<:Real} = Dict{Int,Float64}(),
+    state_names::Union{Nothing,AbstractVector{Symbol}} = nothing,
+    metadata::AbstractDict{Symbol,<:Any} = Dict{Symbol,Any}(),
+)
+    pname_vec = collect(param_names)
+    bounds_vec = _normalize_bounds(bounds)
+    length(pname_vec) == length(bounds_vec) || throw(ArgumentError("param_names and bounds length mismatch"))
+    n_states_int = Int(n_states)
+    n_states_int >= 1 || throw(ArgumentError("n_states must be >= 1"))
+
+    s_names = isnothing(state_names) ? _default_state_names(n_states_int) : collect(state_names)
+    length(s_names) == n_states_int || throw(ArgumentError("state_names length must equal n_states"))
+
+    obs = (u, p, t) -> observable(u)
+    solver_sym = _solver_to_symbol(default_solver)
+    meta = Dict{Symbol,Any}(k => v for (k, v) in metadata)
+    meta[:family] = String(base_growth_family)
+    fixed_cast = Dict{Int,Float64}(k => Float64(v) for (k, v) in fixed_params)
+
+    return ModelSpec(
+        String(name),
+        ode!,
+        pname_vec,
+        bounds_vec,
+        n_states_int,
+        observable,
+        String(base_growth_family),
+        default_solver,
+        p0_factory,
+        fixed_cast,
+        ode!,
+        s_names,
+        obs,
+        solver_sym,
+        meta,
+    )
+end
+
+"""
+    ModelSpec(name, dynamics!, param_names, bounds, state_names, observation, solver_type, metadata)
+
+Legacy positional constructor maintained for backward compatibility.
+"""
+function ModelSpec(
+    name::String,
+    dynamics!::Function,
+    param_names::Vector{Symbol},
+    bounds::Vector{Tuple{Float64,Float64}},
+    state_names::Vector{Symbol},
+    observation::Function,
+    solver_type::Symbol,
+    metadata::AbstractDict{Symbol,<:Any},
+)
+    base_family = haskey(metadata, :family) ? String(metadata[:family]) : "legacy"
+    solver = _solver_from_symbol(solver_type)
+    observable = u -> observation(u, nothing, 0.0)
+
+    spec = ModelSpec(
+        ;
+        name=name,
+        ode! = dynamics!,
+        param_names=param_names,
+        bounds=bounds,
+        n_states=length(state_names),
+        observable=observable,
+        base_growth_family=base_family,
+        default_solver=solver,
+        p0_factory=nothing,
+        fixed_params=Dict{Int,Float64}(),
+        state_names=state_names,
+        metadata=Dict{Symbol,Any}(k => v for (k, v) in metadata),
+    )
+
+    return ModelSpec(
+        spec.name,
+        spec.ode!,
+        spec.param_names,
+        spec.bounds,
+        spec.n_states,
+        spec.observable,
+        spec.base_growth_family,
+        spec.default_solver,
+        spec.p0_factory,
+        spec.fixed_params,
+        dynamics!,
+        state_names,
+        observation,
+        solver_type,
+        Dict{Symbol,Any}(k => v for (k, v) in metadata),
+    )
+end
+
+"""
+    register_model!(spec::ModelSpec; overwrite=false) -> nothing
+
+Register a model specification in the central registry.
+"""
+function register_model!(spec::ModelSpec; overwrite::Bool=false)
     if haskey(MODEL_REGISTRY, spec.name) && !overwrite
         error("Model $(spec.name) already registered. Use overwrite=true to replace it.")
     end
     MODEL_REGISTRY[spec.name] = spec
+    return nothing
+end
+
+"""
+    register_model(spec::ModelSpec; overwrite=false) -> ModelSpec
+
+Compatibility wrapper returning the registered spec.
+"""
+function register_model(spec::ModelSpec; overwrite::Bool=false)
+    register_model!(spec; overwrite=overwrite)
     return spec
 end
 
+"""
+    register_models_from_file!(path; target_module=Main, register_fn=:register_custom_models!, overwrite=false)
+
+Load a user model file and register custom models.
+
+The file can either:
+1) call `register_model!` directly at top-level, or
+2) define `register_custom_models!()` (or another function via `register_fn`) that performs registration.
+"""
+function register_models_from_file!(
+    path::AbstractString;
+    target_module::Module = Main,
+    register_fn::Symbol = :register_custom_models!,
+    overwrite::Bool = false,
+)
+    isfile(path) || throw(ArgumentError("Model file not found: $(path)"))
+
+    Base.include(target_module, path)
+
+    if Base.invokelatest(isdefined, target_module, register_fn)
+        fn = Base.invokelatest(getfield, target_module, register_fn)
+        if fn isa Function
+            try
+                Base.invokelatest(fn; overwrite=overwrite)
+            catch err
+                if err isa MethodError
+                    Base.invokelatest(fn)
+                else
+                    rethrow(err)
+                end
+            end
+        end
+    end
+
+    return list_models()
+end
+
+"""
+    get_model(name::String) -> ModelSpec
+"""
 get_model(name::String) = MODEL_REGISTRY[name]
+
+"""
+    list_models() -> Vector{String}
+"""
 list_models() = sort(collect(keys(MODEL_REGISTRY)))
+
+"""
+    models_by_family(family::String) -> Vector{ModelSpec}
+"""
+function models_by_family(family::String)
+    fam = lowercase(strip(family))
+    specs = [spec for spec in values(MODEL_REGISTRY) if lowercase(spec.base_growth_family) == fam]
+    sort!(specs, by = s -> s.name)
+    return specs
+end
+
 clear_registry!() = empty!(MODEL_REGISTRY)
 
 function _ode_adapter(model!::Function)
@@ -156,147 +377,173 @@ end
 function register_builtin_models!()
     clear_registry!()
 
-    register_model(ModelSpec(
-        "logistic_growth",
-        _ode_adapter(Models.logistic_growth!),
-        [:r, :K],
-        [(1e-6, 5.0), (1e-3, 1e7)],
-        [:N],
-        (u, p, t) -> u[1],
-        :ode,
-        Dict(:family => :baseline),
+    register_model!(ModelSpec(
+        name="logistic_growth",
+        ode! = _ode_adapter(Models.logistic_growth!),
+        param_names=[:r, :K],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7)],
+        n_states=1,
+        observable=u -> u[1],
+        base_growth_family="logistic",
+        default_solver=Tsit5(),
+        state_names=[:N],
+        metadata=Dict(:family => :baseline),
     ))
 
-    register_model(ModelSpec(
-        "gompertz_growth",
-        _ode_adapter(Models.gompertz_growth!),
-        [:a, :b, :K],
-        [(1e-6, 5.0), (1e-6, 10.0), (1e-3, 1e7)],
-        [:N],
-        (u, p, t) -> u[1],
-        :ode,
-        Dict(:family => :baseline),
+    register_model!(ModelSpec(
+        name="gompertz_growth",
+        ode! = _ode_adapter(Models.gompertz_growth!),
+        param_names=[:a, :b, :K],
+        bounds=[(1e-6, 5.0), (1e-6, 10.0), (1e-3, 1e7)],
+        n_states=1,
+        observable=u -> u[1],
+        base_growth_family="gompertz",
+        default_solver=Tsit5(),
+        state_names=[:N],
+        metadata=Dict(:family => :baseline),
     ))
 
-    register_model(ModelSpec(
-        "theta_logistic_hill_inhibition",
-        _theta_hill_inhibition!,
-        [:r, :K, :theta, :ic50, :hill],
-        [(1e-6, 5.0), (1e-3, 1e7), (0.1, 5.0), (1e-8, 1e4), (0.1, 8.0)],
-        [:N],
-        (u, p, t) -> u[1],
-        :ode,
-        Dict(:family => :baseline_hill),
+    register_model!(ModelSpec(
+        name="theta_logistic_hill_inhibition",
+        ode! = _theta_hill_inhibition!,
+        param_names=[:r, :K, :theta, :ic50, :hill],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.1, 5.0), (1e-8, 1e4), (0.1, 8.0)],
+        n_states=1,
+        observable=u -> u[1],
+        base_growth_family="theta_logistic",
+        default_solver=Tsit5(),
+        state_names=[:N],
+        metadata=Dict(:family => :baseline_hill),
     ))
 
-    register_model(ModelSpec(
-        "theta_logistic_hill_kill",
-        _theta_hill_kill!,
-        [:r, :K, :theta, :emax_kill, :ic50, :hill],
-        [(1e-6, 5.0), (1e-3, 1e7), (0.1, 5.0), (0.0, 20.0), (1e-8, 1e4), (0.1, 8.0)],
-        [:N],
-        (u, p, t) -> u[1],
-        :ode,
-        Dict(:family => :baseline_hill),
+    register_model!(ModelSpec(
+        name="theta_logistic_hill_kill",
+        ode! = _theta_hill_kill!,
+        param_names=[:r, :K, :theta, :emax_kill, :ic50, :hill],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.1, 5.0), (0.0, 20.0), (1e-8, 1e4), (0.1, 8.0)],
+        n_states=1,
+        observable=u -> u[1],
+        base_growth_family="theta_logistic",
+        default_solver=Tsit5(),
+        state_names=[:N],
+        metadata=Dict(:family => :baseline_hill),
     ))
 
-    register_model(ModelSpec(
-        "null_coculture",
-        _null_coculture!,
-        [:rS, :KS, :rR, :KR],
-        [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 5.0), (1e-3, 1e7)],
-        [:S, :R],
-        (u, p, t) -> u[1] + u[2],
-        :ode,
-        Dict(:family => :coculture_null),
+    register_model!(ModelSpec(
+        name="null_coculture",
+        ode! = _null_coculture!,
+        param_names=[:rS, :KS, :rR, :KR],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (1e-6, 5.0), (1e-3, 1e7)],
+        n_states=2,
+        observable=u -> u[1] + u[2],
+        base_growth_family="coculture",
+        default_solver=Tsit5(),
+        state_names=[:S, :R],
+        metadata=Dict(:family => :coculture_null),
     ))
 
-    register_model(ModelSpec(
-        "lotka_volterra_competition",
-        _lotka_volterra_competition!,
-        [:rS, :KS, :alpha_SR, :rR, :KR, :alpha_RS],
-        [(1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0)],
-        [:S, :R],
-        (u, p, t) -> u[1] + u[2],
-        :ode,
-        Dict(:family => :coculture_competition),
+    register_model!(ModelSpec(
+        name="lotka_volterra_competition",
+        ode! = _lotka_volterra_competition!,
+        param_names=[:rS, :KS, :alpha_SR, :rR, :KR, :alpha_RS],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0)],
+        n_states=2,
+        observable=u -> u[1] + u[2],
+        base_growth_family="coculture",
+        default_solver=Tsit5(),
+        state_names=[:S, :R],
+        metadata=Dict(:family => :coculture_competition),
     ))
 
-    register_model(ModelSpec(
-        "lotka_volterra_hill_competition",
-        _lotka_volterra_hill_competition!,
-        [:rS, :KS, :alpha_SR, :rR, :KR, :alpha_RS, :emaxS, :ic50S, :emaxR, :ic50R, :hill],
-        [(1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (0.0, 20.0), (1e-8, 1e4), (0.0, 20.0), (1e-8, 1e4), (0.1, 8.0)],
-        [:S, :R],
-        (u, p, t) -> u[1] + u[2],
-        :ode,
-        Dict(:family => :coculture_competition_hill),
+    register_model!(ModelSpec(
+        name="lotka_volterra_hill_competition",
+        ode! = _lotka_volterra_hill_competition!,
+        param_names=[:rS, :KS, :alpha_SR, :rR, :KR, :alpha_RS, :emaxS, :ic50S, :emaxR, :ic50R, :hill],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (0.0, 20.0), (1e-8, 1e4), (0.0, 20.0), (1e-8, 1e4), (0.1, 8.0)],
+        n_states=2,
+        observable=u -> u[1] + u[2],
+        base_growth_family="coculture",
+        default_solver=Tsit5(),
+        state_names=[:S, :R],
+        metadata=Dict(:family => :coculture_competition_hill),
     ))
 
-    register_model(ModelSpec(
-        "sensitive_resistant",
-        _sensitive_resistant!,
-        [:rS, :rR, :K, :kSR, :emax, :ic50, :hill],
-        [(1e-6, 5.0), (1e-6, 5.0), (1e-3, 1e7), (0.0, 2.0), (0.0, 20.0), (1e-8, 1e4), (0.1, 8.0)],
-        [:S, :R],
-        (u, p, t) -> u[1] + u[2],
-        :ode,
-        Dict(:family => :mechanistic),
+    register_model!(ModelSpec(
+        name="sensitive_resistant",
+        ode! = _sensitive_resistant!,
+        param_names=[:rS, :rR, :K, :kSR, :emax, :ic50, :hill],
+        bounds=[(1e-6, 5.0), (1e-6, 5.0), (1e-3, 1e7), (0.0, 2.0), (0.0, 20.0), (1e-8, 1e4), (0.1, 8.0)],
+        n_states=2,
+        observable=u -> u[1] + u[2],
+        base_growth_family="mechanistic",
+        default_solver=Tsit5(),
+        state_names=[:S, :R],
+        metadata=Dict(:family => :mechanistic),
     ))
 
-    register_model(ModelSpec(
-        "damage_repair_arrest",
-        _damage_repair_arrest!,
-        [:r, :K, :k_damage, :k_repair, :k_death, :ic50, :hill],
-        [(1e-6, 5.0), (1e-3, 1e7), (0.0, 10.0), (0.0, 10.0), (0.0, 10.0), (1e-8, 1e4), (0.1, 8.0)],
-        [:S, :D],
-        (u, p, t) -> u[1] + u[2],
-        :ode,
-        Dict(:family => :mechanistic),
+    register_model!(ModelSpec(
+        name="damage_repair_arrest",
+        ode! = _damage_repair_arrest!,
+        param_names=[:r, :K, :k_damage, :k_repair, :k_death, :ic50, :hill],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.0, 10.0), (0.0, 10.0), (0.0, 10.0), (1e-8, 1e4), (0.1, 8.0)],
+        n_states=2,
+        observable=u -> u[1] + u[2],
+        base_growth_family="mechanistic",
+        default_solver=Tsit5(),
+        state_names=[:S, :D],
+        metadata=Dict(:family => :mechanistic),
     ))
 
-    register_model(ModelSpec(
-        "adaptive_ic50",
-        _adaptive_ic50!,
-        [:r, :K, :emax, :ic50_0, :hill, :k_adapt],
-        [(1e-6, 5.0), (1e-3, 1e7), (0.0, 10.0), (1e-8, 1e4), (0.1, 8.0), (0.0, 5.0)],
-        [:N, :A],
-        (u, p, t) -> u[1],
-        :ode,
-        Dict(:family => :adaptive),
+    register_model!(ModelSpec(
+        name="adaptive_ic50",
+        ode! = _adaptive_ic50!,
+        param_names=[:r, :K, :emax, :ic50_0, :hill, :k_adapt],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.0, 10.0), (1e-8, 1e4), (0.1, 8.0), (0.0, 5.0)],
+        n_states=2,
+        observable=u -> u[1],
+        base_growth_family="adaptive",
+        default_solver=Tsit5(),
+        state_names=[:N, :A],
+        metadata=Dict(:family => :adaptive),
     ))
 
-    register_model(ModelSpec(
-        "pkpd_inhibition",
-        _pkpd_inhibition!,
-        [:r, :K, :emax, :ic50, :hill, :k_elim, :k_in],
-        [(1e-6, 5.0), (1e-3, 1e7), (0.0, 10.0), (1e-8, 1e4), (0.1, 8.0), (1e-6, 10.0), (0.0, 20.0)],
-        [:N, :C],
-        (u, p, t) -> u[1],
-        :ode,
-        Dict(:family => :pkpd),
+    register_model!(ModelSpec(
+        name="pkpd_inhibition",
+        ode! = _pkpd_inhibition!,
+        param_names=[:r, :K, :emax, :ic50, :hill, :k_elim, :k_in],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.0, 10.0), (1e-8, 1e4), (0.1, 8.0), (1e-6, 10.0), (0.0, 20.0)],
+        n_states=2,
+        observable=u -> u[1],
+        base_growth_family="pkpd",
+        default_solver=Tsit5(),
+        state_names=[:N, :C],
+        metadata=Dict(:family => :pkpd),
     ))
 
-    register_model(ModelSpec(
-        "transit_chain_erlang",
-        _transit_chain_erlang!,
-        [:r, :K, :ktr, :emax, :ic50, :hill],
-        [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 10.0), (0.0, 10.0), (1e-8, 1e4), (0.1, 8.0)],
-        [:N, :X1, :X2, :X3],
-        (u, p, t) -> u[1],
-        :ode,
-        Dict(:family => :delay_surrogate),
+    register_model!(ModelSpec(
+        name="transit_chain_erlang",
+        ode! = _transit_chain_erlang!,
+        param_names=[:r, :K, :ktr, :emax, :ic50, :hill],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (1e-6, 10.0), (0.0, 10.0), (1e-8, 1e4), (0.1, 8.0)],
+        n_states=4,
+        observable=u -> u[1],
+        base_growth_family="delay_surrogate",
+        default_solver=Tsit5(),
+        state_names=[:N, :X1, :X2, :X3],
+        metadata=Dict(:family => :delay_surrogate),
     ))
 
-    register_model(ModelSpec(
-        "bi_exponential_response",
-        _bi_exponential!,
-        [:a, :b],
-        [(1e-6, 10.0), (1e-6, 10.0)],
-        [:N1, :N2],
-        (u, p, t) -> u[1] + u[2],
-        :ode,
-        Dict(:family => :phenomenological),
+    register_model!(ModelSpec(
+        name="bi_exponential_response",
+        ode! = _bi_exponential!,
+        param_names=[:a, :b],
+        bounds=[(1e-6, 10.0), (1e-6, 10.0)],
+        n_states=2,
+        observable=u -> u[1] + u[2],
+        base_growth_family="phenomenological",
+        default_solver=Tsit5(),
+        state_names=[:N1, :N2],
+        metadata=Dict(:family => :phenomenological),
     ))
 
     return nothing

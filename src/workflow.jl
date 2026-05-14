@@ -360,6 +360,19 @@ function _record_failure!(df::DataFrame; stage::AbstractString, model::AbstractS
     return df
 end
 
+function _condition_match_key(name::AbstractString)
+    return lowercase(strip(String(name)))
+end
+
+function _find_per_condition_hit(per_condition, condition_name::AbstractString)
+    key = _condition_match_key(condition_name)
+    return findfirst(pc -> _condition_match_key(pc.condition) == key, per_condition)
+end
+
+function _prediction_valid(prediction::AbstractVector)
+    return !isempty(prediction) && all(isfinite, prediction)
+end
+
 function _config_to_dict(cfg::PipelineConfig)
     return Dict(
         "version" => cfg.version,
@@ -1527,13 +1540,23 @@ function fit(
             _record_failure!(failure_log; stage="solver", model=spec.name, condition=cond.name, reason=sim.reason, detail="Simulation failed during best-fit evaluation", hint="Inspect condition-specific time range, bounds, and observation scaling.")
         end
 
+        prediction_ok = sim.success && length(sim.observed) == length(cond.time) && _prediction_valid(sim.observed)
+        if sim.success && !prediction_ok
+            detail = "Invalid prediction vector: expected length $(length(cond.time)), got $(length(sim.observed)); finite=$(all(isfinite, sim.observed))"
+            _record_failure!(failure_log; stage="validation", model=spec.name, condition=cond.name, reason="invalid_predictions", detail=detail, hint="Check solver output shape and observation mapping for this condition.")
+        end
+
+        observed = prediction_ok ? sim.observed : fill(NaN, length(cond.time))
+        residuals = prediction_ok ? (cond.count .- sim.observed) : fill(NaN, length(cond.time))
+        reason = prediction_ok ? "ok" : (sim.success ? "invalid_predictions" : sim.reason)
+
         push!(per_condition, (
             condition=cond.name,
             params=pbest,
-            observed=sim.observed,
-            residuals=sim.success ? (cond.count .- sim.observed) : fill(NaN, length(cond.time)),
-            success=sim.success,
-            reason=sim.reason,
+            observed=observed,
+            residuals=residuals,
+            success=prediction_ok,
+            reason=reason,
         ))
     end
 
@@ -1620,7 +1643,7 @@ function plot_topk(
         overlay = DataFrame(time=cond.time, observed=cond.count)
         for m in top_models
             fit_info = rank_result.fits[m]
-            cond_hit = findfirst(pc -> pc.condition == cond.name, fit_info.per_condition)
+            cond_hit = _find_per_condition_hit(fit_info.per_condition, cond.name)
             if !isnothing(cond_hit)
                 overlay[!, Symbol("pred_" * m)] = fit_info.per_condition[cond_hit].observed
             end

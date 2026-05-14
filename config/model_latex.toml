@@ -1,0 +1,100 @@
+# Optional LaTeX Display Configuration
+# Add model names as keys with their LaTeX equations as values.
+# If a model is not listed here, only the model name will be displayed.
+# Remove entries you don't want to display LaTeX for.
+
+[latex]
+# ── Baseline single-population models ─────────────────────────────────────────
+
+logistic_growth = """
+**Logistic growth**
+
+$$\\frac{dN}{dt} = rN\\left(1 - \\frac{N}{K}\\right)$$
+
+- $r$ — intrinsic growth rate
+- $K$ — carrying capacity
+"""
+
+gompertz_growth = """
+**Gompertz growth**
+
+$$\\frac{dN}{dt} = a N \\ln\\!\\left(\\frac{K}{N}\\right)$$
+
+- $a$ — growth rate constant
+- $b$ — auxiliary fitted parameter (currently not used in the ODE right-hand side)
+- $K$ — carrying capacity
+"""
+
+# ── Drug-response models (theta-logistic + Hill kinetics) ─────────────────────
+
+theta_logistic_hill_inhibition = """
+**Theta-logistic growth with Hill-function drug inhibition**
+
+$$\\frac{dN}{dt} = \\left(1 - \\frac{D^h}{\\mathrm{IC}_{50}^h + D^h}\\right) r N \\left(1 - \\left(\\frac{N}{K}\\right)^{\\theta}\\right)$$
+
+- $r$ — growth rate; $K$ — carrying capacity; $\\theta$ — shape exponent
+- $\\mathrm{IC}_{50}$ — half-maximal inhibitory concentration; $h$ — Hill coefficient; $D$ — drug dose
+"""
+
+theta_logistic_hill_kill = """
+**Theta-logistic growth with Hill-function drug kill term**
+
+$$\\frac{dN}{dt} = r N \\left(1 - \\left(\\frac{N}{K}\\right)^{\\theta}\\right) - E_{\\max}\\frac{D^h}{\\mathrm{IC}_{50}^h + D^h}\\,N$$
+
+- $r, K, \\theta$ — growth parameters
+- $E_{\\max}$ — maximum kill rate; $\\mathrm{IC}_{50}$, $h$ — Hill parameters; $D$ — dose
+"""
+
+# ── Co-culture / competition models ───────────────────────────────────────────
+
+null_coculture = """
+**Null co-culture model** — independent logistic growth for each sub-population
+
+$$\\frac{dS}{dt} = r_S S\\left(1 - \\frac{S}{K_S}\\right), \\qquad \\frac{dR}{dt} = r_R R\\left(1 - \\frac{R}{K_R}\\right)$$
+
+Observable: $N = S + R$
+"""
+
+lotka_volterra_competition = """
+**Lotka-Volterra competition**
+
+$$\\frac{dS}{dt} = r_S S\\left(1 - \\frac{S + \\alpha_{SR}R}{K_S}\\right), \\qquad \\frac{dR}{dt} = r_R R\\left(1 - \\frac{R + \\alpha_{RS}S}{K_R}\\right)$$
+
+- $\\alpha_{SR}$ — competitive effect of $R$ on $S$; $\\alpha_{RS}$ — competitive effect of $S$ on $R$
+"""
+
+lotka_volterra_hill_competition = """
+**Lotka-Volterra competition with Hill-function drug effects**
+
+$$\\frac{dS}{dt} = r_S S\\left(1 - \\frac{S + \\alpha_{SR}R}{K_S}\\right) - E_{S}\\frac{D^h}{\\mathrm{IC}_{50,S}^h + D^h}\\,S$$
+
+$$\\frac{dR}{dt} = r_R R\\left(1 - \\frac{R + \\alpha_{RS}S}{K_R}\\right) - E_{R}\\frac{D^h}{\\mathrm{IC}_{50,R}^h + D^h}\\,R$$
+"""
+
+# ── Mechanistic models ────────────────────────────────────────────────────────
+
+sensitive_resistant = """
+**Sensitive-resistant mechanistic model**
+
+$$\\frac{dS}{dt} = r_S S\\left(1 - \\frac{S+R}{K}\\right) - k_{SR}\\,S - E_{\\max}\\frac{D^h}{\\mathrm{IC}_{50}^h + D^h}\\,S$$
+
+$$\\frac{dR}{dt} = r_R R\\left(1 - \\frac{S+R}{K}\\right) + k_{SR}\\,S$$
+
+- $k_{SR}$ — conversion rate from sensitive to resistant
+- $E_{\\max}, \\mathrm{IC}_{50}, h$ — drug kill parameters acting on $S$ only
+"""
+
+damage_repair_arrest = """
+**DNA-damage / repair / arrest model**
+
+Three-state system: $N$ (cycling), $D$ (damaged), $A$ (arrested).
+
+$$\\frac{dN}{dt} = r N\\left(1-\\frac{N}{K}\\right) - k_{\\rm dam}\\frac{D^h}{\\mathrm{IC}_{50}^h+D^h}N$$
+
+$$\\frac{dD}{dt} = k_{\\rm dam}\\frac{D_0^h}{\\mathrm{IC}_{50}^h+D_0^h}N - k_{\\rm rep}\\,D - k_{\\rm dth}\\,D$$
+
+Observable: total viable cells $= N + D$
+"""
+
+# ── Add your custom models below ──────────────────────────────────────────────
+# my_custom_model = "Your LaTeX / markdown description here"

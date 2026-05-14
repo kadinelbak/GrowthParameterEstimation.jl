@@ -1,0 +1,5 @@
+stage,matched_rows,matched_conditions,status,detail,recommendation
+untreated_monoculture,6,1,ok,Matched 6 rows across 1 conditions.,Coverage is sufficient to attempt fitting.
+treated_monoculture,6,1,ok,Matched 6 rows across 1 conditions.,Coverage is sufficient to attempt fitting.
+untreated_coculture,0,0,error,No rows match this stage filter.,Check culture_type/population_type/cell_line and treatment columns used by stage filters.
+treated_coculture,0,0,error,No rows match this stage filter.,Check culture_type/population_type/cell_line and treatment columns used by stage filters.

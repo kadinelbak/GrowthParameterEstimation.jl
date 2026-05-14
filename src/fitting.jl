@@ -11,12 +11,14 @@ using DiffEqParamEstim
 using Optimization
 using ForwardDiff
 using OptimizationOptimJL
+using Random
 
 using ..Models
+using ..Registry
 
 export setUpProblem, calculate_bic, pQuickStat, run_single_fit,
     compare_models, compare_datasets, compare_models_dict, fit_three_datasets,
-    run_joint_fit, compare_joint_models_dict
+    run_joint_fit, compare_joint_models_dict, fit_model, fit_condition
 
 """
     setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time=100.0, maxiters=10_000)
@@ -153,6 +155,268 @@ function run_single_fit(
     show_stats && pQuickStat(x, y, p_opt, sol_opt, prob_opt, bic, ssr)
 
     return (params = p_opt, bic = bic, ssr = ssr, solution = sol_opt)
+end
+
+function _resolve_optimizer(optimizer_method::Symbol)
+    if optimizer_method == :nelder_mead || optimizer_method == :de_rand_1_bin || optimizer_method == :bfgs
+        return OptimizationOptimJL.Fminbox(OptimizationOptimJL.NelderMead())
+    end
+    return OptimizationOptimJL.Fminbox(OptimizationOptimJL.NelderMead())
+end
+
+function _default_u0(y0::Float64, n_states::Int)
+    u0 = zeros(Float64, n_states)
+    u0[1] = max(y0, 1e-12)
+    return u0
+end
+
+function _exposure_fn(dose)
+    if dose isa Function
+        return dose
+    end
+    d = Float64(dose)
+    return _ -> d
+end
+
+function _build_full_params(
+    p_free::AbstractVector{<:Real},
+    n_total::Int,
+    free_indices::Vector{Int},
+    fixed_map::Dict{Int,Float64},
+)
+    p_full = Vector{Float64}(undef, n_total)
+    for (j, idx) in enumerate(free_indices)
+        p_full[idx] = Float64(p_free[j])
+    end
+    for (idx, val) in fixed_map
+        p_full[idx] = Float64(val)
+    end
+    return p_full
+end
+
+function _simulate_observed(
+    model_spec::Registry.ModelSpec,
+    x::Vector{Float64},
+    p_full::Vector{Float64},
+    solver,
+    u0::Vector{Float64},
+    exposure_fn::Function;
+    reltol::Float64,
+    abstol::Float64,
+)
+    ode4! = function (du, u, p, t)
+        model_spec.ode!(du, u, p, t, exposure_fn)
+        return nothing
+    end
+    prob = ODEProblem(ode4!, u0, (x[1], x[end]), p_full)
+    sol = solve(prob, solver; saveat=x, reltol=reltol, abstol=abstol)
+    yhat = [Float64(model_spec.observable(u)) for u in sol.u]
+    return sol, yhat
+end
+
+"""
+    fit_model(model_spec, x, y, dose=0.0; ...)
+
+Unified fitting API for registered custom models. Supports fixed/anchored parameters,
+custom observables, and constant or time-varying exposures.
+"""
+function fit_model(
+    model_spec::Registry.ModelSpec,
+    x::Vector{Float64},
+    y::Vector{Float64},
+    dose = 0.0;
+    solver = model_spec.default_solver,
+    optimizer_method::Symbol = :de_rand_1_bin,
+    max_time::Float64 = 45.0,
+    maxiters::Int = 50_000,
+    reltol::Float64 = 1e-6,
+    abstol::Float64 = 1e-6,
+    p0::Union{Vector{Float64},Nothing} = nothing,
+    anchor_params::Dict{Int,Float64} = Dict{Int,Float64}(),
+    verbose::Bool = false,
+)
+    length(x) == length(y) || throw(ArgumentError("x and y must have the same length"))
+    isempty(x) && throw(ArgumentError("x and y cannot be empty"))
+
+    sort_idx = sortperm(x)
+    x_sorted = x[sort_idx]
+    y_sorted = y[sort_idx]
+
+    n_total = length(model_spec.param_names)
+    length(model_spec.bounds) == n_total || throw(ArgumentError("Model bounds length must match number of parameters"))
+
+    fixed_map = copy(model_spec.fixed_params)
+    merge!(fixed_map, anchor_params)
+    for idx in keys(fixed_map)
+        1 <= idx <= n_total || throw(ArgumentError("anchor/fixed parameter index $(idx) out of bounds"))
+    end
+
+    free_indices = [i for i in 1:n_total if !haskey(fixed_map, i)]
+    n_free = length(free_indices)
+    exposure_fn = _exposure_fn(dose)
+
+    default_full_p0 = [(model_spec.bounds[i][1] + model_spec.bounds[i][2]) / 2 for i in 1:n_total]
+    if model_spec.p0_factory !== nothing
+        r0 = haskey(fixed_map, 1) ? fixed_map[1] : default_full_p0[1]
+        K0 = haskey(fixed_map, 2) ? fixed_map[2] : (n_total >= 2 ? default_full_p0[2] : default_full_p0[1])
+        dose_hint = dose isa Function ? 0.0 : Float64(dose)
+        factory_guess = Float64.(collect(model_spec.p0_factory(r0, K0, dose_hint)))
+        if length(factory_guess) == n_total
+            default_full_p0 = factory_guess
+        end
+    end
+
+    p0_free = if isnothing(p0)
+        [default_full_p0[i] for i in free_indices]
+    elseif length(p0) == n_total
+        [p0[i] for i in free_indices]
+    elseif length(p0) == n_free
+        copy(p0)
+    else
+        throw(ArgumentError("p0 length must be either n_total=$(n_total) or n_free=$(n_free)"))
+    end
+
+    u0 = _default_u0(y_sorted[1], model_spec.n_states)
+
+    function ssr_from_free(p_free)
+        p_full = _build_full_params(p_free, n_total, free_indices, fixed_map)
+        try
+            sol, yhat = _simulate_observed(model_spec, x_sorted, p_full, solver, u0, exposure_fn; reltol=reltol, abstol=abstol)
+            if sol.retcode != ReturnCode.Success || any(!isfinite, yhat)
+                return 1e20, sol.retcode
+            end
+            ssr = sum((y_sorted .- yhat) .^ 2)
+            return ssr, sol.retcode
+        catch
+            return 1e20, nothing
+        end
+    end
+
+    best_free = copy(p0_free)
+    best_ssr, best_retcode = ssr_from_free(best_free)
+
+    if n_free > 0
+        lb = [model_spec.bounds[i][1] for i in free_indices]
+        ub = [model_spec.bounds[i][2] for i in free_indices]
+
+        rng = MersenneTwister(42)
+        n_trials = max(50, min(maxiters, 5000))
+
+        for _ in 1:n_trials
+            candidate = [lb[j] + rand(rng) * max(ub[j] - lb[j], 1e-12) for j in eachindex(lb)]
+            cand_ssr, cand_retcode = ssr_from_free(candidate)
+            if cand_ssr < best_ssr
+                best_ssr = cand_ssr
+                best_free = candidate
+                best_retcode = cand_retcode
+            end
+        end
+
+        verbose && println("fit_model random-search trials: ", n_trials)
+    end
+
+    best_params = _build_full_params(best_free, n_total, free_indices, fixed_map)
+    n = length(x_sorted)
+    k = n_free
+    bic = n * log(max(best_ssr, 1e-12) / n) + k * log(n)
+
+    return (
+        params = best_params,
+        bic = bic,
+        ssr = best_ssr,
+        retcode = best_retcode,
+    )
+end
+
+function _auto_measurement_col(df::DataFrame)
+    cols = Set(Symbol.(names(df)))
+    for col in (:count, :measurement, :value, :y)
+        if col in cols
+            return col
+        end
+    end
+    error("Could not auto-detect measurement column. Provide measurement_col explicitly.")
+end
+
+"""
+    fit_condition(data, condition, model_specs; ...)
+
+Convenience wrapper for per-group model fitting and ranking.
+"""
+function fit_condition(
+    data::DataFrame,
+    condition::AbstractString,
+    model_specs::Vector{Registry.ModelSpec};
+    time_col::Symbol = :time,
+    measurement_col::Union{Symbol,Nothing} = nothing,
+    dose_col::Symbol = :dose,
+    group_cols::Vector{Symbol} = Symbol[],
+    untreated_baseline::Union{NamedTuple,Nothing} = nothing,
+)
+    cols = Set(Symbol.(names(data)))
+    time_col in cols || throw(ArgumentError("time_col $(time_col) not found in DataFrame"))
+    y_col = isnothing(measurement_col) ? _auto_measurement_col(data) : measurement_col
+    y_col in cols || throw(ArgumentError("measurement_col $(y_col) not found in DataFrame"))
+
+    subset = if :condition in names(data)
+        data[data.condition .== condition, :]
+    elseif :condition_name in names(data)
+        data[data.condition_name .== condition, :]
+    else
+        copy(data)
+    end
+
+    groups = if isempty(group_cols)
+        [subset]
+    else
+        subset_cols = Set(Symbol.(names(subset)))
+        existing = [c for c in group_cols if c in subset_cols]
+        isempty(existing) ? [subset] : collect(groupby(subset, existing))
+    end
+
+    rows = NamedTuple[]
+
+    for g in groups
+        x = Float64.(g[!, time_col])
+        y = Float64.(g[!, y_col])
+        g_cols = Set(Symbol.(names(g)))
+        dose_value = dose_col in g_cols ? Float64(first(skipmissing(g[!, dose_col]))) : 0.0
+
+        group_label = if isempty(group_cols)
+            String(condition)
+        else
+            join(["$(c)=$(g[1, c])" for c in group_cols if c in g_cols], " | ")
+        end
+
+        for spec in model_specs
+            anchor = Dict{Int,Float64}()
+            if untreated_baseline !== nothing
+                for (i, pname) in enumerate(spec.param_names)
+                    if hasproperty(untreated_baseline, pname)
+                        anchor[i] = Float64(getproperty(untreated_baseline, pname))
+                    end
+                end
+            end
+
+            result = fit_model(spec, x, y, dose_value; anchor_params=anchor)
+            push!(rows, (
+                condition = String(condition),
+                group = group_label,
+                model = spec.name,
+                dose = dose_value,
+                bic = result.bic,
+                ssr = result.ssr,
+                params = result.params,
+                retcode = string(result.retcode),
+            ))
+        end
+    end
+
+    out = DataFrame(rows)
+    if !isempty(out)
+        sort!(out, [:condition, :group, :bic])
+    end
+    return out
 end
 
 """

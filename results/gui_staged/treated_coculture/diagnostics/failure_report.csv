@@ -1,0 +1,3 @@
+stage,model,condition,reason,detail,hint,timestamp
+solver,lotka_volterra_hill_competition,treatment_amount=0.7 | dose=0.7 | cell_line=A549 | density=1.0 | replicate=1,unknown_failure,Simulation failed during best-fit evaluation,"Inspect condition-specific time range, bounds, and observation scaling.",2026-04-26T11:25:59.877
+solver,sensitive_resistant,treatment_amount=0.7 | dose=0.7 | cell_line=A549 | density=1.0 | replicate=1,unknown_failure,Simulation failed during best-fit evaluation,"Inspect condition-specific time range, bounds, and observation scaling.",2026-04-26T11:26:06.759
