@@ -1,3 +1,7 @@
+# Legacy compatibility entrypoint: route existing commands/tasks to Genie app.
+include("pipeline_gui_app_genie.jl")
+
+#=
 using Dash
 using CSV
 using DataFrames
@@ -2065,4 +2069,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
         rethrow(err)
     end
 end
+
+=#
 
