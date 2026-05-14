@@ -690,37 +690,47 @@ function _load_pipelines()::Dict{String, Pipeline}
 end
 
 function _glossary()
-    html_details([
-        html_summary("📖  Glossary — click to expand",
-            style=Dict("cursor" => "pointer", "fontWeight" => "600", "color" => "#0f766e")),
+    html_div([
         html_div([
-            html_dl([
-                html_dt("Condition", style=Dict("fontWeight" => "600")),
-                html_dd("One unique combination of experimental factors (dose, cell line, replicate …). Each condition is fitted independently."),
+            html_button("📖 Glossary"; id="glossary-toggle", n_clicks=0,
+                style=Dict(
+                    "background" => "transparent", "border" => "1px solid #a7f3d0",
+                    "color" => "#0f766e", "borderRadius" => "20px", "padding" => "4px 14px",
+                    "fontSize" => "12px", "fontWeight" => "600", "cursor" => "pointer",
+                    "lineHeight" => "1.4")),
+        ]; style=Dict("position" => "absolute", "top" => "18px", "right" => "24px")),
+        html_div(id="glossary-panel",
+            children=html_div([
+                html_dl([
+                    html_dt("Condition", style=Dict("fontWeight" => "600")),
+                    html_dd("One unique combination of experimental factors (dose, cell line, replicate …). Each condition is fitted independently."),
 
-                html_dt("BIC  (Bayesian Information Criterion)", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
-                html_dd("A score that balances goodness-of-fit against model complexity. Lower is better. Use BIC to compare models with different numbers of parameters."),
+                    html_dt("BIC  (Bayesian Information Criterion)", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
+                    html_dd("A score that balances goodness-of-fit against model complexity. Lower is better. Use BIC to compare models with different numbers of parameters."),
 
-                html_dt("SSR  (Sum of Squared Residuals)", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
-                html_dd("Raw fit quality: sum of squared differences between observed data and model prediction. Lower is better, but does not penalise extra parameters."),
+                    html_dt("SSR  (Sum of Squared Residuals)", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
+                    html_dd("Raw fit quality: sum of squared differences between observed data and model prediction. Lower is better, but does not penalise extra parameters."),
 
-                html_dt("r  —  growth rate", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
-                html_dd("Intrinsic per-capita growth rate. Larger r → faster initial growth."),
+                    html_dt("r  —  growth rate", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
+                    html_dd("Intrinsic per-capita growth rate. Larger r → faster initial growth."),
 
-                html_dt("K  —  carrying capacity", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
-                html_dd("Maximum sustainable population size under logistic constraints."),
+                    html_dt("K  —  carrying capacity", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
+                    html_dd("Maximum sustainable population size under logistic constraints."),
 
-                html_dt("IC50", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
-                html_dd("Drug concentration that produces 50 % of the maximum effect. Smaller IC50 → cells are more drug-sensitive."),
+                    html_dt("IC50", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
+                    html_dd("Drug concentration that produces 50 % of the maximum effect. Smaller IC50 → cells are more drug-sensitive."),
 
-                html_dt("Hill coefficient  (h)", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
-                html_dd("Controls the steepness of the dose-response curve. h = 1 is hyperbolic; h > 1 gives a sharper switch."),
+                    html_dt("Hill coefficient  (h)", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
+                    html_dd("Controls the steepness of the dose-response curve. h = 1 is hyperbolic; h > 1 gives a sharper switch."),
 
-                html_dt("Preflight check", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
-                html_dd("Automatic data-quality scan that flags missing columns, sparse conditions, duplicate timepoints, or outliers before fitting."),
-            ]),
-        ]; style=Dict("marginTop" => "12px", "padding" => "0 12px")),
-    ]; style=Dict("border" => "1px solid #d1fae5", "padding" => "10px 14px", "borderRadius" => "6px", "marginBottom" => "20px"))
+                    html_dt("Preflight check", style=Dict("fontWeight" => "600", "marginTop" => "8px")),
+                    html_dd("Automatic data-quality scan that flags missing columns, sparse conditions, duplicate timepoints, or outliers before fitting."),
+                ]),
+            ]; style=Dict("padding" => "12px 0 4px 0")),
+            style=Dict("display" => "none", "border" => "1px solid #d1fae5", "borderRadius" => "8px",
+                       "padding" => "12px 18px", "marginTop" => "8px", "background" => "#f0fdf4",
+                       "boxShadow" => "0 2px 8px rgba(0,0,0,0.07)")),
+    ]; style=Dict())
 end
 
 # ── Tab 1 helpers ─────────────────────────────────────────────────────────────
@@ -1206,21 +1216,19 @@ app.layout = html_div([
     # ── Hidden stores ─────────────────────────────────────────────────────────
     dcc_store(id="csv-path-store"),
     dcc_store(id="conditions-store"),
+    dcc_store(id="status-bar"),
 
     # ── Header ────────────────────────────────────────────────────────────────
     html_header([
-        html_h2("GrowthParameterEstimation",
-            style=Dict("margin" => "0", "color" => "#0f766e")),
-        html_p("Fit, compare, and rank ODE growth models against your cell-count time series.",
-            style=Dict("margin" => "4px 0 0 0", "color" => "#6b7280")),
-    ]; style=Dict("borderBottom" => "2px solid #d1fae5", "marginBottom" => "20px", "paddingBottom" => "12px")),
-
-    # ── Status bar ────────────────────────────────────────────────────────────
-    html_div(id="status-bar",
-        children=_alert("No data loaded. Use the Load Data tab to get started.", kind=:warn)),
-
-    # ── Glossary (collapsible, always accessible) ─────────────────────────────
-    _glossary(),
+        html_div([
+            html_h2("GrowthParameterEstimation",
+                style=Dict("margin" => "0", "color" => "#0f766e")),
+            html_p("Fit, compare, and rank ODE growth models against your cell-count time series.",
+                style=Dict("margin" => "4px 0 0 0", "color" => "#6b7280")),
+        ]),
+        _glossary(),
+    ]; style=Dict("position" => "relative", "borderBottom" => "2px solid #d1fae5",
+                  "marginBottom" => "20px", "paddingBottom" => "12px")),
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
     dcc_tabs(id="main-tabs", value="tab-load", children=[
@@ -1594,7 +1602,7 @@ end
 # ── 2. csv-path-store → status bar + preflight + condition dropdown ───────────
 callback!(
     app,
-    Output("status-bar",        "children"),
+    Output("status-bar",        "data"),
     Output("load-data-preview", "children"),
     Output("load-tab-output",   "children"),
     Output("conditions-store",  "data"),
@@ -2023,6 +2031,22 @@ callback!(
     catch err
         return _alert("Staged pipeline failed: $(sprint(showerror, err))", kind=:error)
     end
+end
+
+# ── Glossary toggle ───────────────────────────────────────────────────────────
+callback!(
+    app,
+    Output("glossary-panel", "style"),
+    Input("glossary-toggle", "n_clicks"),
+    State("glossary-panel", "style"),
+) do n_clicks, current_style
+    hidden  = Dict("display" => "none", "border" => "1px solid #d1fae5", "borderRadius" => "8px",
+                   "padding" => "12px 18px", "marginTop" => "8px", "background" => "#f0fdf4",
+                   "boxShadow" => "0 2px 8px rgba(0,0,0,0.07)")
+    visible = merge(hidden, Dict("display" => "block"))
+    n_clicks == 0 && return hidden
+    current_display = get(current_style, "display", "none")
+    return current_display == "none" ? visible : hidden
 end
 
 # ══════════════════════════════════════════════════════════════════════════════
