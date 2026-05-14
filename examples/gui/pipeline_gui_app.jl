@@ -1658,7 +1658,7 @@ callback!(
     State("csv-path-store", "data"),
     State("model-select", "value"),
 ) do n_add, n_up, n_down, n_remove, n_use_current, n_next, store_data, selected_idx, csv_path, selected_models
-    data = isnothing(store_data) ? Dict("stages" => Any[]) : Dict(store_data)
+    data = isnothing(store_data) ? Dict{String,Any}("stages" => Any[]) : Dict{String,Any}(String(k) => v for (k, v) in store_data)
     stages = haskey(data, "stages") ? Any[data["stages"]...] : Any[]
 
     function _stage_options(arr)
@@ -1717,13 +1717,13 @@ callback!(
     Input("btn-save-pipeline", "n_clicks"),
     State("pipeline-name", "value"),
 ) do store_data, save_clicks, pipeline_name
-    data = isnothing(store_data) ? Dict("stages" => Any[]) : Dict(store_data)
+    data = isnothing(store_data) ? Dict{String,Any}("stages" => Any[]) : Dict{String,Any}(String(k) => v for (k, v) in store_data)
     stages_raw = haskey(data, "stages") ? Any[data["stages"]...] : Any[]
 
     stage_cards = Any[]
     flow_nodes = String[]
     for (i, sraw) in enumerate(stages_raw)
-        s = Dict(sraw)
+        s = Dict{String,Any}(String(k) => v for (k, v) in sraw)
         sname = get(s, "name", "Stage $(i)")
         sfile = get(s, "csv_file", "")
         smodel = get(s, "model_name", "")
@@ -1916,7 +1916,7 @@ function _pipeline_autorun_panel(path::AbstractString, stages_raw, n_starts::Int
             push!(cards, _alert("$(sname): auto-run failed: $(sprint(showerror, err))", kind=:error))
         end
         if i < length(stages_raw)
-            next_s = Dict(stages_raw[i + 1])
+            next_s = Dict{String,Any}(String(k) => v for (k, v) in stages_raw[i + 1])
             next_name = String(get(next_s, "name", "Stage $(i+1)"))
             next_model = String(get(next_s, "model_name", ""))
             push!(cards, _mapping_prompt_panel(sname, isempty(smodel) ? (isempty(models) ? "" : models[1]) : smodel, next_name, next_model))
@@ -1999,13 +1999,13 @@ callback!(
     idx = (isnothing(selected_stage_idx) ? 1 : Int(selected_stage_idx))
     idx = clamp(idx, 1, length(stages_raw))
     if idx == length(stages_raw)
-        s = Dict(stages_raw[idx])
+        s = Dict{String,Any}(String(k) => v for (k, v) in stages_raw[idx])
         sname = String(get(s, "name", "Stage $(idx)"))
         return _alert("$(sname) is the final stage. No next-stage mapping required.")
     end
 
-    current = Dict(stages_raw[idx])
-    nxt = Dict(stages_raw[idx + 1])
+    current = Dict{String,Any}(String(k) => v for (k, v) in stages_raw[idx])
+    nxt = Dict{String,Any}(String(k) => v for (k, v) in stages_raw[idx + 1])
     source_model = if !isnothing(models) && !isempty(models)
         String(models[1])
     else
