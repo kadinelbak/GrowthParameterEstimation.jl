@@ -1,0 +1,27 @@
+#builder-family .Select-control {
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+#builder-family .Select-value-label,
+#builder-family .Select--single > .Select-control .Select-value .Select-value-label,
+#builder-family .Select-value-label[role="option"] {
+  color: #0f172a !important;
+}
+
+#builder-family .Select-placeholder {
+  color: #64748b;
+}
+
+#builder-family .Select-menu-outer,
+#builder-family .Select-menu,
+#builder-family .Select-option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+#builder-family .Select-option.is-focused {
+  background-color: #ecfeff;
+  color: #0f172a;
+}

@@ -1,0 +1,18 @@
+
+[models.final_probe_model2]
+family = "custom"
+observable = "N"
+equations = "N = r*N*(1 - N/K)"
+params = "r, K"
+lower = "1e-6, 1e-3"
+states = "N"
+upper = "5.0, 1e7"
+
+[models.Logistic_Death]
+family = "logistic"
+observable = "N"
+equations = "N = r*N*(1 - N/K) + (1 - E^n/(1^n + E^n))"
+params = "r, K, n"
+lower = "1e-6, 1e-3, 0"
+states = "N"
+upper = "5.0, 1e7, 5"

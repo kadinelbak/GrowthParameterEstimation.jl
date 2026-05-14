@@ -11,6 +11,7 @@ const HOST = "127.0.0.1"
 const PORT = parse(Int, get(ENV, "GPE_GUI_PORT", "8050"))
 const LATEX_CONFIG_PATH = joinpath(dirname(dirname(dirname(@__FILE__))), "config", "model_latex.toml")
 const EXAMPLE_DIR = joinpath(dirname(@__FILE__), "data")
+const GUI_CUSTOM_MODELS_PATH = joinpath(EXAMPLE_DIR, "gui_custom_models.toml")
 
 # ── LaTeX config ──────────────────────────────────────────────────────────────
 const LATEX_CACHE = Dict{String, String}()
@@ -248,6 +249,297 @@ function _data_overview_panels(df::DataFrame)
         dcc_graph(figure=fig_norm; style=Dict("height" => "340px")),
         dcc_graph(figure=fig_end;  style=Dict("height" => "360px")),
     ]; title="Data To Be Fitted — Visual Overview")
+end
+
+function _keybtn(label::AbstractString, id::AbstractString)
+    html_button(label; id=id, n_clicks=0, style=Dict(
+        "background" => "#ecfeff", "color" => "#155e75", "border" => "1px solid #a5f3fc",
+        "padding" => "6px 10px", "borderRadius" => "6px", "cursor" => "pointer",
+        "fontWeight" => "600", "fontSize" => "12px", "marginRight" => "8px", "marginBottom" => "8px"))
+end
+
+function _parse_symbol_csv(text, field_name::AbstractString)
+    isnothing(text) && throw(ArgumentError("$(field_name) is required"))
+    items = [strip(part) for part in split(String(text), ",") if !isempty(strip(part))]
+    isempty(items) && throw(ArgumentError("$(field_name) cannot be empty"))
+    return Symbol.(items)
+end
+
+function _parse_float_csv(text, field_name::AbstractString)
+    isnothing(text) && throw(ArgumentError("$(field_name) is required"))
+    items = [strip(part) for part in split(String(text), ",") if !isempty(strip(part))]
+    isempty(items) && throw(ArgumentError("$(field_name) cannot be empty"))
+    return [parse(Float64, item) for item in items]
+end
+
+function _parse_state_names(text)
+    return _parse_symbol_csv(text, "State names")
+end
+
+function _parse_constants_csv(text)
+    if isnothing(text) || isempty(strip(String(text)))
+        return Symbol[], Float64[]
+    end
+    names = Symbol[]
+    values = Float64[]
+    items = [strip(part) for part in split(String(text), ",") if !isempty(strip(part))]
+    for item in items
+        occursin("=", item) || throw(ArgumentError("Preset constants must use `name=value` format, got: $(item)"))
+        lhs, rhs = split(item, "="; limit=2)
+        cname = strip(lhs)
+        cval = strip(rhs)
+        isempty(cname) && throw(ArgumentError("Constant name cannot be empty in `$(item)`"))
+        push!(names, Symbol(cname))
+        push!(values, parse(Float64, cval))
+    end
+    return names, values
+end
+
+function _validate_rhs_expr(expr, allowed_symbols::Set{Symbol})
+    if expr isa Number
+        return nothing
+    elseif expr isa Symbol
+        expr in allowed_symbols || throw(ArgumentError("Unsupported symbol in equation: $(expr)"))
+        return nothing
+    elseif expr isa Expr
+        if expr.head == :call
+            fn = expr.args[1]
+            allowed_calls = Set([:+, :-, :*, :/, :^, :log, :exp, :sqrt, :sin, :cos, :tan, :abs, :max, :min])
+            (fn isa Symbol && fn in allowed_calls) || throw(ArgumentError("Unsupported function/operator in equation: $(fn)"))
+            for arg in expr.args[2:end]
+                _validate_rhs_expr(arg, allowed_symbols)
+            end
+            return nothing
+        end
+        throw(ArgumentError("Unsupported expression form in equation: $(expr.head)"))
+    end
+    throw(ArgumentError("Unsupported equation element: $(expr)"))
+end
+
+function _rhs_to_tex(rhs::AbstractString)
+    s = replace(String(rhs), "log(" => "\\log(")
+    s = replace(s, "exp(" => "\\exp(")
+    s = replace(s, "sqrt(" => "\\sqrt(")
+    s = replace(s, "*" => " ")
+    s = replace(s, "(" => "\\left(")
+    s = replace(s, ")" => "\\right)")
+    return s
+end
+
+function _parse_equation_lines(text, state_names::Vector{Symbol})
+    isnothing(text) && throw(ArgumentError("State equations are required"))
+    lines = [strip(line) for line in split(String(text), '\n') if !isempty(strip(line))]
+    isempty(lines) && throw(ArgumentError("State equations cannot be empty"))
+
+    eq_map = Dict{Symbol,String}()
+    for line in lines
+        occursin("=", line) || throw(ArgumentError("Each equation line must have the form `state = expression`"))
+        lhs, rhs = split(line, "="; limit=2)
+        state = Symbol(strip(lhs))
+        state in state_names || throw(ArgumentError("Equation provided for unknown state: $(state)"))
+        eq_map[state] = strip(rhs)
+    end
+
+    for state in state_names
+        haskey(eq_map, state) || throw(ArgumentError("Missing equation for state $(state)"))
+    end
+    return eq_map
+end
+
+function _compile_expression(expr_text::AbstractString, state_names::Vector{Symbol}, param_names::Vector{Symbol}, constant_names::Vector{Symbol}=Symbol[])
+    parsed = try
+        Meta.parse(String(expr_text))
+    catch err
+        throw(ArgumentError("Could not parse expression `$(expr_text)`: $(sprint(showerror, err))"))
+    end
+    allowed = Set(vcat(state_names, [:t, :E, :pi], param_names, constant_names))
+    _validate_rhs_expr(parsed, allowed)
+    fn_expr = Expr(:->, Expr(:tuple, state_names..., :t, :E, param_names..., constant_names...), parsed)
+    return Base.eval(@__MODULE__, fn_expr)
+end
+
+function _builder_template_data(template::AbstractString)
+    if template == "sensitive_resistant"
+        return (
+            family="mechanistic",
+            states="S, R",
+            observable="S + R",
+            params="rS, rR, K, kSR, emax, ic50, hill",
+            constants="",
+            lower="1e-6, 1e-6, 1e-3, 0.0, 0.0, 1e-8, 0.1",
+            upper="5.0, 5.0, 1e7, 2.0, 20.0, 1e4, 8.0",
+            equations="S = rS*S*(1 - (S + R)/K) - kSR*S - emax*(E^hill/(ic50^hill + E^hill))*S\nR = rR*R*(1 - (S + R)/K) + kSR*S",
+        )
+    elseif template == "lotka_volterra"
+        return (
+            family="coculture",
+            states="S, R",
+            observable="S + R",
+            params="rS, KS, alphaSR, rR, KR, alphaRS",
+            constants="",
+            lower="1e-6, 1e-3, 0.0, 1e-6, 1e-3, 0.0",
+            upper="5.0, 1e7, 5.0, 5.0, 1e7, 5.0",
+            equations="S = rS*S*(1 - (S + alphaSR*R)/KS)\nR = rR*R*(1 - (R + alphaRS*S)/KR)",
+        )
+    elseif template == "theta_hill"
+        return (
+            family="theta_logistic",
+            states="N",
+            observable="N",
+            params="r, K, theta, ic50, hill",
+            constants="",
+            lower="1e-6, 1e-3, 0.1, 1e-8, 0.1",
+            upper="5.0, 1e7, 5.0, 1e4, 8.0",
+            equations="N = r*N*(1 - (N/K)^theta) * (1 - E^hill/(ic50^hill + E^hill))",
+        )
+    elseif template == "gompertz"
+        return (
+            family="gompertz",
+            states="N",
+            observable="N",
+            params="a, b, K",
+            constants="",
+            lower="1e-6, 1e-6, 1e-3",
+            upper="5.0, 10.0, 1e7",
+            equations="N = a*N*log(K/N)",
+        )
+    end
+
+    return (
+        family="logistic",
+        states="N",
+        observable="N",
+        params="r, K",
+        constants="",
+        lower="1e-6, 1e-3",
+        upper="5.0, 1e7",
+        equations="N = r*N*(1 - N/K)",
+    )
+end
+
+function _custom_model_preview(name, state_text, observable_text, params_text, constants_text, equations_text)
+    if isnothing(equations_text) || isempty(strip(String(equations_text)))
+        return html_p("Enter state equations to preview the model in math text.", style=Dict("color" => "#6b7280"))
+    end
+
+    states = _parse_state_names(state_text)
+    eq_map = _parse_equation_lines(equations_text, states)
+    params = isnothing(params_text) ? String[] : [strip(p) for p in split(String(params_text), ",") if !isempty(strip(p))]
+    constants = isnothing(constants_text) ? String[] : [strip(c) for c in split(String(constants_text), ",") if !isempty(strip(c))]
+    pname = isnothing(name) || isempty(strip(String(name))) ? "custom_model" : strip(String(name))
+    eq_blocks = join(["\\frac{d$(state)}{dt} = $(_rhs_to_tex(eq_map[state]))" for state in states], "\\\\\n")
+    obs_tex = isnothing(observable_text) || isempty(strip(String(observable_text))) ? first(states) : strip(String(observable_text))
+    latex = """
+**$(pname)**
+
+\$\$
+$(eq_blocks)
+\$\$
+
+\$\$
+y(t) = $(_rhs_to_tex(obs_tex))
+\$\$
+
+Parameters: `$(join(params, ", "))`
+
+Preset constants: `$(join(constants, ", "))`
+
+Use state names from your state list, `t` for time, and `E` for exposure/dose.
+"""
+    return dcc_markdown(latex, mathjax=true)
+end
+
+function _save_gui_model_to_file(name, family, states, observable, params, constants, lower, upper, equations)
+    data = isfile(GUI_CUSTOM_MODELS_PATH) ? TOML.parsefile(GUI_CUSTOM_MODELS_PATH) : Dict{String,Any}()
+    if !haskey(data, "models")
+        data["models"] = Dict{String,Any}()
+    end
+    data["models"][name] = Dict{String,Any}(
+        "family"    => String(family),
+        "states"    => String(states),
+        "observable"=> String(observable),
+        "params"    => String(params),
+        "constants" => String(constants),
+        "lower"     => String(lower),
+        "upper"     => String(upper),
+        "equations" => String(equations),
+    )
+    open(GUI_CUSTOM_MODELS_PATH, "w") do io
+        TOML.print(io, data)
+    end
+end
+
+function _load_gui_models_from_file()
+    isfile(GUI_CUSTOM_MODELS_PATH) || return
+    data = try TOML.parsefile(GUI_CUSTOM_MODELS_PATH) catch; return end
+    models_section = get(data, "models", nothing)
+    isnothing(models_section) && return
+    n_loaded = 0
+    for (mname, mdata) in models_section
+        try
+            spec = _build_custom_model_spec(
+                get(mdata, "name", mname),
+                get(mdata, "family", "custom"),
+                get(mdata, "states", "N"),
+                get(mdata, "observable", "N"),
+                get(mdata, "params", "r, K"),
+                get(mdata, "constants", ""),
+                get(mdata, "lower", "1e-6, 1e-3"),
+                get(mdata, "upper", "5.0, 1e7"),
+                get(mdata, "equations", "N = 0.0"),
+            )
+            register_model!(spec; overwrite=true)
+            n_loaded += 1
+        catch err
+            @warn "Could not restore GUI model '$(mname)': $(sprint(showerror, err))"
+        end
+    end
+    n_loaded > 0 && @info "Restored $(n_loaded) GUI-built model(s) from $(GUI_CUSTOM_MODELS_PATH)"
+end
+
+function _build_custom_model_spec(name, family, state_text, observable_text, params_text, constants_text, lower_text, upper_text, equations_text)
+    model_name = strip(String(name))
+    isempty(model_name) && throw(ArgumentError("Model name is required"))
+
+    state_names = _parse_state_names(state_text)
+    param_names = _parse_symbol_csv(params_text, "Parameter names")
+    constant_names, constant_values = _parse_constants_csv(constants_text)
+    lower_bounds = _parse_float_csv(lower_text, "Lower bounds")
+    upper_bounds = _parse_float_csv(upper_text, "Upper bounds")
+    overlap = intersect(Set(param_names), Set(constant_names))
+    isempty(overlap) || throw(ArgumentError("Symbols cannot be both fitted parameters and preset constants: $(join(string.(collect(overlap)), ", "))"))
+    length(param_names) == length(lower_bounds) == length(upper_bounds) ||
+        throw(ArgumentError("Parameter names, lower bounds, and upper bounds must have the same length"))
+
+    eq_map = _parse_equation_lines(equations_text, state_names)
+    rhs_fns = Dict(state => _compile_expression(eq_map[state], state_names, param_names, constant_names) for state in state_names)
+
+    observable_expr = isnothing(observable_text) || isempty(strip(String(observable_text))) ? string(first(state_names)) : strip(String(observable_text))
+    observable_fn = _compile_expression(observable_expr, state_names, param_names, constant_names)
+
+    ode_fn = function (du, u, p, t, exposure)
+        E = exposure(t)
+        state_values = Tuple(u[i] for i in eachindex(state_names))
+        for (idx, state) in enumerate(state_names)
+            du[idx] = rhs_fns[state](state_values..., t, E, p..., constant_values...)
+        end
+        return nothing
+    end
+
+    bounds = [(lower_bounds[i], upper_bounds[i]) for i in eachindex(param_names)]
+    fam = isnothing(family) || isempty(strip(String(family))) ? "custom" : strip(String(family))
+
+    return ModelSpec(
+        name=model_name,
+        ode! = ode_fn,
+        param_names=param_names,
+        bounds=bounds,
+        n_states=length(state_names),
+        observable=u -> observable_fn(Tuple(u[i] for i in eachindex(state_names))..., 0.0, 0.0, zeros(length(param_names))..., constant_values...),
+        base_growth_family=fam,
+        state_names=state_names,
+        metadata=Dict(:source => :gui_builder, :equation_rhs => join(["$(s)=$(eq_map[s])" for s in state_names], "; "), :observable_expr => observable_expr, :preset_constants => Dict(string(constant_names[i]) => constant_values[i] for i in eachindex(constant_names))),
+    )
 end
 
 function _as_table(df::DataFrame; limit::Int = 15)
@@ -813,6 +1105,11 @@ function _staged_output(path)
 end
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Startup: restore any GUI-built models that were saved in previous sessions
+# ══════════════════════════════════════════════════════════════════════════════
+_load_gui_models_from_file()
+
+# ══════════════════════════════════════════════════════════════════════════════
 # App layout
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -895,8 +1192,134 @@ app.layout = html_div([
             ])
         ]),
 
-        # ── Tab 2: Select Models ──────────────────────────────────────────────
-        dcc_tab(label="2. Select Models", value="tab-models",
+        # ── Tab 2: Build Model ────────────────────────────────────────────────
+        dcc_tab(label="2. Build Model", value="tab-build",
+            style=_tab_style, selected_style=_tab_selected, children=[
+            html_div([
+                html_br(),
+                _card([
+                    html_h5("Build a custom ODE model directly in the browser", style=Dict("marginTop" => "0")),
+                    _help("Define your own growth model using state equations, parameters, and bounds. No coding required. Built models are saved automatically and appear in the model selection tab immediately."),
+                    html_div([
+                        html_div([
+                            html_label("Start from template / block set"),
+                            dcc_dropdown(
+                                id="builder-template",
+                                options=[
+                                    Dict("label" => "Single-state logistic", "value" => "logistic"),
+                                    Dict("label" => "Single-state Gompertz", "value" => "gompertz"),
+                                    Dict("label" => "Theta-logistic + Hill inhibition", "value" => "theta_hill"),
+                                    Dict("label" => "Sensitive / resistant", "value" => "sensitive_resistant"),
+                                    Dict("label" => "Lotka-Volterra competition", "value" => "lotka_volterra"),
+                                ],
+                                value="logistic",
+                                clearable=false,
+                                style=Dict("fontSize" => "13px"),
+                            ),
+                        ]),
+                        html_div([
+                            html_label("Load template"),
+                            _btn("Load into builder", "btn-load-builder-template"),
+                        ]),
+                    ]; style=Dict("display" => "grid", "gridTemplateColumns" => "2fr 1fr", "gap" => "16px", "alignItems" => "end")),
+                    html_br(),
+                    html_div([
+                        html_div([
+                            html_label("Model name"),
+                            dcc_input(id="builder-model-name", type="text", value="custom_growth_model",
+                                style=Dict("width" => "100%")),
+                        ]),
+                        html_div([
+                            html_label("Family label"),
+                            dcc_dropdown(
+                                id="builder-family",
+                                options=[Dict("label" => s, "value" => s) for s in ["custom", "logistic", "gompertz", "theta_logistic", "coculture", "mechanistic"]],
+                                value="custom",
+                                clearable=false,
+                                style=Dict("fontSize" => "13px", "color" => "#0f172a", "backgroundColor" => "#ffffff"),
+                            ),
+                        ]),
+                    ]; style=Dict("display" => "grid", "gridTemplateColumns" => "1fr 1fr", "gap" => "16px")),
+                    html_br(),
+                    html_div([
+                        html_div([
+                            html_label("State names"),
+                            _help("Comma-separated. E.g. `N` for single-state, `S, R` for sensitive/resistant."),
+                            dcc_input(id="builder-state-names", type="text", value="N",
+                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                        ]),
+                        html_div([
+                            html_label("Observable expression"),
+                            _help("What is measured. E.g. `N`, or `S + R` for total cells."),
+                            dcc_input(id="builder-observable", type="text", value="N",
+                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                        ]),
+                    ]; style=Dict("display" => "grid", "gridTemplateColumns" => "1fr 1fr", "gap" => "16px")),
+                    html_br(),
+                    html_div([
+                        html_div([
+                            html_label("Parameter names"),
+                            dcc_input(id="builder-param-names", type="text", value="r, K",
+                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                        ]),
+                        html_div([
+                            html_label("Preset constants (name=value)"),
+                            _help("Optional fixed values used in equations but not fitted. Example: `hill=1.0, ic50=0.5`."),
+                            dcc_input(id="builder-constants", type="text", value="",
+                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                        ]),
+                        html_div([
+                            html_label("Lower bounds"),
+                            dcc_input(id="builder-lower-bounds", type="text", value="1e-6, 1e-3",
+                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                        ]),
+                        html_div([
+                            html_label("Upper bounds"),
+                            dcc_input(id="builder-upper-bounds", type="text", value="5.0, 1e7",
+                                style=Dict("width" => "100%", "fontFamily" => "monospace")),
+                        ]),
+                    ]; style=Dict("display" => "grid", "gridTemplateColumns" => "1.2fr 1fr 1fr", "gap" => "16px")),
+                    html_br(),
+                    html_label("Math keyboard / block inserter"),
+                    _help("These buttons insert snippets at the cursor position inside the equations editor below."),
+                    html_div([
+                        _keybtn("N", "builder-key-N"), _keybtn("S", "builder-key-S"), _keybtn("R", "builder-key-R"), _keybtn("D", "builder-key-D"), _keybtn("A", "builder-key-A"),
+                        _keybtn("E", "builder-key-E"), _keybtn("t", "builder-key-t"), _keybtn("+", "builder-key-plus"), _keybtn("-", "builder-key-minus"), _keybtn("*", "builder-key-times"),
+                        _keybtn("/", "builder-key-div"), _keybtn("^", "builder-key-pow"), _keybtn("(", "builder-key-lpar"), _keybtn(")", "builder-key-rpar"),
+                        _keybtn("log()", "builder-key-log"), _keybtn("exp()", "builder-key-exp"), _keybtn("growth block", "builder-key-logistic"),
+                        _keybtn("Hill block", "builder-key-hill"), _keybtn("competition", "builder-key-competition"), _keybtn("conversion", "builder-key-conversion"),
+                    ]),
+                    html_label("State equations"),
+                    _help("Write one equation per line as `state = expression`. Use parameter names, state names, `t` for time, and `E` for drug exposure/dose."),
+                    dcc_textarea(
+                        id="builder-equations",
+                        value="N = r*N*(1 - N/K)",
+                        style=Dict("width" => "100%", "height" => "150px", "fontFamily" => "monospace", "fontSize" => "14px"),
+                    ),
+                    html_br(),
+                    _btn("Register built model", "btn-register-built-model"),
+                    html_small("✓ Models you register here are saved automatically and restored every time the GUI restarts.",
+                        style=Dict("color" => "#0f766e", "display" => "block", "marginTop" => "6px")),
+                    html_div(id="builder-preview",
+                        children=html_p("Equation preview will appear here after you start typing equations.", style=Dict("color" => "#6b7280"))),
+                    html_div(id="custom-model-register-status",
+                        children=html_small("No custom model registered yet.", style=Dict("color" => "#6b7280"))),
+                ]; title="GUI Model Builder"),
+
+                _card([
+                    html_h5("Advanced: Register Custom Models From File", style=Dict("marginTop" => "0")),
+                    _help("Optional developer path. Use this only when you already have a Julia file that defines and registers models."),
+                    dcc_input(id="custom-model-module-path", type="text", debounce=true,
+                        placeholder="/path/to/my_custom_models.jl",
+                        style=Dict("width" => "100%", "fontFamily" => "monospace", "fontSize" => "13px")),
+                    html_br(),
+                    _btn("Register custom models from file", "btn-register-model-module"),
+                ]; title="File-Based Registration (Advanced)"),
+            ])
+        ]),
+
+        # ── Tab 3: Select Models ──────────────────────────────────────────────
+        dcc_tab(label="3. Select Models", value="tab-models",
             style=_tab_style, selected_style=_tab_selected, children=[
             html_div([
                 html_br(),
@@ -910,16 +1333,6 @@ app.layout = html_div([
                         multi=true,
                         placeholder="Select models…",
                         style=Dict("fontSize" => "13px")),
-                    html_br(),
-                    html_h5("Register custom models from file"),
-                    _help("Point to a Julia file that either calls register_model! directly or defines register_custom_models!()."),
-                    dcc_input(id="custom-model-module-path", type="text", debounce=true,
-                        placeholder="/path/to/my_custom_models.jl",
-                        style=Dict("width" => "100%", "fontFamily" => "monospace", "fontSize" => "13px")),
-                    html_br(),
-                    _btn("Register custom models", "btn-register-model-module"),
-                    html_div(id="custom-model-register-status",
-                        children=html_small("No custom model file loaded yet.", style=Dict("color" => "#6b7280"))),
                     html_br(),
                     html_h5("Optimizer settings"),
                     _help("More starts and iterations improve fit quality but take longer. Defaults (8 starts, 300 iterations) are good for quick exploration."),
@@ -947,8 +1360,8 @@ app.layout = html_div([
             ])
         ]),
 
-        # ── Tab 3: Fit & Rank ─────────────────────────────────────────────────
-        dcc_tab(label="3. Fit & Rank", value="tab-rank",
+        # ── Tab 4: Fit & Rank ─────────────────────────────────────────────────
+        dcc_tab(label="4. Fit & Rank", value="tab-rank",
             style=_tab_style, selected_style=_tab_selected, children=[
             html_div([
                 html_br(),
@@ -1001,8 +1414,8 @@ app.layout = html_div([
             ])
         ]),
 
-        # ── Tab 4: Full Pipeline ──────────────────────────────────────────────
-        dcc_tab(label="4. Full Pipeline", value="tab-pipeline",
+        # ── Tab 5: Full Pipeline ──────────────────────────────────────────────
+        dcc_tab(label="5. Full Pipeline", value="tab-pipeline",
             style=_tab_style, selected_style=_tab_selected, children=[
             html_div([
                 html_br(),
@@ -1019,8 +1432,8 @@ app.layout = html_div([
             ])
         ]),
 
-        # ── Tab 5: Staged Pipeline ────────────────────────────────────────────
-        dcc_tab(label="5. Staged Pipeline", value="tab-staged",
+        # ── Tab 6: Staged Pipeline ────────────────────────────────────────────
+        dcc_tab(label="6. Staged Pipeline", value="tab-staged",
             style=_tab_style, selected_style=_tab_selected, children=[
             html_div([
                 html_br(),
@@ -1160,6 +1573,49 @@ callback!(
     return html_div(items)
 end
 
+callback!(
+    app,
+    Output("builder-family", "value"),
+    Output("builder-state-names", "value"),
+    Output("builder-observable", "value"),
+    Output("builder-param-names", "value"),
+    Output("builder-constants", "value"),
+    Output("builder-lower-bounds", "value"),
+    Output("builder-upper-bounds", "value"),
+    Output("builder-equations", "value"),
+    Input("btn-load-builder-template", "n_clicks"),
+    State("builder-template", "value"),
+    State("builder-family", "value"),
+    State("builder-state-names", "value"),
+    State("builder-observable", "value"),
+    State("builder-param-names", "value"),
+    State("builder-constants", "value"),
+    State("builder-lower-bounds", "value"),
+    State("builder-upper-bounds", "value"),
+    State("builder-equations", "value"),
+) do n_clicks, template, cur_family, cur_states, cur_observable, cur_params, cur_constants, cur_lb, cur_ub, cur_equations
+    n_clicks == 0 && return (cur_family, cur_states, cur_observable, cur_params, cur_constants, cur_lb, cur_ub, cur_equations)
+    tpl = _builder_template_data(isnothing(template) ? "logistic" : String(template))
+    return (tpl.family, tpl.states, tpl.observable, tpl.params, tpl.constants, tpl.lower, tpl.upper, tpl.equations)
+end
+
+callback!(
+    app,
+    Output("builder-preview", "children"),
+    Input("builder-model-name", "value"),
+    Input("builder-state-names", "value"),
+    Input("builder-observable", "value"),
+    Input("builder-param-names", "value"),
+    Input("builder-constants", "value"),
+    Input("builder-equations", "value"),
+) do name, state_text, observable_text, params_text, constants_text, equations_text
+    try
+        return _custom_model_preview(name, state_text, observable_text, params_text, constants_text, equations_text)
+    catch err
+        return _alert("Preview unavailable: $(sprint(showerror, err))", kind=:warn)
+    end
+end
+
 # ── 4. Custom model registration → refresh model dropdown ─────────────────────
 callback!(
     app,
@@ -1167,30 +1623,60 @@ callback!(
     Output("model-select", "value"),
     Output("custom-model-register-status", "children"),
     Input("btn-register-model-module", "n_clicks"),
+    Input("btn-register-built-model", "n_clicks"),
     State("custom-model-module-path", "value"),
-    State("model-select", "value"),
-) do n_clicks, model_path, current_selection
+    State("builder-model-name", "value"),
+    State("builder-family", "value"),
+    State("builder-state-names", "value"),
+    State("builder-observable", "value"),
+    State("builder-param-names", "value"),
+    State("builder-constants", "value"),
+    State("builder-lower-bounds", "value"),
+    State("builder-upper-bounds", "value"),
+    State("builder-equations", "value"),
+) do n_file_clicks, n_built_clicks, model_path, builder_name, builder_family, builder_states, builder_observable, builder_params, builder_constants, builder_lb, builder_ub, builder_equations
     available = list_models()
     options = _model_options(available)
-    selected = isnothing(current_selection) ? String[] : [String(m) for m in current_selection if String(m) in available]
+    selected = _default_models()
     isempty(selected) && (selected = _default_models())
 
-    if n_clicks == 0
-        return options, selected, html_small("No custom model file loaded yet.", style=Dict("color" => "#6b7280"))
+    if n_file_clicks == 0 && n_built_clicks == 0
+        return options, selected, html_small("No custom model registered yet.", style=Dict("color" => "#6b7280"))
     end
 
-    if isnothing(model_path) || isempty(strip(String(model_path)))
-        return options, selected, _alert("Provide a valid path to a Julia model file first.", kind=:warn)
-    end
+    tid = _triggered_id()
 
-    p = strip(String(model_path))
-    if !isfile(p)
-        return options, selected, _alert("Model file not found: $(p)", kind=:error)
-    end
+    before = Set(list_models())
 
     try
-        before = Set(list_models())
-        register_models_from_file!(p)
+        if tid == "btn-register-model-module"
+            if isnothing(model_path) || isempty(strip(String(model_path)))
+                return options, selected, _alert("Provide a valid path to a Julia model file first.", kind=:warn)
+            end
+
+            p = strip(String(model_path))
+            if !isfile(p)
+                return options, selected, _alert("Model file not found: $(p)", kind=:error)
+            end
+
+            register_models_from_file!(p)
+        elseif tid == "btn-register-built-model"
+            spec = _build_custom_model_spec(builder_name, builder_family, builder_states, builder_observable, builder_params, builder_constants, builder_lb, builder_ub, builder_equations)
+            register_model!(spec; overwrite=true)
+            # Persist to TOML so the model survives across GUI restarts
+            _save_gui_model_to_file(
+                spec.name,
+                spec.base_growth_family,
+                isnothing(builder_states)    ? "N"   : String(builder_states),
+                isnothing(builder_observable) ? "N"   : String(builder_observable),
+                isnothing(builder_params)    ? "r, K" : String(builder_params),
+                isnothing(builder_constants) ? ""     : String(builder_constants),
+                isnothing(builder_lb)        ? "1e-6, 1e-3" : String(builder_lb),
+                isnothing(builder_ub)        ? "5.0, 1e7"   : String(builder_ub),
+                isnothing(builder_equations) ? ""    : String(builder_equations),
+            )
+        end
+
         after = list_models()
         new_models = sort(collect(setdiff(Set(after), before)))
 
@@ -1199,9 +1685,16 @@ callback!(
         merged = [m for m in merged if m in after]
         isempty(merged) && (merged = _default_models())
 
-        msg = isempty(new_models) ?
-            "Model file loaded. No new names detected (file may overwrite existing models)." :
-            "Registered $(length(new_models)) model(s): $(join(new_models, ", "))"
+        msg = if tid == "btn-register-built-model"
+            saved_path = GUI_CUSTOM_MODELS_PATH
+            isempty(new_models) ?
+                "Built model updated and saved to $(saved_path). It will be restored automatically next time the GUI starts." :
+                "Built model registered: $(join(new_models, ", ")). Saved to $(saved_path) — will persist across restarts."
+        else
+            isempty(new_models) ?
+                "Model file loaded. No new names detected (file may overwrite existing models)." :
+                "Registered $(length(new_models)) model(s): $(join(new_models, ", "))"
+        end
         return options, merged, _alert(msg)
     catch err
         return options, selected, _alert("Custom model registration failed: $(sprint(showerror, err))", kind=:error)
