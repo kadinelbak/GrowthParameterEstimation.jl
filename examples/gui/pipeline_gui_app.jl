@@ -1278,7 +1278,7 @@ app.layout = html_div([
                             dcc_input(id="builder-upper-bounds", type="text", value="5.0, 1e7",
                                 style=Dict("width" => "100%", "fontFamily" => "monospace")),
                         ]),
-                    ]; style=Dict("display" => "grid", "gridTemplateColumns" => "1.2fr 1fr 1fr", "gap" => "16px")),
+                    ]; style=Dict("display" => "grid", "gridTemplateColumns" => "1fr 1fr", "gap" => "16px")),
                     html_br(),
                     html_label("Math keyboard / block inserter"),
                     _help("These buttons insert snippets at the cursor position inside the equations editor below."),

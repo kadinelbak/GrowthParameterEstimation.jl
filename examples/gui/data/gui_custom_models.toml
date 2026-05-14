@@ -8,6 +8,16 @@ lower = "1e-6, 1e-3"
 states = "N"
 upper = "5.0, 1e7"
 
+[models.custom_growth_model]
+family = "custom"
+constants = "ic50 = 0.5"
+observable = "N"
+equations = "N = r*N*(1 - N/K) + (1 - E^n/(ic50^n+ E^n))"
+params = "r, K, n"
+lower = "1e-6, 1e-3, 0 "
+states = "N"
+upper = "5.0, 1e7, 5"
+
 [models.Logistic_Death]
 family = "logistic"
 observable = "N"
