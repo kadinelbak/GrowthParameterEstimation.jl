@@ -74,4 +74,8 @@ function evaluate_exposure(exposure::AbstractExposure, times::AbstractVector{<:R
     return [exposure(t) for t in times]
 end
 
+function evaluate_exposure(exposure::AbstractExposure, t::Real)
+    return exposure(t)
+end
+
 end # module Exposure

@@ -963,7 +963,10 @@ function load_config(path::AbstractString)
     )
 end
 
-function build_conditions(df::DataFrame; condition_cols::Vector{Symbol} = [:dose, :cell_line, :density, :replicate])
+function build_conditions(
+    df::DataFrame;
+    condition_cols::Vector{Symbol} = [:dose, :cell_line, :density, :replicate],
+)
     normalized = DataLayer.normalize_schema(df)
     DataLayer.validate_timeseries(normalized)
     resolved_cols = _resolve_condition_cols(normalized, condition_cols)

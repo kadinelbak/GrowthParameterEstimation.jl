@@ -1524,7 +1524,27 @@ _load_gui_models_from_file()
             pipeline_stages_html = Base.invokelatest(_pipeline_stage_cards_html, pipeline_stages, idx)
             pipeline_flowchart_html = Base.invokelatest(_pipeline_stage_flowchart_html, pipeline_stages)
             pipeline_mapping_html = Base.invokelatest(_pipeline_mapping_html, pipeline_stages, idx, selected_models)
+            stage_dict = Dict{String,Any}(String(k) => v for (k, v) in pairs(Dict(pipeline_stages[idx])))
+            stage_csv_select = String(get(stage_dict, "csv_file", ""))
             pipeline_status_html = "<p style='color:#0f766e'>Selected stage $(idx).</p>"
+        end
+    end
+
+    @onchange stage_csv_select begin
+        if !isempty(pipeline_stages)
+            idx = Base.invokelatest(_pipeline_stage_index, pipeline_stage_select, 1)
+            stages = Any[pipeline_stages...]
+            stage = Dict{String,Any}(String(k) => v for (k, v) in pairs(Dict(stages[idx])))
+            new_csv = String(stage_csv_select)
+            old_csv = String(get(stage, "csv_file", ""))
+            if new_csv != old_csv
+                stage["csv_file"] = new_csv
+                stages[idx] = stage
+                pipeline_stages = stages
+                pipeline_stage_options, pipeline_stage_select, pipeline_stages_html, pipeline_flowchart_html, pipeline_mapping_html =
+                    Base.invokelatest(_pipeline_refresh_outputs, pipeline_stages, idx, selected_models)
+                pipeline_status_html = "<p style='color:#0f766e'>Set CSV for stage $(idx) to $(isempty(new_csv) ? "(not set)" : basename(new_csv)).</p>"
+            end
         end
     end
 
