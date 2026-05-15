@@ -1,0 +1,104 @@
+┌ Info: 2026-05-15 13:22:41 Restored 3 GUI-built model(s) from C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\data\gui_custom_models.toml
+└ @ Main C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\pipeline_gui_app_genie.jl:418
+┌ Info: 2026-05-15 13:22:46 Watching ["C:\\Users\\elbak\\Desktop\\GrowthParam\\GrowthParameterEstimation.jl"]
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:19
+┌ Info: 2026-05-15 13:22:51 Web Server starting at http://127.0.0.1:8050 - press Ctrl/Cmd+C to stop the server. 
+└ @ Genie.Server C:\Users\elbak\.julia\packages\Genie\o5yO5\src\Server.jl:194
+┌ Info: 2026-05-15 13:22:51 Listening on: 127.0.0.1:8050, thread id: 1
+└ @ HTTP.Servers C:\Users\elbak\.julia\packages\HTTP\Y97L1\src\Servers.jl:382
+┌ Info: 2026-05-15 13:22:52 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 13:26:29 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 13:26:29 Calling finalizers
+└ @ Stipple C:\Users\elbak\.julia\packages\Stipple\ReZJj\src\Stipple.jl:543
+┌ Info: 2026-05-15 13:26:48 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 13:26:48 Calling finalizers
+└ @ Stipple C:\Users\elbak\.julia\packages\Stipple\ReZJj\src\Stipple.jl:543
+┌ Info: 2026-05-15 13:27:17 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 13:27:17 Calling finalizers
+└ @ Stipple C:\Users\elbak\.julia\packages\Stipple\ReZJj\src\Stipple.jl:543
+┌ Info: 2026-05-15 13:43:05 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 13:43:05 Calling finalizers
+└ @ Stipple C:\Users\elbak\.julia\packages\Stipple\ReZJj\src\Stipple.jl:543
+┌ Info: 2026-05-15 13:43:14 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 13:43:14 Calling finalizers
+└ @ Stipple C:\Users\elbak\.julia\packages\Stipple\ReZJj\src\Stipple.jl:543
+┌ Info: 2026-05-15 13:46:39 Restored 3 GUI-built model(s) from C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\data\gui_custom_models.toml
+└ @ Main C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\pipeline_gui_app_genie.jl:475
+┌ Info: 2026-05-15 13:46:43 Watching ["C:\\Users\\elbak\\Desktop\\GrowthParam\\GrowthParameterEstimation.jl"]
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:19
+┌ Info: 2026-05-15 13:46:47 Web Server starting at http://127.0.0.1:8050 - press Ctrl/Cmd+C to stop the server. 
+└ @ Genie.Server C:\Users\elbak\.julia\packages\Genie\o5yO5\src\Server.jl:194
+┌ Info: 2026-05-15 13:46:48 Listening on: 127.0.0.1:8050, thread id: 1
+└ @ HTTP.Servers C:\Users\elbak\.julia\packages\HTTP\Y97L1\src\Servers.jl:382
+┌ Info: 2026-05-15 13:46:48 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 13:59:13 Calling finalizers
+└ @ Stipple C:\Users\elbak\.julia\packages\Stipple\ReZJj\src\Stipple.jl:543
+┌ Info: 2026-05-15 13:59:25 Calling finalizers
+└ @ Stipple C:\Users\elbak\.julia\packages\Stipple\ReZJj\src\Stipple.jl:543
+┌ Info: 2026-05-15 14:00:56 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 14:00:56 Calling finalizers
+└ @ Stipple C:\Users\elbak\.julia\packages\Stipple\ReZJj\src\Stipple.jl:543
+┌ Info: 2026-05-15 14:02:10 Restored 3 GUI-built model(s) from C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\data\gui_custom_models.toml
+└ @ Main C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\pipeline_gui_app_genie.jl:475
+┌ Info: 2026-05-15 14:02:14 Watching ["C:\\Users\\elbak\\Desktop\\GrowthParam\\GrowthParameterEstimation.jl"]
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:19
+┌ Info: 2026-05-15 14:02:19 Web Server starting at http://127.0.0.1:8050 - press Ctrl/Cmd+C to stop the server. 
+└ @ Genie.Server C:\Users\elbak\.julia\packages\Genie\o5yO5\src\Server.jl:194
+┌ Info: 2026-05-15 14:02:20 Listening on: 127.0.0.1:8050, thread id: 1
+└ @ HTTP.Servers C:\Users\elbak\.julia\packages\HTTP\Y97L1\src\Servers.jl:382
+┌ Info: 2026-05-15 14:02:20 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 14:03:28 Restored 3 GUI-built model(s) from C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\data\gui_custom_models.toml
+└ @ Main C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\pipeline_gui_app_genie.jl:475
+┌ Info: 2026-05-15 14:03:34 Watching ["C:\\Users\\elbak\\Desktop\\GrowthParam\\GrowthParameterEstimation.jl"]
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:19
+┌ Info: 2026-05-15 14:03:39 Web Server starting at http://127.0.0.1:8050 - press Ctrl/Cmd+C to stop the server. 
+└ @ Genie.Server C:\Users\elbak\.julia\packages\Genie\o5yO5\src\Server.jl:194
+┌ Info: 2026-05-15 14:03:39 Listening on: 127.0.0.1:8050, thread id: 1
+└ @ HTTP.Servers C:\Users\elbak\.julia\packages\HTTP\Y97L1\src\Servers.jl:382
+┌ Info: 2026-05-15 14:03:40 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 14:05:09 Restored 3 GUI-built model(s) from C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\data\gui_custom_models.toml
+└ @ Main C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\pipeline_gui_app_genie.jl:475
+┌ Info: 2026-05-15 14:05:13 Watching ["C:\\Users\\elbak\\Desktop\\GrowthParam\\GrowthParameterEstimation.jl"]
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:19
+┌ Info: 2026-05-15 14:05:18 Web Server starting at http://127.0.0.1:8050 - press Ctrl/Cmd+C to stop the server. 
+└ @ Genie.Server C:\Users\elbak\.julia\packages\Genie\o5yO5\src\Server.jl:194
+┌ Info: 2026-05-15 14:05:18 Listening on: 127.0.0.1:8050, thread id: 1
+└ @ HTTP.Servers C:\Users\elbak\.julia\packages\HTTP\Y97L1\src\Servers.jl:382
+┌ Info: 2026-05-15 14:05:18 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 14:05:59 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 14:06:33 Restored 3 GUI-built model(s) from C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\data\gui_custom_models.toml
+└ @ Main C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\pipeline_gui_app_genie.jl:488
+┌ Info: 2026-05-15 14:06:38 Watching ["C:\\Users\\elbak\\Desktop\\GrowthParam\\GrowthParameterEstimation.jl"]
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:19
+┌ Info: 2026-05-15 14:06:42 Web Server starting at http://127.0.0.1:8050 - press Ctrl/Cmd+C to stop the server. 
+└ @ Genie.Server C:\Users\elbak\.julia\packages\Genie\o5yO5\src\Server.jl:194
+┌ Info: 2026-05-15 14:06:42 Listening on: 127.0.0.1:8050, thread id: 1
+└ @ HTTP.Servers C:\Users\elbak\.julia\packages\HTTP\Y97L1\src\Servers.jl:382
+┌ Info: 2026-05-15 14:06:42 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 14:18:55 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
+┌ Info: 2026-05-15 14:18:55 Calling finalizers
+└ @ Stipple C:\Users\elbak\.julia\packages\Stipple\ReZJj\src\Stipple.jl:543
+┌ Info: 2026-05-15 14:21:15 Restored 3 GUI-built model(s) from C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\data\gui_custom_models.toml
+└ @ Main C:\Users\elbak\Desktop\GrowthParam\GrowthParameterEstimation.jl\examples\gui\pipeline_gui_app_genie.jl:488
+┌ Info: 2026-05-15 14:21:19 Watching ["C:\\Users\\elbak\\Desktop\\GrowthParam\\GrowthParameterEstimation.jl"]
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:19
+┌ Info: 2026-05-15 14:21:23 Web Server starting at http://127.0.0.1:8050 - press Ctrl/Cmd+C to stop the server. 
+└ @ Genie.Server C:\Users\elbak\.julia\packages\Genie\o5yO5\src\Server.jl:194
+┌ Info: 2026-05-15 14:21:23 Listening on: 127.0.0.1:8050, thread id: 1
+└ @ HTTP.Servers C:\Users\elbak\.julia\packages\HTTP\Y97L1\src\Servers.jl:382
+┌ Info: 2026-05-15 14:21:23 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22

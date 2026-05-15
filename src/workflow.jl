@@ -1641,6 +1641,10 @@ function plot_topk(
 
     for cond in conditions
         overlay = DataFrame(time=cond.time, observed=cond.count)
+        # Persist condition metadata so overlay CSVs can be reloaded without losing grouping context.
+        for (k, v) in cond.metadata
+            overlay[!, k] = fill(v, nrow(overlay))
+        end
         for m in top_models
             fit_info = rank_result.fits[m]
             cond_hit = _find_per_condition_hit(fit_info.per_condition, cond.name)

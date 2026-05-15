@@ -17,6 +17,7 @@ const LATEX_CONFIG_PATH = joinpath(dirname(dirname(dirname(@__FILE__))), "config
 const EXAMPLE_DIR = joinpath(dirname(@__FILE__), "data")
 const GUI_CUSTOM_MODELS_PATH = joinpath(EXAMPLE_DIR, "gui_custom_models.toml")
 const GUI_PIPELINES_PATH = joinpath(EXAMPLE_DIR, "gui_pipelines.toml")
+const SAFE_LOAD_CACHE = Dict{String,Tuple{String,DataFrame}}()
 
 # ── Data structures ───────────────────────────────────────────────────────────
 mutable struct PipelineStage
@@ -125,9 +126,78 @@ function _model_latex(model_name::AbstractString)
     end
 end
 
+function _parse_overlay_filename_metadata(path::AbstractString)
+    base = basename(String(path))
+    stem = replace(base, r"\.[^.]+$" => "")
+    parts = split(stem, "___")
+    meta = Dict{Symbol,String}()
+    for part in parts
+        occursin("=", part) || continue
+        key, value = split(part, "="; limit=2)
+        key_s = Symbol(strip(key))
+        value_s = strip(value)
+        isempty(value_s) && continue
+        meta[key_s] = value_s
+    end
+    return meta
+end
+
+function _fill_missing_metadata_from_filename!(df::DataFrame, path::AbstractString, raw_cols::Set{Symbol})
+    meta = _parse_overlay_filename_metadata(path)
+    isempty(meta) && return df
+
+    if (:dose in keys(meta)) && !(:dose in raw_cols)
+        parsed = tryparse(Float64, meta[:dose])
+        if !isnothing(parsed)
+            df[!, :dose] = fill(parsed, nrow(df))
+        end
+    end
+
+    if (:treatment_amount in keys(meta)) && !(:treatment_amount in raw_cols)
+        parsed = tryparse(Float64, meta[:treatment_amount])
+        if !isnothing(parsed)
+            df[!, :treatment_amount] = fill(parsed, nrow(df))
+        end
+    end
+
+    if (:cell_line in keys(meta)) && !(:cell_line in raw_cols)
+        df[!, :cell_line] = fill(meta[:cell_line], nrow(df))
+    end
+
+    if (:density in keys(meta)) && !(:density in raw_cols)
+        parsed = tryparse(Float64, meta[:density])
+        if !isnothing(parsed)
+            df[!, :density] = fill(parsed, nrow(df))
+        end
+    end
+
+    if (:replicate in keys(meta)) && !(:replicate in raw_cols)
+        parsed = tryparse(Int, meta[:replicate])
+        if !isnothing(parsed)
+            df[!, :replicate] = fill(parsed, nrow(df))
+        end
+    end
+
+    return df
+end
+
 function _safe_load(path::AbstractString)
-    raw = CSV.read(path, DataFrame)
-    return normalize_schema(raw)
+    p = String(path)
+    sig = let s = stat(p)
+        string(s.mtime) * ":" * string(s.size)
+    end
+
+    cached = get(SAFE_LOAD_CACHE, p, nothing)
+    if !isnothing(cached) && cached[1] == sig
+        return copy(cached[2])
+    end
+
+    raw = CSV.read(p, DataFrame)
+    raw_cols = Set(Symbol.(names(raw)))
+    normalized = normalize_schema(raw)
+    normalized = _fill_missing_metadata_from_filename!(normalized, p, raw_cols)
+    SAFE_LOAD_CACHE[p] = (sig, copy(normalized))
+    return normalized
 end
 
 function _has_stage_metadata(df::DataFrame)
@@ -580,6 +650,36 @@ function _upload_entries(fileuploads)
     return entries
 end
 
+function _materialize_uploaded_path(path::AbstractString, name::AbstractString)
+    src = String(path)
+    isfile(src) || return src
+
+    original_name = strip(String(name))
+    isempty(original_name) && return src
+
+    safe_name = replace(original_name, r"[\\/:*?\"<>|]" => "_")
+    upload_dir = joinpath(tempdir(), "gpe_gui_uploads")
+    mkpath(upload_dir)
+    dst = joinpath(upload_dir, safe_name)
+
+    if !isfile(dst)
+        cp(src, dst; force=true)
+        return dst
+    end
+
+    try
+        if filesize(dst) == filesize(src)
+            return dst
+        end
+    catch
+    end
+
+    stem, ext = splitext(safe_name)
+    alt = joinpath(upload_dir, "$(stem)_$(rand(UInt32))$(ext)")
+    cp(src, alt; force=true)
+    return alt
+end
+
 function _uploaded_csv_options(paths::Vector{String})
     isempty(paths) && return Any[Dict("label" => "No uploaded files yet", "value" => "")]
     return Any[Dict("label" => basename(p), "value" => p) for p in paths]
@@ -611,17 +711,25 @@ function _uploaded_files_html(paths::Vector{String}; active_path::AbstractString
     return _df_to_html(DataFrame(rows); limit=100)
 end
 
+function _float_col(df::DataFrame, col::Symbol)
+    vals = Float64[]
+    for v in df[!, col]
+        ismissing(v) && continue
+        f = try Float64(v) catch; continue end
+        isfinite(f) && push!(vals, f)
+    end
+    return vals
+end
+
 function _overview_plotdata_multi(paths::Vector{String})
     traces = PlotData[]
     loaded = 0
     for p in paths
         isfile(p) || continue
-        df = try
-            _safe_load(p)
-        catch
-            continue
-        end
+        df = try _safe_load(p) catch; continue end
         loaded += 1
+        fname = basename(p)
+
         plot_df = _plot_df_with_condition(df)
         grouped = groupby(plot_df, :condition_label)
         for g in grouped
@@ -629,33 +737,23 @@ function _overview_plotdata_multi(paths::Vector{String})
             xvals = Float64[]
             yvals = Float64[]
             for i in 1:nrow(gs)
-                t = gs.time[i]
-                y = gs.count[i]
-                if ismissing(t) || ismissing(y)
-                    continue
-                end
-                tf = try
-                    Float64(t)
-                catch
-                    continue
-                end
-                yf = try
-                    Float64(y)
-                catch
-                    continue
-                end
+                t = gs.time[i]; y = gs.count[i]
+                ismissing(t) || ismissing(y) && continue
+                tf = try Float64(t) catch; continue end
+                yf = try Float64(y) catch; continue end
                 if isfinite(tf) && isfinite(yf)
-                    push!(xvals, tf)
-                    push!(yvals, yf)
+                    push!(xvals, tf); push!(yvals, yf)
                 end
             end
-            isempty(xvals) && continue
-            push!(traces, PlotData(
-                x = xvals,
-                y = yvals,
-                mode = "lines+markers",
-                name = "$(basename(p)) :: $(String(gs.condition_label[1]))",
-            ))
+            cond_label = String(gs.condition_label[1])
+            if !isempty(xvals)
+                push!(traces, PlotData(
+                    x = xvals,
+                    y = yvals,
+                    mode = "lines+markers",
+                    name = "$(fname) :: $(cond_label)",
+                ))
+            end
         end
     end
 
@@ -1309,8 +1407,9 @@ _load_gui_models_from_file()
             added_paths = String[]
             for entry in entries
                 if isfile(entry.path)
-                    uploaded_csv_paths = Base.invokelatest(_append_unique_path, copy(uploaded_csv_paths), entry.path)
-                    push!(added_paths, entry.path)
+                    display_path = Base.invokelatest(_materialize_uploaded_path, entry.path, entry.name)
+                    uploaded_csv_paths = Base.invokelatest(_append_unique_path, copy(uploaded_csv_paths), display_path)
+                    push!(added_paths, display_path)
                 end
             end
 

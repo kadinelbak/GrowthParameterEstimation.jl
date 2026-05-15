@@ -82,6 +82,15 @@ function normalize_schema(
         end
     end
 
+    # Auto-alias overlay-style columns: if :count is absent but :observed is present,
+    # treat :observed as :count so that result/overlay CSVs load without error.
+    if !(:count in current_names) && :observed in current_names
+        rename!(work, :observed => :count)
+        delete!(current_names, :observed)
+        push!(current_names, :count)
+        filter!(!=(Symbol(:observed)), extra_columns)
+    end
+
     for col in REQUIRED_COLUMNS
         if !(col in current_names)
             default_value = get(defaults, col, missing)
