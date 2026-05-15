@@ -9,6 +9,46 @@ export REQUIRED_COLUMNS, STRICT_REQUIRED_METADATA, load_timeseries, normalize_sc
 const REQUIRED_COLUMNS = [:time, :count, :error, :dose, :treatment_amount, :cell_line, :density, :replicate, :unit_time, :unit_count]
 const STRICT_REQUIRED_METADATA = [:culture_type, :population_type, :cell_line, :treatment_amount, :density]
 
+function _as_float_or_missing(v)
+    if ismissing(v)
+        return missing
+    elseif v isa AbstractString
+        s = strip(String(v))
+        isempty(s) && return missing
+        parsed = tryparse(Float64, s)
+        return isnothing(parsed) ? missing : parsed
+    end
+
+    try
+        return Float64(v)
+    catch
+        return missing
+    end
+end
+
+function _as_int_or_default(v, default::Int = 1)
+    if ismissing(v)
+        return default
+    elseif v isa Integer
+        return Int(v)
+    elseif v isa AbstractString
+        s = strip(String(v))
+        isempty(s) && return default
+        parsed_i = tryparse(Int, s)
+        if !isnothing(parsed_i)
+            return parsed_i
+        end
+        parsed_f = tryparse(Float64, s)
+        return isnothing(parsed_f) ? default : Int(round(parsed_f))
+    end
+
+    try
+        return Int(v)
+    catch
+        return default
+    end
+end
+
 function load_timeseries(path::AbstractString; kwargs...)
     df = CSV.read(path, DataFrame; kwargs...)
     return normalize_schema(df)
@@ -53,23 +93,37 @@ function normalize_schema(
     ordered_columns = vcat(REQUIRED_COLUMNS, extra_columns)
     work = work[:, ordered_columns]
 
-    work.time = Float64.(work.time)
-    work.count = Float64.(work.count)
+    time_vals = [_as_float_or_missing(v) for v in work.time]
+    count_vals = [_as_float_or_missing(v) for v in work.count]
+    valid_rows = map((t, c) -> !ismissing(t) && !ismissing(c), time_vals, count_vals)
+
+    if any(.!valid_rows)
+        work = work[valid_rows, :]
+        time_vals = time_vals[valid_rows]
+        count_vals = count_vals[valid_rows]
+    end
+
+    nrow(work) > 0 || error("No valid rows remain after dropping missing/non-numeric time or count values")
+
+    work.time = Float64.(time_vals)
+    work.count = Float64.(count_vals)
 
     if all(ismissing, work.error)
         work.error = fill(1.0, nrow(work))
     else
-        work.error = [ismissing(v) ? 1.0 : Float64(v) for v in work.error]
+        parsed_error = [_as_float_or_missing(v) for v in work.error]
+        work.error = [ismissing(v) ? 1.0 : Float64(v) for v in parsed_error]
     end
 
     if :treatment_amount in Symbol.(names(work))
-        work.treatment_amount = [ismissing(v) ? missing : Float64(v) for v in work.treatment_amount]
+        parsed_treatment = [_as_float_or_missing(v) for v in work.treatment_amount]
+        work.treatment_amount = [ismissing(v) ? missing : Float64(v) for v in parsed_treatment]
     else
         work.treatment_amount = fill(missing, nrow(work))
     end
 
-    dose_raw = [ismissing(v) ? missing : Float64(v) for v in work.dose]
-    treatment_raw = [ismissing(v) ? missing : Float64(v) for v in work.treatment_amount]
+    dose_raw = [_as_float_or_missing(v) for v in work.dose]
+    treatment_raw = [_as_float_or_missing(v) for v in work.treatment_amount]
 
     # Keep :dose and :treatment_amount synchronized to support either naming convention.
     if !had_dose && had_treatment
@@ -84,7 +138,7 @@ function normalize_schema(
         work.treatment_amount = [ismissing(treatment_raw[i]) ? work.dose[i] : treatment_raw[i] for i in eachindex(treatment_raw)]
     end
 
-    work.replicate = [ismissing(v) ? 1 : Int(v) for v in work.replicate]
+    work.replicate = [_as_int_or_default(v, 1) for v in work.replicate]
 
     return work
 end

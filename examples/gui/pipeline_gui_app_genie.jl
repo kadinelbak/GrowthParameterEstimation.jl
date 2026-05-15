@@ -439,7 +439,11 @@ end
 function _preflight_to_html(path::AbstractString)
     df    = _safe_load(path)
     pf    = preflight_data_quality(df)
-    nc    = length(build_conditions(df))
+    nc    = try
+        length(build_conditions(df))
+    catch
+        0
+    end
     stgd  = _has_stage_metadata(df)
     title = "Preflight — $(basename(path)) ($(nc) condition$(nc==1 ? "" : "s")$(stgd ? ", staged" : ""))"
     issues_html = isempty(pf.issues) ? "<p style='color:#0f766e'>&#10003; No data quality issues found.</p>" :
@@ -462,14 +466,286 @@ function _overview_plotdata(df::DataFrame)
     grouped = groupby(plot_df, :condition_label)
     for g in grouped
         gs = sort(g, :time)
+        xvals = Float64[]
+        yvals = Float64[]
+        for i in 1:nrow(gs)
+            t = gs.time[i]
+            y = gs.count[i]
+            if ismissing(t) || ismissing(y)
+                continue
+            end
+            tf = try
+                Float64(t)
+            catch
+                continue
+            end
+            yf = try
+                Float64(y)
+            catch
+                continue
+            end
+            if isfinite(tf) && isfinite(yf)
+                push!(xvals, tf)
+                push!(yvals, yf)
+            end
+        end
+        isempty(xvals) && continue
         push!(traces, PlotData(
-            x    = Float64.(gs.time),
-            y    = Float64.(gs.count),
+            x    = xvals,
+            y    = yvals,
             mode = "lines+markers",
             name = String(gs.condition_label[1])))
     end
     layout = PlotLayout(title=PlotLayoutTitle(text="Raw trajectories by condition"))
     return traces, layout
+end
+
+function _append_unique_path(paths::Vector{String}, path::AbstractString)
+    p = String(path)
+    isempty(p) && return paths
+    p in paths || push!(paths, p)
+    return paths
+end
+
+function _upload_entries(fileuploads)
+    entries = NamedTuple[]
+    seen = Set{String}()
+    isnothing(fileuploads) && return entries
+
+    path_keys = ("path", "tmp_path", "tempPath", "tmpname", "filepath", "file")
+    name_keys = ("name", "filename", "originalname", "fileName")
+    child_keys = ("files", "items", "uploads", "value", "data")
+
+    function _dict_get(d::Dict{String,Any}, keys)
+        for k in keys
+            if haskey(d, k)
+                return d[k]
+            end
+        end
+        return nothing
+    end
+
+    function _normalize_item(item)
+        if item isa Dict
+            out = Dict{String,Any}()
+            for (k, v) in pairs(item)
+                out[string(k)] = v
+            end
+            return out
+        end
+        return try
+            raw = Dict(item)
+            out = Dict{String,Any}()
+            for (k, v) in pairs(raw)
+                out[string(k)] = v
+            end
+            out
+        catch
+            nothing
+        end
+    end
+
+    function _collect(item)
+        if item isa AbstractVector
+            for child in item
+                _collect(child)
+            end
+            return
+        end
+
+        data = _normalize_item(item)
+        isnothing(data) && return
+
+        path_any = _dict_get(data, path_keys)
+        name_any = _dict_get(data, name_keys)
+
+        if !isnothing(path_any)
+            path = strip(String(path_any))
+            if !isempty(path) && !(path in seen)
+                name = isnothing(name_any) ? basename(path) : strip(String(name_any))
+                isempty(name) && (name = basename(path))
+                push!(entries, (path=path, name=name))
+                push!(seen, path)
+            end
+        end
+
+        for ck in child_keys
+            if haskey(data, ck)
+                _collect(data[ck])
+            end
+        end
+    end
+
+    _collect(fileuploads)
+    return entries
+end
+
+function _uploaded_csv_options(paths::Vector{String})
+    isempty(paths) && return Any[Dict("label" => "No uploaded files yet", "value" => "")]
+    return Any[Dict("label" => basename(p), "value" => p) for p in paths]
+end
+
+function _uploaded_files_html(paths::Vector{String}; active_path::AbstractString = "")
+    isempty(paths) && return "<p style='color:#6b7280'>No files uploaded yet. Add one or more CSV files above.</p>"
+
+    rows = NamedTuple[]
+    for p in paths
+        if !isfile(p)
+            push!(rows, (active=(p == active_path ? "yes" : ""), file=basename(p), path=p, rows=0, conditions=0, staged="unknown", status="missing"))
+            continue
+        end
+        try
+            df = _safe_load(p)
+            ncond = try
+                length(build_conditions(df))
+            catch
+                0
+            end
+            staged = _has_stage_metadata(df) ? "yes" : "no"
+            push!(rows, (active=(p == active_path ? "yes" : ""), file=basename(p), path=p, rows=nrow(df), conditions=ncond, staged=staged, status="ok"))
+        catch err
+            push!(rows, (active=(p == active_path ? "yes" : ""), file=basename(p), path=p, rows=0, conditions=0, staged="unknown", status="error: $(sprint(showerror, err))"))
+        end
+    end
+
+    return _df_to_html(DataFrame(rows); limit=100)
+end
+
+function _overview_plotdata_multi(paths::Vector{String})
+    traces = PlotData[]
+    loaded = 0
+    for p in paths
+        isfile(p) || continue
+        df = try
+            _safe_load(p)
+        catch
+            continue
+        end
+        loaded += 1
+        plot_df = _plot_df_with_condition(df)
+        grouped = groupby(plot_df, :condition_label)
+        for g in grouped
+            gs = sort(g, :time)
+            xvals = Float64[]
+            yvals = Float64[]
+            for i in 1:nrow(gs)
+                t = gs.time[i]
+                y = gs.count[i]
+                if ismissing(t) || ismissing(y)
+                    continue
+                end
+                tf = try
+                    Float64(t)
+                catch
+                    continue
+                end
+                yf = try
+                    Float64(y)
+                catch
+                    continue
+                end
+                if isfinite(tf) && isfinite(yf)
+                    push!(xvals, tf)
+                    push!(yvals, yf)
+                end
+            end
+            isempty(xvals) && continue
+            push!(traces, PlotData(
+                x = xvals,
+                y = yvals,
+                mode = "lines+markers",
+                name = "$(basename(p)) :: $(String(gs.condition_label[1]))",
+            ))
+        end
+    end
+
+    layout = PlotLayout(title=PlotLayoutTitle(text="Raw trajectories across uploaded files ($(loaded))"))
+    return traces, layout
+end
+
+function _premade_csv_path(choice::AbstractString)
+    key = String(choice)
+    if key == "staged_monoculture"
+        return joinpath(EXAMPLE_DIR, "staged_monoculture.csv")
+    elseif key == "coculture_stages"
+        return joinpath(EXAMPLE_DIR, "coculture_stages.csv")
+    end
+    return joinpath(EXAMPLE_DIR, "basic_pipeline.csv")
+end
+
+function _selected_data_source_path(source_mode::AbstractString, active_uploaded_csv::AbstractString, premade_csv_choice::AbstractString, csv_path_input::AbstractString)
+    mode = String(source_mode)
+    if mode == "premade"
+        return _premade_csv_path(premade_csv_choice)
+    elseif mode == "filepath"
+        return String(csv_path_input)
+    end
+    return String(active_uploaded_csv)
+end
+
+function _combine_uploaded_data(paths::Vector{String})
+    frames = DataFrame[]
+    for p in paths
+        isfile(p) || continue
+        df = _safe_load(p)
+        df[!, :source_file] = fill(basename(p), nrow(df))
+        push!(frames, df)
+    end
+    isempty(frames) && return DataFrame()
+    return reduce((a, b) -> vcat(a, b; cols=:union), frames)
+end
+
+function _multi_preflight_to_html(paths::Vector{String})
+    summary_rows = NamedTuple[]
+    issue_rows = NamedTuple[]
+    for p in paths
+        isfile(p) || continue
+        fname = basename(p)
+        try
+            df = _safe_load(p)
+            pf = preflight_data_quality(df)
+            ncond = try
+                length(build_conditions(df))
+            catch
+                0
+            end
+            nerr = nrow(filter(:severity => ==("error"), pf.issues))
+            nwarn = nrow(filter(:severity => ==("warning"), pf.issues))
+            push!(summary_rows, (
+                file=fname,
+                rows=nrow(df),
+                conditions=ncond,
+                staged=_has_stage_metadata(df) ? "yes" : "no",
+                issues=nrow(pf.issues),
+                errors=nerr,
+                warnings=nwarn,
+            ))
+            for r in eachrow(first(pf.issues, min(12, nrow(pf.issues))))
+                push!(issue_rows, (file=fname, severity=String(r.severity), message=String(r.message)))
+            end
+        catch err
+            push!(summary_rows, (
+                file=fname,
+                rows=0,
+                conditions=0,
+                staged="unknown",
+                issues=1,
+                errors=1,
+                warnings=0,
+            ))
+            push!(issue_rows, (file=fname, severity="error", message=sprint(showerror, err)))
+        end
+    end
+
+    summary_df = isempty(summary_rows) ? DataFrame(file=String[], rows=Int[], conditions=Int[], staged=String[], issues=Int[], errors=Int[], warnings=Int[]) : DataFrame(summary_rows)
+    issues_df = isempty(issue_rows) ? DataFrame(file=String[], severity=String[], message=String[]) : DataFrame(issue_rows)
+
+    return _wrap_card(
+        "<h6 style='color:#0f766e;margin:0 0 8px 0'>Per-file Preflight Summary</h6>" *
+        _df_to_html(summary_df; limit=100) *
+        "<h6 style='color:#0f766e;margin:12px 0 8px 0'>Top Issues Across Uploaded Files</h6>" *
+        _df_to_html(issues_df; limit=120);
+        title="Preflight - Upload Collection")
 end
 
 function _rank_output_html(path, models, cond_name, n_starts, maxiters, train_fraction, split_mode, n_boot)
@@ -606,16 +882,149 @@ function _pipeline_output_html(path, models)
         title="Full Pipeline Results")
 end
 
-function _staged_output_html(path)
-    df = _safe_load(path)
-    if !_has_stage_metadata(df)
+function _manual_stage_name(raw_name, idx::Int, used::Set{String})
+    base = strip(String(raw_name))
+    isempty(base) && (base = "stage_$(idx)")
+    candidate = base
+    suffix = 2
+    while candidate in used
+        candidate = "$(base)_$(suffix)"
+        suffix += 1
+    end
+    push!(used, candidate)
+    return candidate
+end
+
+function _model_param_names(model_name::AbstractString)
+    name = String(model_name)
+    if isempty(name) || !(name in list_models())
+        return String[]
+    end
+    return String.(get_model(name).param_names)
+end
+
+function _infer_prev_stage_mapping(prev_stage::String, prev_model::String, next_model::String)
+    inherited = Dict{Symbol,Tuple{String,Symbol}}()
+    src_params = _model_param_names(prev_model)
+    dst_params = _model_param_names(next_model)
+    if isempty(src_params) || isempty(dst_params)
+        return inherited
+    end
+
+    src_lower = Dict(lowercase(p) => p for p in src_params)
+    for dst in dst_params
+        dlow = lowercase(dst)
+        if haskey(src_lower, dlow)
+            inherited[Symbol(dst)] = (prev_stage, Symbol(src_lower[dlow]))
+            continue
+        end
+        partial = findfirst(s -> occursin(dlow, lowercase(s)) || occursin(lowercase(s), dlow), src_params)
+        if !isnothing(partial)
+            inherited[Symbol(dst)] = (prev_stage, Symbol(src_params[partial]))
+        end
+    end
+    return inherited
+end
+
+function _parse_mapping_value(value, default_stage::String)
+    text = strip(String(value))
+    isempty(text) && return nothing
+    if occursin(".", text)
+        parts = split(text, "."; limit=2)
+        stage_name = strip(parts[1])
+        param_name = strip(parts[2])
+        if isempty(stage_name) || isempty(param_name)
+            return nothing
+        end
+        return (stage_name, Symbol(param_name))
+    end
+    isempty(default_stage) && return nothing
+    return (default_stage, Symbol(text))
+end
+
+function _manual_stage_input(pipeline_stages)
+    isempty(pipeline_stages) && error("No manual stages configured")
+
+    stage_col = :__manual_stage
+    used_names = Set{String}()
+    stage_defs = NamedTuple[]
+    stage_dfs = DataFrame[]
+
+    for (i, sraw) in enumerate(pipeline_stages)
+        s = Dict{String,Any}(String(k) => v for (k, v) in pairs(Dict(sraw)))
+        stage_name = _manual_stage_name(get(s, "name", "Stage $(i)"), i, used_names)
+        csv_file = strip(String(get(s, "csv_file", "")))
+        model_name = strip(String(get(s, "model_name", "")))
+
+        isempty(csv_file) && error("Stage $(i) ($(stage_name)) is missing a CSV file")
+        isfile(csv_file) || error("Stage $(i) ($(stage_name)) CSV not found: $(csv_file)")
+        isempty(model_name) && error("Stage $(i) ($(stage_name)) is missing a model name")
+        model_name in list_models() || error("Stage $(i) ($(stage_name)) uses unknown model: $(model_name)")
+
+        sdf = _safe_load(csv_file)
+        sdf[!, stage_col] = fill(stage_name, nrow(sdf))
+        push!(stage_dfs, sdf)
+
+        mapping = haskey(s, "param_mapping") ? Dict{String,Any}(string(k) => v for (k, v) in pairs(Dict(s["param_mapping"]))) : Dict{String,Any}()
+        push!(stage_defs, (name=stage_name, model=model_name, mapping=mapping))
+    end
+
+    combined = reduce((a, b) -> vcat(a, b; cols=:union), stage_dfs)
+
+    workflow_stages = GrowthParameterEstimation.PipelineStage[]
+    for i in eachindex(stage_defs)
+        spec = stage_defs[i]
+        prev_stage_name = i > 1 ? stage_defs[i - 1].name : ""
+        prev_model_name = i > 1 ? stage_defs[i - 1].model : ""
+
+        inherited = i > 1 ? _infer_prev_stage_mapping(prev_stage_name, prev_model_name, spec.model) : Dict{Symbol,Tuple{String,Symbol}}()
+        for (dest_param, source_ref) in spec.mapping
+            parsed = _parse_mapping_value(source_ref, prev_stage_name)
+            isnothing(parsed) && continue
+            inherited[Symbol(dest_param)] = parsed
+        end
+
+        push!(workflow_stages, GrowthParameterEstimation.PipelineStage(
+            spec.name,
+            "Manual stage $(i) from pipeline designer",
+            row -> row[stage_col] == spec.name,
+            [stage_col, :treatment_amount, :dose, :cell_line, :population_type, :density, :replicate],
+            [spec.model],
+            Symbol[],
+            Dict{Symbol,Float64}(),
+            inherited,
+        ))
+    end
+
+    return combined, workflow_stages
+end
+
+function _staged_output_html(path; pipeline_stages=nothing)
+    use_manual = !isnothing(pipeline_stages) && !isempty(pipeline_stages)
+    mode_note = use_manual ? "Manual stage assignment (Pipeline Designer order)" : "Default staged templates (treated/untreated filters)"
+
+    df = nothing
+    stages = nothing
+    if use_manual
+        df, stages = _manual_stage_input(pipeline_stages)
+    else
+        df = _safe_load(path)
+    end
+
+    if !use_manual && !_has_stage_metadata(df)
         return "<div style='background:#fffbeb;border:1px solid #fcd34d;padding:10px;border-radius:6px'>" *
                "&#9888; Dataset lacks stage metadata (culture_type, population_type required). " *
-               "Load a staged example dataset from Tab 1.</div>"
+               "Load a staged example dataset from Tab 1 or configure manual stages in Tab 2.</div>"
     end
+
     cfg = default_config(output_dir="results/gui_staged")
-    run = run_staged_pipeline(df; stages=default_stages(), config=cfg, selection_mode=:best_bic,
-        strict_schema=false, qc_before_fit=true, preflight_before_fit=true, export_stage_results=true)
+    run = if use_manual
+        run_staged_pipeline(df; stages=stages, config=cfg, selection_mode=:best_bic,
+            strict_schema=false, qc_before_fit=true, preflight_before_fit=false, export_stage_results=true)
+    else
+        run_staged_pipeline(df; stages=default_stages(), config=cfg, selection_mode=:best_bic,
+            strict_schema=false, qc_before_fit=true, preflight_before_fit=true, export_stage_results=true)
+    end
 
     stage_rows = DataFrame(
         stage=[s.name for s in run.stages],
@@ -637,6 +1046,8 @@ function _staged_output_html(path)
     halt = isnothing(run.halted_stage) ? "none" : String(run.halted_stage)
     summary_html = _wrap_card(
         "<p style='background:#f0fdf4;border:1px solid #6ee7b7;padding:10px;border-radius:6px'>" *
+        "Mode: $(mode_note)</p>" *
+        "<p style='background:#f0fdf4;border:1px solid #6ee7b7;padding:10px;border-radius:6px;margin-top:8px'>" *
         "Staged run complete. Completed: $(run.completed) | Halted at: $(halt)</p>" *
         "<h6 style='color:#0f766e;margin:12px 0 8px 0'>Stage Status</h6>" * _df_to_html(stage_rows; limit=20) *
         (isempty(best_rows) ? "" : "<h6 style='color:#0f766e;margin:12px 0 8px 0'>Best Model By Condition</h6>" *
@@ -808,15 +1219,20 @@ _load_gui_models_from_file()
     @in  active_tab = "tab-load"
 
     # === Tab 1: Load Data ===
-    @in  csv_path_input     = ""
-    @in  btn_load_basic     = 0
-    @in  btn_load_mono      = 0
-    @in  btn_load_co        = 0
+    @in  csv_path_input      = ""
+    @in  fileuploads        = Any[]
+    @in  active_uploaded_csv = ""
+    @in  data_source_mode   = "upload"
+    @in  premade_csv_choice = "basic_pipeline"
+    @in  btn_visualize_data = 0
 
     @out csv_path_loaded         = ""
-    @out status_msg              = "<span style='color:#6b7280'>No data loaded. Enter a path or click an example above.</span>"
-    @out data_preview_html       = "<p style='color:#6b7280'>Load a dataset to see a preview.</p>"
-    @out preflight_html          = "<p style='color:#6b7280'>Load a dataset to see preflight quality checks.</p>"
+    @out uploaded_csv_paths      = String[]
+    @out uploaded_csv_options    = Any[Dict("label" => "No uploaded files yet", "value" => "")]
+    @out uploaded_files_html     = "<p style='color:#6b7280'>No files uploaded yet. Add one or more CSV files above.</p>"
+    @out status_msg              = "<span style='color:#6b7280'>Select a source, then click Visualize Data.</span>"
+    @out data_preview_html       = "<p style='color:#6b7280'>Click Visualize Data to preview the selected file.</p>"
+    @out preflight_html          = "<p style='color:#6b7280'>Click Visualize Data to run preflight checks on the selected file.</p>"
     @out conditions_list         = String[]
     @out overview_data::Vector{PlotData}  = PlotData[]
     @out overview_layout::PlotLayout      = PlotLayout(title=PlotLayoutTitle(text="Load data to see trajectories"))
@@ -825,6 +1241,7 @@ _load_gui_models_from_file()
     # === Tab 2: Pipeline Designer ===
     @in  pipeline_name         = "my_pipeline"
     @in  pipeline_stage_select = 1
+    @in  stage_csv_select      = ""
     @in  btn_add_stage         = 0
     @in  btn_save_pipeline     = 0
     @in  btn_stage_up          = 0
@@ -886,65 +1303,119 @@ _load_gui_models_from_file()
     # Watchers
     # ══════════════════════════════════════════════════════════════════════════
 
-    @onchange csv_path_input begin
-        if !isempty(csv_path_input) && isfile(csv_path_input)
-            try
-                df = Base.invokelatest(_safe_load, csv_path_input)
-                csv_path_loaded = csv_path_input
-                status_msg = "<span style='color:#0f766e'>&#10003; Loaded: $(basename(csv_path_input)) | $(nrow(df)) rows | $(ncol(df)) columns</span>"
-                data_preview_html = Base.invokelatest(_df_to_html, df; limit=10)
-                has_stage_metadata_flag = Base.invokelatest(_has_stage_metadata, df)
-                preflight_html = Base.invokelatest(_preflight_to_html, csv_path_input)
-                conds = Base.invokelatest(build_conditions, df)
-                if !isempty(conds)
-                    conditions_list = [c.name for c in conds]
-                    condition_select = conditions_list[1]
-                else
-                    conditions_list = String[]
-                end
-                traces, layout = Base.invokelatest(_overview_plotdata, df)
-                overview_data   = traces
-                overview_layout = layout
-            catch err
-                status_msg = "<span style='color:#dc2626'>&#10060; Error loading: $(sprint(showerror, err))</span>"
-            end
-        elseif !isempty(csv_path_input)
-            status_msg = "<span style='color:#d97706'>&#9888; File not found: $(csv_path_input)</span>"
-        end
-    end
-
-    @onchange btn_load_basic begin
-        if btn_load_basic > 0
-            csv_path_input = joinpath(EXAMPLE_DIR, "basic_pipeline.csv")
-            btn_load_basic = 0
-        end
-    end
-
-    @onchange btn_load_mono begin
-        if btn_load_mono > 0
-            csv_path_input = joinpath(EXAMPLE_DIR, "staged_monoculture.csv")
-            btn_load_mono = 0
-        end
-    end
-
-    @onchange btn_load_co begin
-        if btn_load_co > 0
-            csv_path_input = joinpath(EXAMPLE_DIR, "coculture_stages.csv")
-            btn_load_co = 0
-        end
-    end
-
     @onchange fileuploads begin
         if !isempty(fileuploads)
-            uploaded_path = haskey(fileuploads, "path") ? String(fileuploads["path"]) : ""
-            uploaded_name = haskey(fileuploads, "name") ? String(fileuploads["name"]) : "upload.csv"
-            if !isempty(uploaded_path) && isfile(uploaded_path)
-                csv_path_input = uploaded_path
-                status_msg = "<span style='color:#0f766e'>&#10003; Uploaded: $(uploaded_name)</span>"
-            else
-                status_msg = "<span style='color:#dc2626'>&#10060; Upload failed: $(uploaded_name)</span>"
+            entries = Base.invokelatest(_upload_entries, fileuploads)
+            added_paths = String[]
+            for entry in entries
+                if isfile(entry.path)
+                    uploaded_csv_paths = Base.invokelatest(_append_unique_path, copy(uploaded_csv_paths), entry.path)
+                    push!(added_paths, entry.path)
+                end
             end
-            fileuploads = Dict{AbstractString,AbstractString}()
+
+            if !isempty(added_paths)
+                uploaded_csv_options = Base.invokelatest(_uploaded_csv_options, uploaded_csv_paths)
+                active_uploaded_csv = last(added_paths)
+                stage_csv_select = isempty(stage_csv_select) ? active_uploaded_csv : (stage_csv_select in uploaded_csv_paths ? stage_csv_select : active_uploaded_csv)
+                uploaded_files_html = Base.invokelatest(_uploaded_files_html, uploaded_csv_paths; active_path=active_uploaded_csv)
+                traces, layout = Base.invokelatest(_overview_plotdata_multi, uploaded_csv_paths)
+                overview_data   = traces
+                overview_layout = layout
+                status_msg = "<span style='color:#0f766e'>&#10003; Uploaded $(length(added_paths)) file(s). Select source and click Visualize Data when ready.</span>"
+            else
+                status_msg = "<span style='color:#dc2626'>&#10060; Upload failed: no readable CSV paths received.</span>"
+            end
+            fileuploads = Any[]
+        end
+    end
+
+    @onchange active_uploaded_csv begin
+        if !isempty(active_uploaded_csv)
+            uploaded_files_html = Base.invokelatest(_uploaded_files_html, uploaded_csv_paths; active_path=active_uploaded_csv)
+        end
+    end
+
+    @onchange btn_visualize_data begin
+        if btn_visualize_data > 0
+            selected_path = Base.invokelatest(_selected_data_source_path, data_source_mode, active_uploaded_csv, premade_csv_choice, csv_path_input)
+            if data_source_mode == "upload"
+                if isempty(uploaded_csv_paths)
+                    status_msg = "<span style='color:#d97706'>&#9888; No uploaded files found. Upload one or more CSV files first.</span>"
+                else
+                    try
+                        combined = Base.invokelatest(_combine_uploaded_data, uploaded_csv_paths)
+                        if isempty(combined)
+                            status_msg = "<span style='color:#d97706'>&#9888; No readable uploaded files available to visualize.</span>"
+                        else
+                            active_path = !isempty(active_uploaded_csv) && isfile(active_uploaded_csv) ? active_uploaded_csv : uploaded_csv_paths[1]
+                            active_df = Base.invokelatest(_safe_load, active_path)
+                            csv_path_loaded = active_path
+                            active_uploaded_csv = active_path
+                            stage_csv_select = isempty(stage_csv_select) ? active_path : (stage_csv_select in uploaded_csv_paths ? stage_csv_select : active_path)
+
+                            data_preview_html = Base.invokelatest(_df_to_html, combined; limit=20)
+                            preflight_html = Base.invokelatest(_multi_preflight_to_html, uploaded_csv_paths)
+                            has_stage_metadata_flag = all([_has_stage_metadata(_safe_load(p)) for p in uploaded_csv_paths if isfile(p)])
+
+                            conds = try
+                                Base.invokelatest(build_conditions, active_df)
+                            catch
+                                FitCondition[]
+                            end
+                            if !isempty(conds)
+                                conditions_list = [c.name for c in conds]
+                                condition_select = conditions_list[1]
+                            else
+                                conditions_list = String[]
+                            end
+
+                            traces, layout = Base.invokelatest(_overview_plotdata_multi, uploaded_csv_paths)
+                            overview_data = traces
+                            overview_layout = layout
+                            uploaded_files_html = Base.invokelatest(_uploaded_files_html, uploaded_csv_paths; active_path=active_uploaded_csv)
+
+                            status_msg = "<span style='color:#0f766e'>&#10003; Visualized upload collection: $(length(uploaded_csv_paths)) file(s), $(nrow(combined)) total rows.</span>"
+                        end
+                    catch err
+                        status_msg = "<span style='color:#dc2626'>&#10060; Error visualizing uploads: $(sprint(showerror, err))</span>"
+                    end
+                end
+            elseif isempty(selected_path)
+                status_msg = "<span style='color:#d97706'>&#9888; No file selected. Choose Upload, Premade, or File Path first.</span>"
+            elseif !isfile(selected_path)
+                status_msg = "<span style='color:#d97706'>&#9888; File not found: $(selected_path)</span>"
+            else
+                try
+                    df = Base.invokelatest(_safe_load, selected_path)
+                    csv_path_loaded = selected_path
+                    uploaded_csv_paths = Base.invokelatest(_append_unique_path, copy(uploaded_csv_paths), selected_path)
+                    uploaded_csv_options = Base.invokelatest(_uploaded_csv_options, uploaded_csv_paths)
+                    active_uploaded_csv = selected_path
+                    stage_csv_select = isempty(stage_csv_select) ? selected_path : (stage_csv_select in uploaded_csv_paths ? stage_csv_select : selected_path)
+                    uploaded_files_html = Base.invokelatest(_uploaded_files_html, uploaded_csv_paths; active_path=active_uploaded_csv)
+
+                    status_msg = "<span style='color:#0f766e'>&#10003; Visualized: $(basename(selected_path)) | $(nrow(df)) rows | $(ncol(df)) columns</span>"
+                    data_preview_html = Base.invokelatest(_df_to_html, df; limit=10)
+                    has_stage_metadata_flag = Base.invokelatest(_has_stage_metadata, df)
+                    preflight_html = Base.invokelatest(_preflight_to_html, selected_path)
+
+                    conds = Base.invokelatest(build_conditions, df)
+                    if !isempty(conds)
+                        conditions_list = [c.name for c in conds]
+                        condition_select = conditions_list[1]
+                    else
+                        conditions_list = String[]
+                    end
+
+                    traces, layout = Base.invokelatest(_overview_plotdata_multi, uploaded_csv_paths)
+                    overview_data   = traces
+                    overview_layout = layout
+                catch err
+                    status_msg = "<span style='color:#dc2626'>&#10060; Error visualizing: $(sprint(showerror, err))</span>"
+                end
+            end
+            btn_visualize_data = 0
         end
     end
 
@@ -961,7 +1432,8 @@ _load_gui_models_from_file()
     @onchange btn_add_stage begin
         if btn_add_stage > 0
             stages = Any[pipeline_stages...]
-            current_path = isempty(csv_path_loaded) ? String(csv_path_input) : csv_path_loaded
+            selected_stage_path = !isempty(stage_csv_select) ? String(stage_csv_select) : ""
+            current_path = !isempty(selected_stage_path) ? selected_stage_path : (isempty(csv_path_loaded) ? String(csv_path_input) : csv_path_loaded)
             push!(stages, Dict(
                 "name" => "Stage $(length(stages) + 1)",
                 "csv_file" => current_path,
@@ -1024,7 +1496,8 @@ _load_gui_models_from_file()
             idx = Base.invokelatest(_pipeline_stage_index, pipeline_stage_select, 1)
             stages = Any[pipeline_stages...]
             stage = Dict{String,Any}(String(k) => v for (k, v) in pairs(Dict(stages[idx])))
-            stage["csv_file"] = isempty(csv_path_loaded) ? String(csv_path_input) : csv_path_loaded
+            selected_stage_path = !isempty(stage_csv_select) ? String(stage_csv_select) : ""
+            stage["csv_file"] = !isempty(selected_stage_path) ? selected_stage_path : (isempty(csv_path_loaded) ? String(csv_path_input) : csv_path_loaded)
             stage["model_name"] = Base.invokelatest(_pipeline_default_model, selected_models)
             stages[idx] = stage
             pipeline_stages = stages
@@ -1201,11 +1674,11 @@ _load_gui_models_from_file()
         if btn_run_staged > 0
             if isempty(csv_path_loaded)
                 staged_html = "<div style='background:#fffbeb;border:1px solid #fcd34d;padding:10px;border-radius:6px'>&#9888; Load a dataset first (Tab 1).</div>"
-            elseif !has_stage_metadata_flag
+            elseif isempty(pipeline_stages) && !has_stage_metadata_flag
                 staged_html = "<div style='background:#fffbeb;border:1px solid #fcd34d;padding:10px;border-radius:6px'>&#9888; Dataset lacks stage metadata. Load 'Staged monoculture' or 'Staged co-culture' from Tab 1.</div>"
             else
                 try
-                    staged_html = Base.invokelatest(_staged_output_html, csv_path_loaded)
+                    staged_html = Base.invokelatest(_staged_output_html, csv_path_loaded; pipeline_stages=pipeline_stages)
                 catch err
                     staged_html = "<div style='background:#fef2f2;border:1px solid #fca5a5;padding:10px;border-radius:6px'>&#10060; Staged pipeline failed: $(sprint(showerror, err))</div>"
                 end
@@ -1234,6 +1707,18 @@ const _TEMPLATE_OPTS = [
     Dict("label" => "Theta-logistic + Hill inhibition","value" => "theta_hill"),
     Dict("label" => "Sensitive / resistant (2-state)", "value" => "sensitive_resistant"),
     Dict("label" => "Lotka-Volterra competition",      "value" => "lotka_volterra"),
+]
+
+const _DATA_SOURCE_OPTS = [
+    Dict("label" => "Upload", "value" => "upload"),
+    Dict("label" => "Premade", "value" => "premade"),
+    Dict("label" => "File Path", "value" => "filepath"),
+]
+
+const _PREMADE_CSV_OPTS = [
+    Dict("label" => "Basic Pipeline", "value" => "basic_pipeline"),
+    Dict("label" => "Staged Monoculture", "value" => "staged_monoculture"),
+    Dict("label" => "Staged Co-culture", "value" => "coculture_stages"),
 ]
 
 function ui()
@@ -1265,29 +1750,44 @@ function ui()
                 # ──── Tab 1: Load Data ─────────────────────────────────────────
                 tabpanel(name="tab-load", class="q-pa-md", [
                     h5("Load CSV Dataset", style="color:#0f766e;margin:0 0 8px 0"),
-                    p("Drop a CSV file, click an example button, or enter an absolute path to get started.",
+                                        p("Choose a source (Upload, Premade, or File Path), then click Visualize Data when you are ready.",
                       style="font-size:13px;color:#6b7280;margin-bottom:12px"),
                     uploader(
                         accept = ".csv",
                         autoupload = true,
                         hideuploadbtn = true,
-                        multiple = false,
+                        multiple = true,
                         nothumbnails = true,
-                        label = "Drag and drop a CSV file here",
+                        label = "Drag and drop one or more CSV files here",
                         style = "max-width: 100%; width: 100%; margin-bottom: 16px;"
                     ),
-                    Genie.Renderer.Html.div(class="q-gutter-sm q-mb-lg", [
-                        btn("Basic Pipeline Example",    color="teal", outline=true, @click("btn_load_basic += 1")),
-                        btn("Staged Monoculture",        color="teal", outline=true, @click("btn_load_mono += 1")),
-                        btn("Staged Co-culture",         color="teal", outline=true, @click("btn_load_co += 1")),
+                    StippleUI.Selects.select(:data_source_mode, options=_DATA_SOURCE_OPTS,
+                        label="Data source", outlined=true,
+                        hint="Pick where the next visualization should come from.", class="q-mb-md"),
+                    Genie.Renderer.Html.div([
+                        StippleUI.Selects.select(:active_uploaded_csv, options=:uploaded_csv_options,
+                            label="Uploaded file", outlined=true,
+                            hint="Choose one uploaded file as the active dataset for downstream fit/pipeline actions.", class="q-mb-md"),
+                    ]; v__show="data_source_mode === 'upload'"),
+                    Genie.Renderer.Html.div([
+                        StippleUI.Selects.select(:premade_csv_choice, options=_PREMADE_CSV_OPTS,
+                            label="Premade dataset", outlined=true,
+                            hint="Used when Data source is Premade.", class="q-mb-md"),
+                    ]; v__show="data_source_mode === 'premade'"),
+                    Genie.Renderer.Html.div([
+                        textfield("CSV file path", :csv_path_input,
+                            placeholder="C:\\Users\\...\\data.csv  or  /home/.../data.csv",
+                            hint="Used when Data source is File Path.",
+                            outlined=true, class="q-mb-md"),
+                    ]; v__show="data_source_mode === 'filepath'"),
+                    Genie.Renderer.Html.div(class="q-gutter-sm q-mb-md", [
+                        btn("Visualize Data", color="teal", icon="visibility", @click("btn_visualize_data += 1")),
                     ]),
-                    textfield("CSV file path", :csv_path_input,
-                        placeholder="C:\\Users\\...\\data.csv  or  /home/.../data.csv",
-                        hint="Absolute path to your CSV file (columns: time, count, dose, ...)",
-                        outlined=true, class="q-mb-md"),
                     separator(class="q-mb-md"),
                     h6("Data Preview (first 10 rows)", style="color:#374151;margin:0 0 6px 0"),
                     Genie.Renderer.Html.div([]; v__html = "data_preview_html"),
+                    h6("Uploaded File Summary", style="color:#374151;margin:16px 0 6px 0"),
+                    Genie.Renderer.Html.div([]; v__html = "uploaded_files_html"),
                     h6("Raw Trajectory Overview", style="color:#374151;margin:16px 0 6px 0"),
                     plot(:overview_data, layout=:overview_layout, id="overview-plot"),
                     h6("Preflight Quality Checks", style="color:#374151;margin:16px 0 6px 0"),
@@ -1320,6 +1820,13 @@ function ui()
                                     btn("Move Up", color="teal", outline=true, @click("btn_stage_up += 1")),
                                     btn("Move Down", color="teal", outline=true, @click("btn_stage_down += 1")),
                                     btn("Remove", color="teal", outline=true, @click("btn_stage_remove += 1")),
+                                ]),
+                            ]),
+                            Genie.Renderer.Html.div(class="row q-col-gutter-md q-mb-sm", [
+                                Genie.Renderer.Html.div(class="col-12", [
+                                    StippleUI.Selects.select(:stage_csv_select, options=:uploaded_csv_options,
+                                        label="Stage CSV source", outlined=true,
+                                        hint="Pick one of the files uploaded in Tab 1, then Add Stage or Use Current Data+Model."),
                                 ]),
                             ]),
                             Genie.Renderer.Html.div(class="q-gutter-sm q-mb-md", [
