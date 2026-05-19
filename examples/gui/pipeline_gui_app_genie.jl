@@ -1346,6 +1346,7 @@ _load_gui_models_from_file()
     @in  btn_stage_down        = 0
     @in  btn_stage_remove      = 0
     @in  btn_stage_use_current = 0
+    @in  btn_stage_apply_csv   = 0
     @in  btn_stage_next        = 0
 
     @out pipeline_stages        = Any[]
@@ -1538,13 +1539,34 @@ _load_gui_models_from_file()
             new_csv = String(stage_csv_select)
             old_csv = String(get(stage, "csv_file", ""))
             if new_csv != old_csv
-                stage["csv_file"] = new_csv
-                stages[idx] = stage
-                pipeline_stages = stages
-                pipeline_stage_options, pipeline_stage_select, pipeline_stages_html, pipeline_flowchart_html, pipeline_mapping_html =
-                    Base.invokelatest(_pipeline_refresh_outputs, pipeline_stages, idx, selected_models)
-                pipeline_status_html = "<p style='color:#0f766e'>Set CSV for stage $(idx) to $(isempty(new_csv) ? "(not set)" : basename(new_csv)).</p>"
+                pipeline_status_html = "<p style='color:#0f766e'>Selected CSV for stage $(idx): $(isempty(new_csv) ? "(not set)" : basename(new_csv)). Click 'Apply CSV to Stage' to save.</p>"
             end
+        end
+    end
+
+    @onchange btn_stage_apply_csv begin
+        if btn_stage_apply_csv > 0
+            if isempty(pipeline_stages)
+                pipeline_status_html = "<p style='color:#d97706'>&#9888; Add a stage first.</p>"
+            else
+                idx = Base.invokelatest(_pipeline_stage_index, pipeline_stage_select, 1)
+                selected_csv = strip(String(stage_csv_select))
+                if isempty(selected_csv)
+                    pipeline_status_html = "<p style='color:#d97706'>&#9888; Select a CSV file first.</p>"
+                elseif !isfile(selected_csv)
+                    pipeline_status_html = "<p style='color:#d97706'>&#9888; Selected file no longer exists: $(selected_csv)</p>"
+                else
+                    stages = Any[pipeline_stages...]
+                    stage = Dict{String,Any}(String(k) => v for (k, v) in pairs(Dict(stages[idx])))
+                    stage["csv_file"] = selected_csv
+                    stages[idx] = stage
+                    pipeline_stages = stages
+                    pipeline_stage_options, pipeline_stage_select, pipeline_stages_html, pipeline_flowchart_html, pipeline_mapping_html =
+                        Base.invokelatest(_pipeline_refresh_outputs, pipeline_stages, idx, selected_models)
+                    pipeline_status_html = "<p style='color:#0f766e'>Applied CSV to stage $(idx): $(basename(selected_csv)).</p>"
+                end
+            end
+            btn_stage_apply_csv = 0
         end
     end
 
@@ -1944,8 +1966,9 @@ function ui()
                             Genie.Renderer.Html.div(class="row q-col-gutter-md q-mb-sm", [
                                 Genie.Renderer.Html.div(class="col-12", [
                                     StippleUI.Selects.select(:stage_csv_select, options=:uploaded_csv_options,
-                                        label="Stage CSV source", outlined=true,
-                                        hint="Pick one of the files uploaded in Tab 1, then Add Stage or Use Current Data+Model."),
+                                        label="Stage CSV file", outlined=true,
+                                        hint="Choose from uploaded files. Then click Apply CSV to Stage.", class="q-mb-sm"),
+                                    btn("Apply CSV to Stage", color="teal", outline=true, @click("btn_stage_apply_csv += 1")),
                                 ]),
                             ]),
                             Genie.Renderer.Html.div(class="q-gutter-sm q-mb-md", [
@@ -2022,7 +2045,7 @@ function ui()
                                 hint="e.g.  5.0, 1e7", outlined=true),
                         ]),
                     ]),
-                    textarea("State equations  (one per line:  state = expression)", :builder_equations,
+                    StippleUI.textarea("State equations  (one per line:  state = expression)", :builder_equations,
                         hint="Available: state names, parameter names, t (time), E (exposure/dose)",
                         rows=5, outlined=true, class="q-mb-md"),
                     h6("Live Preview", style="color:#374151;margin:0 0 4px 0"),

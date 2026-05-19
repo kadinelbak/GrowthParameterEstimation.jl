@@ -1,6 +1,6 @@
 # Pipeline GUI
 
-This folder contains a standalone Dash web app for interactive, step-by-step model fitting workflows outside Jupyter.
+This folder contains a standalone Genie/Stipple web app for interactive, step-by-step model fitting workflows outside Jupyter.
 
 ## Quick Start
 
@@ -8,7 +8,7 @@ Run from the repository root:
 
 ```bash
 julia --project=examples/gui -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
-julia --project=examples/gui examples/gui/pipeline_gui_app.jl
+julia --project=examples/gui examples/gui/pipeline_gui_app_genie.jl
 ```
 
 Open <http://127.0.0.1:8050> in your browser.
@@ -16,8 +16,25 @@ Open <http://127.0.0.1:8050> in your browser.
 If port 8050 is busy, launch on a different port:
 
 ```bash
-GPE_GUI_PORT=8051 julia --project=examples/gui examples/gui/pipeline_gui_app.jl
+GPE_GUI_PORT=8051 julia --project=examples/gui examples/gui/pipeline_gui_app_genie.jl
 ```
+
+## Per-Stage CSV Assignment (Tab 2)
+
+You can now assign a different CSV to each pipeline stage directly in Tab 2 (Pipeline Designer), without first visualizing every file in Tab 1.
+
+Recommended flow:
+
+1. Add or select a stage in Tab 2.
+2. In `Stage CSV path`, paste an absolute or `~`-based path to a CSV.
+3. Click `Apply Path to Stage`.
+4. Repeat for each stage.
+
+Notes:
+
+- `Stage CSV source` still works for files already known in the session.
+- `Apply Path to Stage` valikill 37307dates that the file exists before assigning it.
+- `Use Current Data+Model` copies the current data/model selection into the selected stage.
 
 ## Expected Input Data
 
@@ -67,7 +84,7 @@ For staged workflows, include metadata such as `culture_type` and `population_ty
 - If model fitting fails, run Step 1 first and use preflight issues to correct schema or condition coverage.
 - The GUI now shows a loading spinner while a step is running. If Step 3 feels slow, reduce the model list or lower `n-starts` before changing anything else.
 - Ensure the launch command is exactly:
-	`julia --project=examples/gui examples/gui/pipeline_gui_app.jl`
+	`julia --project=examples/gui examples/gui/pipeline_gui_app_genie.jl`
 	(without any trailing characters such as `~`).
 
 Test Paths

@@ -1,0 +1,20 @@
+┌ Info: 2026-05-19 15:43:41 Restored 3 GUI-built model(s) from /home/kadin/Desktop/Research/GrowthParameterEstimation.jl/examples/gui/data/gui_custom_models.toml
+└ @ Main /home/kadin/Desktop/Research/GrowthParameterEstimation.jl/examples/gui/pipeline_gui_app_genie.jl:488
+┌ Info: 2026-05-19 15:43:46 Watching ["/home/kadin/Desktop/Research/GrowthParameterEstimation.jl"]
+└ @ GenieAutoReload /home/kadin/.julia/packages/GenieAutoReload/qpImd/src/GenieAutoReload.jl:19
+┌ Info: 2026-05-19 15:43:50 Web Server starting at http://127.0.0.1:8050 - press Ctrl/Cmd+C to stop the server. 
+└ @ Genie.Server /home/kadin/.julia/packages/Genie/o5yO5/src/Server.jl:194
+┌ Info: 2026-05-19 15:43:51 Listening on: 127.0.0.1:8050, thread id: 1
+└ @ HTTP.Servers /home/kadin/.julia/packages/HTTP/Y97L1/src/Servers.jl:382
+┌ Info: 2026-05-19 15:43:51 Autoreloading
+└ @ GenieAutoReload /home/kadin/.julia/packages/GenieAutoReload/qpImd/src/GenieAutoReload.jl:22
+┌ Info: 2026-05-19 15:51:16 Calling finalizers
+└ @ Stipple /home/kadin/.julia/packages/Stipple/ReZJj/src/Stipple.jl:543
+┌ Info: 2026-05-19 15:52:14 Autoreloading
+└ @ GenieAutoReload /home/kadin/.julia/packages/GenieAutoReload/qpImd/src/GenieAutoReload.jl:22
+┌ Info: 2026-05-19 15:52:14 Calling finalizers
+└ @ Stipple /home/kadin/.julia/packages/Stipple/ReZJj/src/Stipple.jl:543
+┌ Info: 2026-05-19 16:08:32 Calling finalizers
+└ @ Stipple /home/kadin/.julia/packages/Stipple/ReZJj/src/Stipple.jl:543
+┌ Info: 2026-05-19 16:08:41 Server on 127.0.0.1:8050 closing
+└ @ HTTP.Servers /home/kadin/.julia/packages/HTTP/Y97L1/src/Servers.jl:409
