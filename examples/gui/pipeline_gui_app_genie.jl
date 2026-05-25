@@ -1236,7 +1236,7 @@ function _pipeline_stage_index(value, fallback::Int = 1)
         return fallback
     end
     try
-        idx = parse(Int, String(value))
+        idx = value isa Integer ? Int(value) : parse(Int, string(value))
         return max(1, idx)
     catch
         return fallback
@@ -1296,6 +1296,17 @@ function _pipeline_mapping_html(stages, current_idx::Int, selected_models)
     target_model = String(get(next_stage, "model_name", ""))
     source_params = isempty(source_model) || !(source_model in list_models()) ? String[] : String.(get_model(source_model).param_names)
     target_params = isempty(target_model) || !(target_model in list_models()) ? String[] : String.(get_model(target_model).param_names)
+    saved_mapping = haskey(current, "param_mapping") ? Dict{String,Any}(string(k) => v for (k,v) in pairs(Dict(current["param_mapping"]))) : Dict{String,Any}()
+
+    # Saved mapping section
+    saved_html = if isempty(saved_mapping)
+        "<p style='color:#6b7280;font-size:12px;margin:4px 0 8px 0'>No mapping saved yet. Use the controls below to set one, or click Apply Auto-Mapping.</p>"
+    else
+        rows = join(["<tr><td style='padding:4px 8px;font-size:12px'>$(k)</td><td style='padding:4px 8px;font-size:12px;text-align:center'>→</td><td style='padding:4px 8px;font-size:12px'>$(v)</td></tr>" for (k,v) in sort(collect(saved_mapping))], "")
+        "<table style='width:100%;border-collapse:collapse;border:1px solid #6ee7b7;margin-bottom:8px'><thead><tr><th style='text-align:left;padding:4px 8px;background:#d1fae5;font-size:12px'>From (Stage $(idx))</th><th style='padding:4px 8px;background:#d1fae5'></th><th style='text-align:left;padding:4px 8px;background:#d1fae5;font-size:12px'>To (Stage $(idx+1))</th></tr></thead><tbody>$(rows)</tbody></table>"
+    end
+
+    # Auto-suggestion section
     rows = String[]
     if isempty(source_params) || isempty(target_params)
         push!(rows, "<tr><td style='padding:6px 8px;font-size:12px'>No parameter details available.</td><td></td><td></td></tr>")
@@ -1307,9 +1318,48 @@ function _pipeline_mapping_html(stages, current_idx::Int, selected_models)
             push!(rows, "<tr><td style='padding:6px 8px;font-size:12px'>$(s)</td><td style='padding:6px 8px;font-size:12px;text-align:center'>→</td><td style='padding:6px 8px;font-size:12px'>$(mapped)</td></tr>")
         end
     end
-    return "<p style='margin:4px 0 10px 0;color:#374151'>Map fitted variables from <strong>$(isempty(source_model) ? "(current model)" : source_model)</strong> into next stage <strong>$(String(get(next_stage, "name", "Stage $(idx + 1)")))</strong> model <strong>$(isempty(target_model) ? "(not set)" : target_model)</strong>.</p>" *
-        "<table style='width:100%;border-collapse:collapse;border:1px solid #e5e7eb'><thead><tr><th style='text-align:left;padding:6px 8px;background:#f0fdf4'>From current stage</th><th style='padding:6px 8px;background:#f0fdf4'></th><th style='text-align:left;padding:6px 8px;background:#f0fdf4'>To next stage</th></tr></thead><tbody>$(join(rows, ""))</tbody></table>" *
-        "<small style='color:#6b7280;display:block;margin-top:8px'>This table mirrors the carry-over prompt from the Dash app. Use it to decide parameter transfer before advancing the pipeline.</small>"
+    return "<p style='margin:0 0 4px 0;color:#374151;font-size:13px'><strong>Current saved mapping</strong></p>" *
+        saved_html *
+        "<p style='margin:8px 0 4px 0;color:#374151;font-size:13px'><strong>Auto-suggestions</strong> — <em>$(isempty(source_model) ? "(current model)" : source_model)</em> → <em>$(isempty(target_model) ? "(not set)" : target_model)</em></p>" *
+        "<table style='width:100%;border-collapse:collapse;border:1px solid #e5e7eb'><thead><tr><th style='text-align:left;padding:6px 8px;background:#f0fdf4;font-size:12px'>From current stage</th><th style='padding:6px 8px;background:#f0fdf4'></th><th style='text-align:left;padding:6px 8px;background:#f0fdf4;font-size:12px'>To next stage</th></tr></thead><tbody>$(join(rows, ""))</tbody></table>" *
+        "<small style='color:#6b7280;display:block;margin-top:8px'>Saved mapping is used when running the pipeline. Use controls below to edit.</small>"
+end
+
+function _auto_mapping_dict(stages, idx::Int, selected_models)
+    idx = clamp(idx, 1, length(stages))
+    idx >= length(stages) && return Dict{String,String}()
+    current   = Dict{String,Any}(String(k) => v for (k,v) in pairs(Dict(stages[idx])))
+    next_s    = Dict{String,Any}(String(k) => v for (k,v) in pairs(Dict(stages[idx+1])))
+    src_model = isempty(String(get(current, "model_name", ""))) ? _pipeline_default_model(selected_models) : String(get(current, "model_name", ""))
+    tgt_model = String(get(next_s, "model_name", ""))
+    src_params = isempty(src_model) || !(src_model in list_models()) ? String[] : String.(get_model(src_model).param_names)
+    tgt_params = isempty(tgt_model) || !(tgt_model in list_models()) ? String[] : String.(get_model(tgt_model).param_names)
+    mapping = Dict{String,String}()
+    for s in src_params
+        exact   = findfirst(t -> lowercase(t) == lowercase(s), tgt_params)
+        partial = isnothing(exact) ? findfirst(t -> occursin(lowercase(s), lowercase(t)) || occursin(lowercase(t), lowercase(s)), tgt_params) : nothing
+        mapped  = isnothing(exact) ? (isnothing(partial) ? "" : tgt_params[partial]) : tgt_params[exact]
+        isempty(mapped) || (mapping[s] = mapped)
+    end
+    return mapping
+end
+
+function _mapping_from_options(stages, idx::Int, selected_models)
+    (isempty(stages) || idx >= length(stages)) && return Any[Dict("label" => "(add 2+ stages first)", "value" => "")]
+    current = Dict{String,Any}(String(k) => v for (k,v) in pairs(Dict(stages[clamp(idx,1,length(stages))])))
+    src_model = isempty(String(get(current, "model_name", ""))) ? _pipeline_default_model(selected_models) : String(get(current, "model_name", ""))
+    src_params = isempty(src_model) || !(src_model in list_models()) ? String[] : String.(get_model(src_model).param_names)
+    isempty(src_params) && return Any[Dict("label" => "(no params for model)", "value" => "")]
+    return Any[Dict("label" => p, "value" => p) for p in src_params]
+end
+
+function _mapping_to_options(stages, idx::Int)
+    (isempty(stages) || idx >= length(stages)) && return Any[Dict("label" => "(add 2+ stages first)", "value" => "")]
+    next_s = Dict{String,Any}(String(k) => v for (k,v) in pairs(Dict(stages[clamp(idx+1,1,length(stages))])))
+    tgt_model = String(get(next_s, "model_name", ""))
+    tgt_params = isempty(tgt_model) || !(tgt_model in list_models()) ? String[] : String.(get_model(tgt_model).param_names)
+    isempty(tgt_params) && return Any[Dict("label" => "(no params for model)", "value" => "")]
+    return Any[Dict("label" => "(unmapped)", "value" => ""); [Dict("label" => p, "value" => p) for p in tgt_params]]
 end
 
 function _pipeline_refresh_outputs(stages, current_idx::Int, selected_models)
@@ -1393,6 +1443,11 @@ _load_gui_models_from_file()
     @in  btn_stage_use_current = 0
     @in  btn_stage_apply_csv   = 0
     @in  btn_stage_next        = 0
+    @in  btn_apply_auto_mapping  = 0
+    @in  btn_add_mapping_pair    = 0
+    @in  btn_remove_mapping_pair = 0
+    @in  mapping_from_select     = ""
+    @in  mapping_to_select       = ""
 
     @out pipeline_stages        = Any[]
     @out pipeline_stage_options  = Any[Dict("label" => "Add stages first…", "value" => 1)]
@@ -1400,6 +1455,8 @@ _load_gui_models_from_file()
     @out pipeline_flowchart_html = "<p style='color:#6b7280;text-align:center;padding:40px'>Stage 1 → Stage 2 → Stage 3 (configured order shown here)</p>"
     @out pipeline_mapping_html   = "<p style='color:#6b7280'>Add at least two stages to see carry-over mapping suggestions.</p>"
     @out pipeline_status_html    = "<p style='color:#6b7280'>Stage list, save controls, and carry-over prompts appear here.</p>"
+    @out mapping_from_options    = Any[Dict("label" => "(add 2+ stages first)", "value" => "")]
+    @out mapping_to_options      = Any[Dict("label" => "(add 2+ stages first)", "value" => "")]
 
     # === Tab 3: Build Models ===
     @in  builder_template    = "logistic"
@@ -1449,7 +1506,9 @@ _load_gui_models_from_file()
 
     @onchange fileuploads begin
         if !isempty(fileuploads)
+            @info "fileuploads triggered" type=string(typeof(fileuploads)) length=(fileuploads isa AbstractVector ? length(fileuploads) : 1)
             entries = Base.invokelatest(_upload_entries, fileuploads)
+            @info "fileuploads entries" count=length(entries) paths=[e.path for e in entries] exists=[isfile(e.path) for e in entries]
             added_paths = String[]
             for entry in entries
                 if isfile(entry.path)
@@ -1470,6 +1529,7 @@ _load_gui_models_from_file()
                 status_msg = "<span style='color:#0f766e'>&#10003; Uploaded $(length(added_paths)) file(s). Select source and click Visualize Data when ready.</span>"
             else
                 ftype = string(typeof(fileuploads))
+                @warn "fileuploads: no readable CSV paths" ftype raw=repr(fileuploads)
                 status_msg = "<span style='color:#dc2626'>&#10060; Upload failed: no readable CSV paths received. Payload type: $(ftype).</span>"
             end
         end
@@ -1570,8 +1630,12 @@ _load_gui_models_from_file()
             pipeline_stages_html = Base.invokelatest(_pipeline_stage_cards_html, pipeline_stages, idx)
             pipeline_flowchart_html = Base.invokelatest(_pipeline_stage_flowchart_html, pipeline_stages)
             pipeline_mapping_html = Base.invokelatest(_pipeline_mapping_html, pipeline_stages, idx, selected_models)
-            stage_dict = Dict{String,Any}(String(k) => v for (k, v) in pairs(Dict(pipeline_stages[idx])))
-            stage_csv_select = String(get(stage_dict, "csv_file", ""))
+            mapping_from_options = Base.invokelatest(_mapping_from_options, pipeline_stages, idx, selected_models)
+            mapping_to_options   = Base.invokelatest(_mapping_to_options, pipeline_stages, idx)
+            # NOTE: Do NOT set stage_csv_select here. Setting an @in variable from the server pushes it
+            # to the client, the q-select emits update:model-value, Stipple's JS echoes it back, and
+            # @onchange stage_csv_select fires — creating a bounce loop that overwrites the user's pick.
+            # The current stage's CSV is already visible in the stage card (pipeline_stages_html).
             pipeline_status_html = "<p style='color:#0f766e'>Selected stage $(idx).</p>"
         end
     end
@@ -1726,6 +1790,76 @@ _load_gui_models_from_file()
                 pipeline_status_html = "<p style='color:#6b7280'>The selected stage is the final stage.</p>"
             end
             btn_stage_next = 0
+        end
+    end
+
+    @onchange btn_apply_auto_mapping begin
+        if btn_apply_auto_mapping > 0 && !isempty(pipeline_stages)
+            idx = Base.invokelatest(_pipeline_stage_index, pipeline_stage_select, 1)
+            if idx < length(pipeline_stages)
+                stages = Any[pipeline_stages...]
+                stage = Dict{String,Any}(String(k) => v for (k,v) in pairs(Dict(stages[idx])))
+                auto_map = Base.invokelatest(_auto_mapping_dict, pipeline_stages, idx, selected_models)
+                stage["param_mapping"] = auto_map
+                stages[idx] = stage
+                pipeline_stages = stages
+                pipeline_stages_html = Base.invokelatest(_pipeline_stage_cards_html, pipeline_stages, idx)
+                pipeline_mapping_html = Base.invokelatest(_pipeline_mapping_html, pipeline_stages, idx, selected_models)
+                pipeline_status_html = "<p style='color:#0f766e'>Applied auto-mapping to stage $(idx) ($(length(auto_map)) pair(s)).</p>"
+            else
+                pipeline_status_html = "<p style='color:#6b7280'>Final stage has no next stage to map to.</p>"
+            end
+            btn_apply_auto_mapping = 0
+        end
+    end
+
+    @onchange btn_add_mapping_pair begin
+        if btn_add_mapping_pair > 0 && !isempty(pipeline_stages)
+            idx = Base.invokelatest(_pipeline_stage_index, pipeline_stage_select, 1)
+            frm = String(mapping_from_select)
+            to  = String(mapping_to_select)
+            if !isempty(frm)
+                stages = Any[pipeline_stages...]
+                stage  = Dict{String,Any}(String(k) => v for (k,v) in pairs(Dict(stages[idx])))
+                mapping = haskey(stage, "param_mapping") ? Dict{String,String}(string(k) => string(v) for (k,v) in pairs(Dict(stage["param_mapping"]))) : Dict{String,String}()
+                if isempty(to)
+                    delete!(mapping, frm)
+                    pipeline_status_html = "<p style='color:#0f766e'>Removed mapping for '$(frm)'.</p>"
+                else
+                    mapping[frm] = to
+                    pipeline_status_html = "<p style='color:#0f766e'>Set mapping: $(frm) → $(to).</p>"
+                end
+                stage["param_mapping"] = mapping
+                stages[idx] = stage
+                pipeline_stages = stages
+                pipeline_stages_html = Base.invokelatest(_pipeline_stage_cards_html, pipeline_stages, idx)
+                pipeline_mapping_html = Base.invokelatest(_pipeline_mapping_html, pipeline_stages, idx, selected_models)
+            else
+                pipeline_status_html = "<p style='color:#d97706'>Select a source parameter first.</p>"
+            end
+            btn_add_mapping_pair = 0
+        end
+    end
+
+    @onchange btn_remove_mapping_pair begin
+        if btn_remove_mapping_pair > 0 && !isempty(pipeline_stages)
+            idx = Base.invokelatest(_pipeline_stage_index, pipeline_stage_select, 1)
+            frm = String(mapping_from_select)
+            if !isempty(frm)
+                stages = Any[pipeline_stages...]
+                stage  = Dict{String,Any}(String(k) => v for (k,v) in pairs(Dict(stages[idx])))
+                mapping = haskey(stage, "param_mapping") ? Dict{String,String}(string(k) => string(v) for (k,v) in pairs(Dict(stage["param_mapping"]))) : Dict{String,String}()
+                delete!(mapping, frm)
+                stage["param_mapping"] = mapping
+                stages[idx] = stage
+                pipeline_stages = stages
+                pipeline_stages_html = Base.invokelatest(_pipeline_stage_cards_html, pipeline_stages, idx)
+                pipeline_mapping_html = Base.invokelatest(_pipeline_mapping_html, pipeline_stages, idx, selected_models)
+                pipeline_status_html = "<p style='color:#0f766e'>Removed mapping for '$(frm)'.</p>"
+            else
+                pipeline_status_html = "<p style='color:#d97706'>Select a source parameter to remove.</p>"
+            end
+            btn_remove_mapping_pair = 0
         end
     end
 
@@ -2056,6 +2190,30 @@ function ui()
                         style="border:1px dashed #d1fae5;border-radius:6px;padding:12px;background:#f9fafb"),
                     h6("Carry-over mapping", style="color:#374151;margin:16px 0 6px 0"),
                     Genie.Renderer.Html.div([]; v__html = "pipeline_mapping_html"),
+                    Genie.Renderer.Html.div(class="q-mt-md", [
+                        p("Edit mapping manually — pick a source parameter, a target parameter, then click Set Mapping. Use Apply Auto-Mapping to fill all pairs at once.",
+                          style="font-size:12px;color:#6b7280;margin-bottom:8px"),
+                        Genie.Renderer.Html.div(class="row q-col-gutter-sm q-mb-sm items-center", [
+                            Genie.Renderer.Html.div(class="col", [
+                                StippleUI.Selects.select(:mapping_from_select, options=:mapping_from_options,
+                                    label="From (source param)", outlined=true, emitvalue=true, mapoptions=true,
+                                    dense=true),
+                            ]),
+                            Genie.Renderer.Html.div(class="col-auto", [
+                                p("→", style="font-size:18px;margin:0;padding-top:4px"),
+                            ]),
+                            Genie.Renderer.Html.div(class="col", [
+                                StippleUI.Selects.select(:mapping_to_select, options=:mapping_to_options,
+                                    label="To (target param)", outlined=true, emitvalue=true, mapoptions=true,
+                                    dense=true),
+                            ]),
+                        ]),
+                        Genie.Renderer.Html.div(class="q-gutter-sm", [
+                            btn("Set Mapping",        color="teal",   outline=true, dense=true, @click("btn_add_mapping_pair += 1")),
+                            btn("Remove Pair",        color="red",    outline=true, dense=true, @click("btn_remove_mapping_pair += 1")),
+                            btn("Apply Auto-Mapping", color="purple", outline=true, dense=true, @click("btn_apply_auto_mapping += 1")),
+                        ]),
+                    ]),
                 ]),
 
                 # ──── Tab 3: Build Models ──────────────────────────────────────
