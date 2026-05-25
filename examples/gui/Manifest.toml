@@ -1023,7 +1023,7 @@ version = "1.0.2"
 
 [[deps.GrowthParameterEstimation]]
 deps = ["BlackBoxOptim", "CSV", "DataFrames", "Dates", "DiffEqParamEstim", "DifferentialEquations", "Distributions", "ForwardDiff", "LsqFit", "Optimization", "OptimizationBBO", "OptimizationOptimJL", "OrdinaryDiffEq", "Plots", "Random", "RecursiveArrayTools", "Statistics", "StatsBase", "TOML"]
-path = "../.."
+path = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl"
 uuid = "f2d48b76-d258-4732-aa20-f5a609aab424"
 version = "0.3.0"
 

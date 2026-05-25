@@ -1,0 +1,10 @@
+┌ Info: 2026-05-23 11:22:45 Restored 3 GUI-built model(s) from C:\Users\elbak\OneDrive\Desktop\Research\Research Package\GrowthParameterEstimation.jl\examples\gui\data\gui_custom_models.toml
+└ @ Main C:\Users\elbak\OneDrive\Desktop\Research\Research Package\GrowthParameterEstimation.jl\examples\gui\pipeline_gui_app_genie.jl:488
+┌ Info: 2026-05-23 11:23:00 Watching ["C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl"]
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:19
+┌ Info: 2026-05-23 11:23:13 Web Server starting at http://127.0.0.1:8050 - press Ctrl/Cmd+C to stop the server. 
+└ @ Genie.Server C:\Users\elbak\.julia\packages\Genie\o5yO5\src\Server.jl:194
+┌ Info: 2026-05-23 11:23:15 Listening on: 127.0.0.1:8050, thread id: 1
+└ @ HTTP.Servers C:\Users\elbak\.julia\packages\HTTP\Y97L1\src\Servers.jl:382
+┌ Info: 2026-05-23 11:23:15 Autoreloading
+└ @ GenieAutoReload C:\Users\elbak\.julia\packages\GenieAutoReload\qpImd\src\GenieAutoReload.jl:22
