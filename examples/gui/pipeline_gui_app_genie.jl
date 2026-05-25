@@ -577,14 +577,47 @@ function _append_unique_path(paths::Vector{String}, path::AbstractString)
     return paths
 end
 
+function _normalize_select_value(value, uploaded_paths::Vector{String}=String[])
+    isnothing(value) && return ""
+
+    candidate = ""
+    if value isa Pair
+        candidate = _normalize_select_value(last(value), uploaded_paths)
+    elseif value isa AbstractDict
+        d = Dict{String,Any}(string(k) => v for (k, v) in pairs(value))
+        if haskey(d, "value")
+            candidate = string(d["value"])
+        elseif haskey(d, "path")
+            candidate = string(d["path"])
+        elseif haskey(d, "label")
+            candidate = string(d["label"])
+        else
+            candidate = string(value)
+        end
+    else
+        candidate = string(value)
+    end
+
+    candidate = strip(candidate)
+    isempty(candidate) && return ""
+    isfile(candidate) && return candidate
+
+    for p in uploaded_paths
+        if p == candidate || basename(p) == candidate
+            return p
+        end
+    end
+
+    return candidate
+end
+
 function _upload_entries(fileuploads)
     entries = NamedTuple[]
     seen = Set{String}()
     isnothing(fileuploads) && return entries
 
-    path_keys = ("path", "tmp_path", "tempPath", "tmpname", "filepath", "file")
-    name_keys = ("name", "filename", "originalname", "fileName")
-    child_keys = ("files", "items", "uploads", "value", "data")
+    path_keys = ("path", "tmp_path", "tempPath", "tmpname", "filepath", "file", "localpath", "localPath", "tempfile", "temp_file", "stored_path", "uploaded_path")
+    name_keys = ("name", "filename", "originalname", "fileName", "original_name")
 
     function _dict_get(d::Dict{String,Any}, keys)
         for k in keys
@@ -596,6 +629,9 @@ function _upload_entries(fileuploads)
     end
 
     function _normalize_item(item)
+        if item isa Pair
+            return Dict{String,Any}(string(first(item)) => last(item))
+        end
         if item isa Dict
             out = Dict{String,Any}()
             for (k, v) in pairs(item)
@@ -616,6 +652,15 @@ function _upload_entries(fileuploads)
     end
 
     function _collect(item)
+        if item isa AbstractString
+            p = strip(String(item))
+            if !isempty(p) && isfile(p) && !(p in seen)
+                push!(entries, (path=p, name=basename(p)))
+                push!(seen, p)
+            end
+            return
+        end
+
         if item isa AbstractVector
             for child in item
                 _collect(child)
@@ -639,9 +684,9 @@ function _upload_entries(fileuploads)
             end
         end
 
-        for ck in child_keys
-            if haskey(data, ck)
-                _collect(data[ck])
+        for v in values(data)
+            if v isa AbstractVector || v isa Dict || v isa Pair || v isa AbstractString
+                _collect(v)
             end
         end
     end
@@ -1424,9 +1469,9 @@ _load_gui_models_from_file()
                 overview_layout = layout
                 status_msg = "<span style='color:#0f766e'>&#10003; Uploaded $(length(added_paths)) file(s). Select source and click Visualize Data when ready.</span>"
             else
-                status_msg = "<span style='color:#dc2626'>&#10060; Upload failed: no readable CSV paths received.</span>"
+                ftype = string(typeof(fileuploads))
+                status_msg = "<span style='color:#dc2626'>&#10060; Upload failed: no readable CSV paths received. Payload type: $(ftype).</span>"
             end
-            fileuploads = Any[]
         end
     end
 
@@ -1536,10 +1581,26 @@ _load_gui_models_from_file()
             idx = Base.invokelatest(_pipeline_stage_index, pipeline_stage_select, 1)
             stages = Any[pipeline_stages...]
             stage = Dict{String,Any}(String(k) => v for (k, v) in pairs(Dict(stages[idx])))
-            new_csv = String(stage_csv_select)
+            new_csv = Base.invokelatest(_normalize_select_value, stage_csv_select, uploaded_csv_paths)
             old_csv = String(get(stage, "csv_file", ""))
+            @info "stage_csv_select change" stage=idx raw=repr(stage_csv_select) normalized=new_csv old=old_csv uploaded_count=length(uploaded_csv_paths)
             if new_csv != old_csv
-                pipeline_status_html = "<p style='color:#0f766e'>Selected CSV for stage $(idx): $(isempty(new_csv) ? "(not set)" : basename(new_csv)). Click 'Apply CSV to Stage' to save.</p>"
+                if isempty(new_csv)
+                    pipeline_status_html = "<p style='color:#6b7280'>Cleared stage CSV selection for stage $(idx). Select a file and click 'Apply CSV to Stage'.</p>"
+                elseif !isfile(new_csv)
+                    pipeline_status_html = "<p style='color:#d97706'>&#9888; Selected file no longer exists: $(new_csv)</p>"
+                else
+                    # Save directly — do NOT call _pipeline_refresh_outputs here.
+                    # That sets pipeline_stage_select, which triggers @onchange pipeline_stage_select,
+                    # which resets stage_csv_select back to the old saved value, breaking user selection.
+                    stage["csv_file"] = new_csv
+                    stages[idx] = stage
+                    pipeline_stages = stages
+                    pipeline_stages_html = Base.invokelatest(_pipeline_stage_cards_html, pipeline_stages, idx)
+                    pipeline_flowchart_html = Base.invokelatest(_pipeline_stage_flowchart_html, pipeline_stages)
+                    pipeline_mapping_html = Base.invokelatest(_pipeline_mapping_html, pipeline_stages, idx, selected_models)
+                    pipeline_status_html = "<p style='color:#0f766e'>Applied CSV to stage $(idx): $(basename(new_csv)).</p>"
+                end
             end
         end
     end
@@ -1550,7 +1611,8 @@ _load_gui_models_from_file()
                 pipeline_status_html = "<p style='color:#d97706'>&#9888; Add a stage first.</p>"
             else
                 idx = Base.invokelatest(_pipeline_stage_index, pipeline_stage_select, 1)
-                selected_csv = strip(String(stage_csv_select))
+                selected_csv = Base.invokelatest(_normalize_select_value, stage_csv_select, uploaded_csv_paths)
+                @info "apply_csv_to_stage" stage=idx raw=repr(stage_csv_select) normalized=selected_csv uploaded_count=length(uploaded_csv_paths)
                 if isempty(selected_csv)
                     pipeline_status_html = "<p style='color:#d97706'>&#9888; Select a CSV file first.</p>"
                 elseif !isfile(selected_csv)
@@ -1561,8 +1623,11 @@ _load_gui_models_from_file()
                     stage["csv_file"] = selected_csv
                     stages[idx] = stage
                     pipeline_stages = stages
-                    pipeline_stage_options, pipeline_stage_select, pipeline_stages_html, pipeline_flowchart_html, pipeline_mapping_html =
-                        Base.invokelatest(_pipeline_refresh_outputs, pipeline_stages, idx, selected_models)
+                    # Update HTML directly — do NOT call _pipeline_refresh_outputs here.
+                    # That sets pipeline_stage_select which triggers its onchange which resets stage_csv_select.
+                    pipeline_stages_html = Base.invokelatest(_pipeline_stage_cards_html, pipeline_stages, idx)
+                    pipeline_flowchart_html = Base.invokelatest(_pipeline_stage_flowchart_html, pipeline_stages)
+                    pipeline_mapping_html = Base.invokelatest(_pipeline_mapping_html, pipeline_stages, idx, selected_models)
                     pipeline_status_html = "<p style='color:#0f766e'>Applied CSV to stage $(idx): $(basename(selected_csv)).</p>"
                 end
             end
@@ -1573,7 +1638,7 @@ _load_gui_models_from_file()
     @onchange btn_add_stage begin
         if btn_add_stage > 0
             stages = Any[pipeline_stages...]
-            selected_stage_path = !isempty(stage_csv_select) ? String(stage_csv_select) : ""
+            selected_stage_path = Base.invokelatest(_normalize_select_value, stage_csv_select, uploaded_csv_paths)
             current_path = !isempty(selected_stage_path) ? selected_stage_path : (isempty(csv_path_loaded) ? String(csv_path_input) : csv_path_loaded)
             push!(stages, Dict(
                 "name" => "Stage $(length(stages) + 1)",
@@ -1637,7 +1702,7 @@ _load_gui_models_from_file()
             idx = Base.invokelatest(_pipeline_stage_index, pipeline_stage_select, 1)
             stages = Any[pipeline_stages...]
             stage = Dict{String,Any}(String(k) => v for (k, v) in pairs(Dict(stages[idx])))
-            selected_stage_path = !isempty(stage_csv_select) ? String(stage_csv_select) : ""
+            selected_stage_path = Base.invokelatest(_normalize_select_value, stage_csv_select, uploaded_csv_paths)
             stage["csv_file"] = !isempty(selected_stage_path) ? selected_stage_path : (isempty(csv_path_loaded) ? String(csv_path_input) : csv_path_loaded)
             stage["model_name"] = Base.invokelatest(_pipeline_default_model, selected_models)
             stages[idx] = stage
@@ -1907,7 +1972,7 @@ function ui()
                         hint="Pick where the next visualization should come from.", class="q-mb-md"),
                     Genie.Renderer.Html.div([
                         StippleUI.Selects.select(:active_uploaded_csv, options=:uploaded_csv_options,
-                            label="Uploaded file", outlined=true,
+                            label="Uploaded file", outlined=true, emitvalue=true, mapoptions=true,
                             hint="Choose one uploaded file as the active dataset for downstream fit/pipeline actions.", class="q-mb-md"),
                     ]; v__show="data_source_mode === 'upload'"),
                     Genie.Renderer.Html.div([
@@ -1955,7 +2020,7 @@ function ui()
                             Genie.Renderer.Html.div(class="row q-col-gutter-md q-mb-sm", [
                                 Genie.Renderer.Html.div(class="col-8", [
                                     StippleUI.Selects.select(:pipeline_stage_select, options=:pipeline_stage_options,
-                                        label="Selected stage", outlined=true),
+                                        label="Selected stage", outlined=true, emitvalue=true, mapoptions=true),
                                 ]),
                                 Genie.Renderer.Html.div(class="col-4 q-pt-sm", [
                                     btn("Move Up", color="teal", outline=true, @click("btn_stage_up += 1")),
@@ -1966,7 +2031,7 @@ function ui()
                             Genie.Renderer.Html.div(class="row q-col-gutter-md q-mb-sm", [
                                 Genie.Renderer.Html.div(class="col-12", [
                                     StippleUI.Selects.select(:stage_csv_select, options=:uploaded_csv_options,
-                                        label="Stage CSV file", outlined=true,
+                                        label="Stage CSV file", outlined=true, emitvalue=true, mapoptions=true,
                                         hint="Choose from uploaded files. Then click Apply CSV to Stage.", class="q-mb-sm"),
                                     btn("Apply CSV to Stage", color="teal", outline=true, @click("btn_stage_apply_csv += 1")),
                                 ]),
