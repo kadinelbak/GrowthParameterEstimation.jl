@@ -1,3 +1,0 @@
-condition,n_points,n_unique_timepoints,time_span,min_time_step,rel_signal_span,error_median,warning_count
-dose=0.0 | cell_line=A549 | density=1.0 | replicate=1,4,4,3.0,1.0,0.5454545454545455,0.1,0
-dose=1.0 | cell_line=H1975 | density=1.0 | replicate=1,4,4,3.0,1.0,0.5,0.1,0

@@ -1,3 +1,0 @@
-condition,n_rows,n_replicates,min_time,max_time,monotone_time
-cell_line=A549 | population_type=naive | culture_type=monoculture | treatment_amount=0.0 | density=1.0 | replicate=1,4,1,0.0,3.0,true
-cell_line=H1975 | population_type=naive | culture_type=monoculture | treatment_amount=1.0 | density=1.0 | replicate=1,4,1,0.0,3.0,true

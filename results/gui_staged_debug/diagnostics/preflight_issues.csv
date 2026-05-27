@@ -1,3 +1,0 @@
-severity,scope,code,condition,detail,recommendation
-error,stage,no_stage_matches,untreated_coculture,No rows match stage filter.,Align input metadata with stage filter expectations or customize stages.
-error,stage,no_stage_matches,treated_coculture,No rows match stage filter.,Align input metadata with stage filter expectations or customize stages.

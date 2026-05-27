@@ -1,7 +1,0 @@
-time,observed,pred_null_coculture,pred_lotka_volterra_competition
-0.0,1.2,NaN,NaN
-1.0,1.8,NaN,NaN
-2.0,2.4,NaN,NaN
-3.0,3.1,NaN,NaN
-4.0,3.5,NaN,NaN
-5.0,3.9,NaN,NaN

@@ -1,5 +1,0 @@
-stage,model,condition,reason,detail,hint,timestamp
-solver,pkpd_inhibition,treatment_amount=1.0 | dose=1.0 | cell_line=H1975 | population_type=naive | density=1.0 | replicate=1,unknown_failure,Simulation failed during best-fit evaluation,"Inspect condition-specific time range, bounds, and observation scaling.",2026-04-26T10:27:32.929
-solver,transit_chain_erlang,treatment_amount=1.0 | dose=1.0 | cell_line=H1975 | population_type=naive | density=1.0 | replicate=1,unknown_failure,Simulation failed during best-fit evaluation,"Inspect condition-specific time range, bounds, and observation scaling.",2026-04-26T10:27:33.508
-untreated_coculture,none,all,missing_stage_data,No rows matched stage filter,"Check culture_type, population_type, cell_line, treatment_amount, and density metadata.",2026-04-26T10:27:33.936
-treated_coculture,none,all,missing_stage_data,No rows matched stage filter,"Check culture_type, population_type, cell_line, treatment_amount, and density metadata.",2026-04-26T10:27:33.936

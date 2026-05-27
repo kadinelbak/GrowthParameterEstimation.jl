@@ -1,3 +1,0 @@
-model,sse,weighted_sse,aic,bic,n_params,delta_bic
-sensitive_resistant,1.0e12,1.0e12,169.03556988020296,167.57788616479934,7,0.0
-lotka_volterra_hill_competition,1.0e12,1.0e12,177.03556988020296,174.74492404171156,11,7.167037876912218
