@@ -1,0 +1,210 @@
+:root {
+  --bg: #f5f4ef;
+  --bg-alt: #e8e5da;
+  --ink: #182118;
+  --muted: #5a665a;
+  --card: #fffef8;
+  --line: #d4d2c4;
+  --accent: #114b5f;
+  --accent-2: #9b2226;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 20% 10%, #dce2d7 0%, transparent 42%),
+    radial-gradient(circle at 80% 20%, #f5d8c4 0%, transparent 30%),
+    linear-gradient(140deg, var(--bg) 0%, var(--bg-alt) 100%);
+  min-height: 100vh;
+}
+
+.appShell {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.hero {
+  margin-bottom: 1rem;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Space Grotesk", "Avenir Next", sans-serif;
+  margin: 0.2rem 0;
+}
+
+.subtext {
+  color: var(--muted);
+  margin: 0.35rem 0 0;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 7px 26px rgba(0, 0, 0, 0.05);
+}
+
+.uploader {
+  margin-bottom: 1rem;
+}
+
+.uploaderRow {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  background: var(--accent);
+  color: #f8f8f8;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #95a9ad;
+  cursor: not-allowed;
+}
+
+.layoutGrid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1rem;
+}
+
+.leftCol,
+.rightCol {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.mappingGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+label > span {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+select,
+input[type="file"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.42rem;
+  background: #ffffff;
+}
+
+.fitTitle {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+}
+
+.fitColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  max-height: 170px;
+  overflow: auto;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 0.45rem;
+}
+
+.checkboxLabel {
+  display: flex;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  align-items: center;
+}
+
+.tableWrap {
+  overflow: auto;
+  max-height: 360px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid #eceade;
+  white-space: nowrap;
+}
+
+th {
+  background: #f6f3e8;
+  position: sticky;
+  top: 0;
+}
+
+.metaLine {
+  margin: 0.65rem 0 0;
+  color: var(--muted);
+}
+
+.error {
+  margin: 0.55rem 0 0;
+  color: var(--accent-2);
+  font-weight: 700;
+}
+
+.warningList {
+  margin: 0.8rem 0 0;
+  padding-left: 1rem;
+  color: #8f5f00;
+}
+
+@media (max-width: 1100px) {
+  .layoutGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mappingGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -8,4 +8,10 @@ compathelper.pub
 *.pem
 *.key
 
+# GUI frontend generated artifacts
+examples/gui/frontend/node_modules/
+examples/gui/frontend/dist/
+examples/gui/frontend/.vite/
+examples/gui/frontend/.env.local
+
 
