@@ -15,6 +15,29 @@ The first page supports:
 - Table preview for validation.
 - Plot overlay of uploaded time-series data.
 
+## Stage 2 Included: Custom Logistic Model Builder
+
+The GUI now includes a second analysis stage where you can:
+
+- Create custom modified-logistic variants (template-based).
+- Set per-parameter bounds.
+- Save models for later reuse.
+
+Saved models are persisted at:
+
+- `examples/gui/backend/data/custom_models.json`
+
+The backend also generates a Julia registry file:
+
+- `examples/gui/backend/data/custom_models_registry.jl`
+
+Load these saved models into your fitter with:
+
+```julia
+using GrowthParameterEstimation
+register_models_from_file!("examples/gui/backend/data/custom_models_registry.jl")
+```
+
 ## Run Backend (Julia API)
 
 ```powershell
@@ -67,6 +90,12 @@ Response includes, per file:
 - column stats and inferred suggestions
 - preview rows
 - downsampled plot points
+
+Additional custom-model endpoints:
+
+- `GET /api/models/templates`
+- `GET /api/models/custom`
+- `POST /api/models/custom`
 
 ## Suggested Next Steps
 

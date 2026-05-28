@@ -34,6 +34,24 @@ body {
   margin-bottom: 1rem;
 }
 
+.stageTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.stageTab {
+  background: #d6ddd6;
+  color: #203228;
+  border: 1px solid #b4c4b4;
+}
+
+.stageTab.active {
+  background: var(--accent);
+  color: #f8f8f8;
+}
+
 .eyebrow {
   margin: 0;
   text-transform: uppercase;
@@ -88,6 +106,41 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.secondaryBtn {
+  background: #2f4858;
+}
+
+.modeChip {
+  background: #d6ddd6;
+  color: #203228;
+  border: 1px solid #b4c4b4;
+}
+
+.modeChip.active {
+  background: var(--accent);
+  color: #f8f8f8;
+}
+
+.dangerBtn {
+  background: #8e3b46;
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.authoringModeRow {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.75rem 0;
+}
+
+.fieldHint {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .layoutGrid {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
@@ -124,6 +177,9 @@ label > span {
 }
 
 select,
+textarea,
+input[type="text"],
+input[type="number"],
 input[type="file"] {
   width: 100%;
   border: 1px solid var(--line);
@@ -199,12 +255,46 @@ th {
   color: #8f5f00;
 }
 
+.successLine {
+  margin: 0.6rem 0 0;
+  color: #1f6a34;
+  font-weight: 700;
+}
+
+.modelLayout {
+  grid-template-columns: 1.2fr 0.8fr;
+}
+
+.modelFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.equationPreview {
+  margin: 0.8rem 0;
+  font-family: "IBM Plex Mono", monospace;
+  background: #f5f1e5;
+  border: 1px solid #e2dcc8;
+  border-radius: 8px;
+  padding: 0.6rem;
+  overflow-x: auto;
+}
+
+.equationPreview .katex-display {
+  margin: 0.2rem 0;
+}
+
 @media (max-width: 1100px) {
   .layoutGrid {
     grid-template-columns: 1fr;
   }
 
   .mappingGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modelFormGrid {
     grid-template-columns: 1fr;
   }
 }
