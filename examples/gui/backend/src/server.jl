@@ -18,6 +18,7 @@ const CUSTOM_MODEL_TEMPLATES = Dict{String,Any}(
     "logistic_basic" => Dict(
         "label" => "Logistic Growth",
         "equation" => "dN/dt = r*N*(1 - N/K)",
+        "defaultPlainMath" => "d(N,t) = r*N*(1 - frac(N,K))",
         "defaultRhs" => "r*N*(1 - N/max(K, 1e-8))",
         "defaultMathTex" => "\\frac{dN}{dt} = rN\\left(1 - \\frac{N}{K}\\right)",
         "paramNames" => ["r", "K"],
@@ -26,6 +27,7 @@ const CUSTOM_MODEL_TEMPLATES = Dict{String,Any}(
     "logistic_linear_kill" => Dict(
         "label" => "Logistic + Linear Kill",
         "equation" => "dN/dt = r*N*(1 - N/K) - kill_coeff*dose*N",
+        "defaultPlainMath" => "d(N,t) = r*N*(1 - frac(N,K)) - kill_coeff*dose*N",
         "defaultRhs" => "r*N*(1 - N/max(K, 1e-8)) - kill_coeff*dose*N",
         "defaultMathTex" => "\\frac{dN}{dt} = rN\\left(1 - \\frac{N}{K}\\right) - k_{kill}DN",
         "paramNames" => ["r", "K", "kill_coeff"],
@@ -34,6 +36,7 @@ const CUSTOM_MODEL_TEMPLATES = Dict{String,Any}(
     "theta_logistic_hill_inhibition" => Dict(
         "label" => "Theta Logistic + Hill Inhibition",
         "equation" => "dN/dt = (1 - I(dose))*r*N*(1 - (N/K)^theta)",
+        "defaultPlainMath" => "d(N,t) = (1 - frac(pow(dose,hill), pow(ic50,hill) + pow(dose,hill)))*r*N*(1 - pow(frac(N,K),theta))",
         "defaultRhs" => "max(1e-12, 1 - (dose^hill/(ic50^hill + dose^hill + 1e-12))) * r*N*(1 - (N/max(K, 1e-8))^theta)",
         "defaultMathTex" => "\\frac{dN}{dt} = (1-I(D))rN\\left(1-\\left(\\frac{N}{K}\\right)^\\theta\\right)",
         "paramNames" => ["r", "K", "theta", "ic50", "hill"],
@@ -42,6 +45,7 @@ const CUSTOM_MODEL_TEMPLATES = Dict{String,Any}(
     "theta_logistic_hill_kill" => Dict(
         "label" => "Theta Logistic + Hill Kill",
         "equation" => "dN/dt = r*N*(1 - (N/K)^theta) - K(dose)*N",
+        "defaultPlainMath" => "d(N,t) = r*N*(1 - pow(frac(N,K),theta)) - emax_kill*frac(pow(dose,hill), pow(ic50,hill) + pow(dose,hill))*N",
         "defaultRhs" => "r*N*(1 - (N/max(K, 1e-8))^theta) - (emax_kill*(dose^hill/(ic50^hill + dose^hill + 1e-12)))*N",
         "defaultMathTex" => "\\frac{dN}{dt} = rN\\left(1-\\left(\\frac{N}{K}\\right)^\\theta\\right)-K(D)N",
         "paramNames" => ["r", "K", "theta", "emax_kill", "ic50", "hill"],

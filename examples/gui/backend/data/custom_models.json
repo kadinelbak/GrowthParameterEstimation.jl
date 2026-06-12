@@ -1,5 +1,1 @@
-﻿{
-    "models":  [
-
-               ]
-}
+{"models":[{"bounds":[[1.0e-6,5.0],[0.001,1.0e7],[-2.0,1.0]],"name":"Logistic with Death","createdAt":"2026-06-12T03:06:23Z","rhsEquation":"r*N*(1 - N/K) - d*N","variant":"logistic_basic","description":"","mathText":"dN/dt = r \\cdot N \\cdot (1 - N/K) - d \\cdot N","paramNames":["r","K","d"]}]}

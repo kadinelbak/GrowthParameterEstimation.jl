@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { BlockMath } from 'react-katex'
 import {
   CartesianGrid,
@@ -16,7 +16,9 @@ import 'katex/dist/katex.min.css'
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://127.0.0.1:8050'
 const STAGES = [
   { id: 'data', label: 'Stage 1: Data Intake' },
-  { id: 'models', label: 'Stage 2: Custom Models' }
+  { id: 'models', label: 'Stage 2: Custom Models' },
+  { id: 'planner', label: 'Stage 3: Pipeline Planner' },
+  { id: 'review', label: 'Stage 4: Pipeline Review' }
 ]
 
 function buildUploadPayload(fileRecords) {
@@ -38,10 +40,110 @@ function makeModelForm(templateMap, variant) {
     description: '',
     variant,
     mathText: template?.defaultMathTex ?? '',
+    plainMathText: template?.defaultPlainMath ?? template?.equation ?? '',
     rhsEquation: template?.defaultRhs ?? '',
     paramNames,
     bounds
   }
+}
+
+function replaceUntilStable(text, replacer) {
+  let current = text
+  while (true) {
+    const next = replacer(current)
+    if (next === current) {
+      return next
+    }
+    current = next
+  }
+}
+
+function convertPlainMathToLatex(input) {
+  let expr = String(input ?? '').trim()
+  if (!expr) {
+    return ''
+  }
+
+  expr = expr
+    .replace(/<=/g, ' \\leq ')
+    .replace(/>=/g, ' \\geq ')
+    .replace(/!=/g, ' \\neq ')
+    .replace(/\*/g, ' \\cdot ')
+
+  expr = replaceUntilStable(expr, (text) => text.replace(/frac\(([^()]+),([^()]+)\)/g, (_, num, den) => `\\frac{${num.trim()}}{${den.trim()}}`))
+  expr = replaceUntilStable(expr, (text) => text.replace(/pow\(([^()]+),([^()]+)\)/g, (_, base, exp) => `{${base.trim()}}^{${exp.trim()}}`))
+  expr = replaceUntilStable(expr, (text) => text.replace(/sqrt\(([^()]+)\)/g, (_, arg) => `\\sqrt{${arg.trim()}}`))
+  expr = replaceUntilStable(expr, (text) => text.replace(/sub\(([^()]+),([^()]+)\)/g, (_, base, sub) => `{${base.trim()}}_{${sub.trim()}}`))
+  expr = replaceUntilStable(expr, (text) => text.replace(/d\(([^()]+),([^()]+)\)/g, (_, y, x) => `\\frac{d ${y.trim()}}{d ${x.trim()}}`))
+  expr = replaceUntilStable(expr, (text) => text.replace(/pd\(([^()]+),([^()]+)\)/g, (_, y, x) => `\\frac{\\partial ${y.trim()}}{\\partial ${x.trim()}}`))
+
+  expr = expr.replace(/\b([A-Za-z][A-Za-z0-9]*)\^([A-Za-z0-9]+)\b/g, '{$1}^{$2}')
+  expr = expr.replace(/\b([A-Za-z][A-Za-z0-9]*)_([A-Za-z0-9]+)\b/g, '{$1}_{$2}')
+
+  return expr.replace(/\s+/g, ' ').trim()
+}
+
+const GREEK_TO_NAME = {
+  '\\alpha': 'alpha', '\\beta': 'beta', '\\gamma': 'gamma', '\\delta': 'delta',
+  '\\epsilon': 'epsilon', '\\zeta': 'zeta', '\\eta': 'eta', '\\theta': 'theta',
+  '\\kappa': 'kappa', '\\lambda': 'lambda', '\\mu': 'mu', '\\nu': 'nu',
+  '\\pi': 'pi', '\\rho': 'rho', '\\sigma': 'sigma', '\\tau': 'tau',
+  '\\phi': 'phi', '\\omega': 'omega',
+  '\\Gamma': 'Gamma', '\\Delta': 'Delta', '\\Theta': 'Theta', '\\Lambda': 'Lambda',
+  '\\Pi': 'Pi', '\\Sigma': 'Sigma', '\\Phi': 'Phi', '\\Omega': 'Omega'
+}
+
+function convertPlainMathToJulia(input) {
+  let expr = String(input ?? '').trim()
+  if (!expr) return ''
+
+  // Take only the right side of the first = sign
+  const eqIdx = expr.indexOf('=')
+  if (eqIdx !== -1) {
+    expr = expr.slice(eqIdx + 1).trim()
+  }
+
+  // Replace LaTeX operators before stripping backslash words
+  expr = expr.replace(/\\cdot\s*/g, '*')
+  expr = expr.replace(/\\times\s*/g, '*')
+  expr = expr.replace(/\\div\s*/g, '/')
+  expr = expr.replace(/\\leq\s*/g, '<=')
+  expr = expr.replace(/\\geq\s*/g, '>=')
+  expr = expr.replace(/\\pm\s*/g, '+')
+  expr = expr.replace(/\\infty\s*/g, 'Inf')
+
+  // Replace Greek letters with plain names
+  for (const [latex, name] of Object.entries(GREEK_TO_NAME)) {
+    expr = expr.split(latex + ' ').join(name)
+    expr = expr.split(latex).join(name)
+  }
+
+  // Convert helper functions to Julia operators
+  expr = replaceUntilStable(expr, (text) =>
+    text.replace(/frac\(([^()]+),([^()]+)\)/g, (_, num, den) => `(${num.trim()})/(${den.trim()})`)
+  )
+  expr = replaceUntilStable(expr, (text) =>
+    text.replace(/pow\(([^()]+),([^()]+)\)/g, (_, base, exp) => `(${base.trim()})^(${exp.trim()})`)
+  )
+  expr = replaceUntilStable(expr, (text) =>
+    text.replace(/sqrt\(([^()]+)\)/g, (_, arg) => `sqrt(${arg.trim()})`)
+  )
+  // sub(a,b) → a_b  (e.g. sub(k,kill) → k_kill)
+  expr = replaceUntilStable(expr, (text) =>
+    text.replace(/sub\(([^()]+),([^()]+)\)/g, (_, base, s) => `${base.trim()}_${s.trim()}`)
+  )
+  // d() / pd() in the RHS position — strip the wrapper, keep the numerator variable
+  expr = replaceUntilStable(expr, (text) =>
+    text.replace(/p?d\(([^()]+),([^()]+)\)/g, (_, y) => y.trim())
+  )
+
+  // Drop any remaining backslash sequences
+  expr = expr.replace(/\\[a-zA-Z]+\s*/g, '')
+
+  // Drop any non-Julia characters (Unicode symbols, etc.)
+  expr = expr.replace(/[^\w\s+\-*/^().,]/g, '')
+
+  return expr.replace(/\s+/g, ' ').trim()
 }
 
 function MathTextBlock({ text, fallback }) {
@@ -196,15 +298,108 @@ function FileMappingCard({ fileResult, mapping, onUpdate }) {
   )
 }
 
+const MATH_KEYBOARD_TABS = [
+  {
+    id: 'basic',
+    label: 'Basic',
+    keys: [
+      { label: '+', insert: ' + ', description: 'Add' },
+      { label: '−', insert: ' - ', description: 'Subtract' },
+      { label: '×', insert: ' * ', description: 'Multiply' },
+      { label: '÷', insert: ' / ', description: 'Divide' },
+      { label: '(', insert: '(', description: 'Open parenthesis' },
+      { label: ')', insert: ')', description: 'Close parenthesis' },
+      { label: '=', insert: ' = ', description: 'Equals' },
+      { label: '^', insert: '^', description: 'Exponent (e.g. N^2)' },
+      { label: '±', insert: ' \\pm ', description: 'Plus or minus' },
+      { label: '∞', insert: ' \\infty ', description: 'Infinity' },
+      { label: '≤', insert: ' \\leq ', description: 'Less than or equal' },
+      { label: '≥', insert: ' \\geq ', description: 'Greater than or equal' },
+      { label: '≠', insert: ' \\neq ', description: 'Not equal' }
+    ]
+  },
+  {
+    id: 'structures',
+    label: 'Structures',
+    keys: [
+      { label: 'a/b', insert: 'frac( , )', description: 'Fraction — fill in the top and bottom numbers' },
+      { label: 'xⁿ', insert: 'pow( , )', description: 'Power — fill in the base and exponent' },
+      { label: 'x²', insert: 'pow( ,2)', description: 'Square a value' },
+      { label: 'x³', insert: 'pow( ,3)', description: 'Cube a value' },
+      { label: '√x', insert: 'sqrt( )', description: 'Square root' },
+      { label: 'xₙ', insert: 'sub( , )', description: 'Subscript — e.g. "K half" → sub(K,half)' },
+      { label: '|x|', insert: 'abs( )', description: 'Absolute value' }
+    ]
+  },
+  {
+    id: 'calculus',
+    label: 'Calculus',
+    keys: [
+      { label: 'dN/dt', insert: 'd(N,t)', description: 'Derivative of N with respect to time t' },
+      { label: 'd( )/dt', insert: 'd( ,t)', description: 'Derivative with respect to t — fill in the variable' },
+      { label: 'd/d( )', insert: 'd( , )', description: 'General derivative — fill in both variables' },
+      { label: '∂N/∂t', insert: 'pd(N,t)', description: 'Partial derivative of N with respect to t' },
+      { label: '∂/∂( )', insert: 'pd( , )', description: 'Partial derivative — fill in both variables' }
+    ]
+  },
+  {
+    id: 'functions',
+    label: 'Functions',
+    keys: [
+      { label: 'exp', insert: 'exp( )', description: 'Exponential: e raised to a power' },
+      { label: 'log', insert: 'log( )', description: 'Natural logarithm' },
+      { label: 'sin', insert: 'sin( )', description: 'Sine function' },
+      { label: 'cos', insert: 'cos( )', description: 'Cosine function' },
+      { label: 'tan', insert: 'tan( )', description: 'Tangent function' },
+      { label: 'tanh', insert: 'tanh( )', description: 'Hyperbolic tangent — common in Hill-type inhibition equations' },
+      { label: 'max', insert: 'max( , )', description: 'Larger of two values' },
+      { label: 'min', insert: 'min( , )', description: 'Smaller of two values' }
+    ]
+  },
+  {
+    id: 'greek',
+    label: 'Greek',
+    keys: [
+      { label: 'α', insert: '\\alpha ', description: 'alpha' },
+      { label: 'β', insert: '\\beta ', description: 'beta' },
+      { label: 'γ', insert: '\\gamma ', description: 'gamma' },
+      { label: 'δ', insert: '\\delta ', description: 'delta' },
+      { label: 'ε', insert: '\\epsilon ', description: 'epsilon' },
+      { label: 'ζ', insert: '\\zeta ', description: 'zeta' },
+      { label: 'η', insert: '\\eta ', description: 'eta' },
+      { label: 'θ', insert: '\\theta ', description: 'theta' },
+      { label: 'κ', insert: '\\kappa ', description: 'kappa' },
+      { label: 'λ', insert: '\\lambda ', description: 'lambda' },
+      { label: 'μ', insert: '\\mu ', description: 'mu' },
+      { label: 'ν', insert: '\\nu ', description: 'nu' },
+      { label: 'π', insert: '\\pi ', description: 'pi' },
+      { label: 'ρ', insert: '\\rho ', description: 'rho' },
+      { label: 'σ', insert: '\\sigma ', description: 'sigma' },
+      { label: 'τ', insert: '\\tau ', description: 'tau' },
+      { label: 'φ', insert: '\\phi ', description: 'phi' },
+      { label: 'ω', insert: '\\omega ', description: 'omega' },
+      { label: 'Γ', insert: '\\Gamma ', description: 'Gamma' },
+      { label: 'Δ', insert: '\\Delta ', description: 'Delta' },
+      { label: 'Θ', insert: '\\Theta ', description: 'Theta' },
+      { label: 'Λ', insert: '\\Lambda ', description: 'Lambda' },
+      { label: 'Π', insert: '\\Pi ', description: 'Pi (capital)' },
+      { label: 'Σ', insert: '\\Sigma ', description: 'Sigma (capital)' },
+      { label: 'Φ', insert: '\\Phi ', description: 'Phi (capital)' },
+      { label: 'Ω', insert: '\\Omega ', description: 'Omega (capital)' }
+    ]
+  }
+]
+
 function CustomModelBuilder({ templates, models, modelLoadInfo, onSaved, onRefresh }) {
   const templateKeys = Object.keys(templates)
   const defaultVariant = templateKeys[0] ?? 'logistic_linear_kill'
   const [form, setForm] = useState(makeModelForm(templates, defaultVariant))
-  const [authoringMode, setAuthoringMode] = useState('rhs')
+  const [mathKeyboardTab, setMathKeyboardTab] = useState('basic')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [registryFile, setRegistryFile] = useState('')
+  const plainMathInputRef = useRef(null)
 
   useEffect(() => {
     const hasCurrent = form.variant && templates[form.variant]
@@ -214,6 +409,34 @@ function CustomModelBuilder({ templates, models, modelLoadInfo, onSaved, onRefre
   }, [templates])
 
   const activeTemplate = templates[form.variant]
+  const plainMathPreview = useMemo(() => convertPlainMathToLatex(form.plainMathText), [form.plainMathText])
+  const juliaRhs = useMemo(() => convertPlainMathToJulia(form.plainMathText), [form.plainMathText])
+
+  function insertPlainMathHelper(snippet) {
+    const el = plainMathInputRef.current
+    if (!el) {
+      setForm((prev) => ({ ...prev, plainMathText: `${prev.plainMathText}${snippet}` }))
+      return
+    }
+
+    const start = el.selectionStart ?? form.plainMathText.length
+    const end = el.selectionEnd ?? form.plainMathText.length
+    setForm((prev) => {
+      const current = prev.plainMathText ?? ''
+      return {
+        ...prev,
+        plainMathText: `${current.slice(0, start)}${snippet}${current.slice(end)}`
+      }
+    })
+
+    requestAnimationFrame(() => {
+      const cursor = start + snippet.length
+      if (plainMathInputRef.current) {
+        plainMathInputRef.current.focus()
+        plainMathInputRef.current.setSelectionRange(cursor, cursor)
+      }
+    })
+  }
 
   function updateParamName(index, value) {
     setForm((prev) => {
@@ -266,8 +489,8 @@ function CustomModelBuilder({ templates, models, modelLoadInfo, onSaved, onRefre
           name: form.name,
           description: form.description,
           variant: form.variant,
-          mathText: form.mathText,
-          rhsEquation: form.rhsEquation,
+          mathText: plainMathPreview,
+          rhsEquation: juliaRhs,
           paramNames: form.paramNames,
           bounds: form.bounds.map((b) => [Number(b.low), Number(b.high)])
         })
@@ -292,6 +515,8 @@ function CustomModelBuilder({ templates, models, modelLoadInfo, onSaved, onRefre
     }
   }
 
+  const activeKeyboardTab = MATH_KEYBOARD_TABS.find((t) => t.id === mathKeyboardTab)
+
   return (
     <section className="layoutGrid modelLayout">
       <div className="leftCol">
@@ -300,17 +525,17 @@ function CustomModelBuilder({ templates, models, modelLoadInfo, onSaved, onRefre
             <h2>Loaded Model State</h2>
             <button type="button" className="secondaryBtn" onClick={onRefresh}>Refresh Loaded Models</button>
           </div>
-          <p className="metaLine">Loaded models from backend: {models.length}</p>
-          {modelLoadInfo?.registryFile && <p className="metaLine">Registry file: {modelLoadInfo.registryFile}</p>}
-          {modelLoadInfo?.loadHint && <p className="metaLine">Load command: {modelLoadInfo.loadHint}</p>}
-          {modelLoadInfo?.loadedAt && <p className="metaLine">Last refreshed: {modelLoadInfo.loadedAt}</p>}
+          <p className="metaLine">Models currently loaded: {models.length}</p>
         </section>
 
         <section className="card">
           <div className="cardHeader">
-            <h2>Create Modified Logistic Model</h2>
+            <h2>Build a Custom Growth Model</h2>
           </div>
-          <p className="subtext">Build a custom logistic variant, save it, and load it later in the fitter using generated Julia registry code.</p>
+          <p className="subtext">
+            Design your own mathematical model and save it for use in the fitter.
+            Give it a name, write your equation using the math keyboard below, then set your parameters.
+          </p>
 
           <div className="modelFormGrid">
             <label>
@@ -318,12 +543,11 @@ function CustomModelBuilder({ templates, models, modelLoadInfo, onSaved, onRefre
               <input
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g. Logistic Hill"
+                placeholder="e.g. Logistic with Drug Kill"
               />
-              <p className="fieldHint">Spaces are now allowed. The backend will generate a safe internal symbol automatically.</p>
             </label>
             <label>
-              <span>Variant</span>
+              <span>Starting Template</span>
               <select
                 value={form.variant}
                 onChange={(e) => setForm(makeModelForm(templates, e.target.value))}
@@ -336,113 +560,98 @@ function CustomModelBuilder({ templates, models, modelLoadInfo, onSaved, onRefre
           </div>
 
           <label>
-            <span>Description</span>
+            <span>Notes (optional)</span>
             <textarea
               value={form.description}
               onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-              rows={3}
-              placeholder="Notes about this model variant"
+              rows={2}
+              placeholder="Describe what makes this model different from the base template..."
             />
           </label>
 
-          <p className="equationPreview">Template: {activeTemplate?.equation ?? 'N/A'}</p>
-
-          <div className="authoringModeRow">
-            <button
-              type="button"
-              className={`modeChip ${authoringMode === 'rhs' ? 'active' : ''}`}
-              onClick={() => setAuthoringMode('rhs')}
-            >
-              Author In RHS
-            </button>
-            <button
-              type="button"
-              className={`modeChip ${authoringMode === 'math' ? 'active' : ''}`}
-              onClick={() => setAuthoringMode('math')}
-            >
-              Author In Math Text
-            </button>
+          <div className="sectionDivider">
+            <h3>Your Equation (Visual Display)</h3>
+            <p className="subtext">
+              Type your equation in the box below and use the math keyboard to insert symbols, fractions, Greek letters, and more.
+              The preview updates live — this is exactly how it will look in a textbook or paper.
+            </p>
           </div>
 
-          {authoringMode === 'math' && (
-            <p className="fieldHint">Math text is for readable display. The executable RHS still needs to be present below for saving into the fitter.</p>
+          <div className="equationPreviewBig">
+            {form.plainMathText.trim()
+              ? <MathTextBlock text={plainMathPreview} fallback="(could not render — check your equation text)" />
+              : <p className="equationPlaceholder">Your equation will appear here as you type...</p>
+            }
+          </div>
+
+          <label>
+            <span>Type your equation here</span>
+            <textarea
+              ref={plainMathInputRef}
+              value={form.plainMathText}
+              onChange={(e) => setForm((prev) => ({ ...prev, plainMathText: e.target.value }))}
+              rows={3}
+              placeholder="Example: d(N,t) = r * N * (1 - frac(N,K)) - sub(k,kill) * dose * N"
+            />
+          </label>
+
+          {activeTemplate?.equation && (
+            <p className="fieldHint">Template starting point: <span style={{ fontFamily: 'monospace' }}>{activeTemplate.equation}</span></p>
           )}
 
-          {authoringMode === 'rhs' && (
-            <p className="fieldHint">RHS is the executable form used to generate the Julia model. Math text is optional display metadata.</p>
+          {juliaRhs && (
+            <p className="fieldHint">Computation: <code style={{ background: '#e8f0e8', padding: '0.1rem 0.35rem', borderRadius: 4, fontFamily: 'monospace' }}>{juliaRhs}</code></p>
           )}
 
-          {authoringMode === 'math' && (
-            <>
-              <label>
-                <span>Math Text (LaTeX, optional)</span>
-                <textarea
-                  value={form.mathText}
-                  onChange={(e) => setForm((prev) => ({ ...prev, mathText: e.target.value }))}
-                  rows={3}
-                  placeholder="Example: \\frac{dN}{dt} = rN\\left(1-\\frac{N}{K}\\right) - k_{kill}DN"
-                />
-              </label>
+          <div className="mathKeyboard">
+            <div className="mathKeyboardTabs">
+              {MATH_KEYBOARD_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`mkTab ${mathKeyboardTab === tab.id ? 'active' : ''}`}
+                  onClick={() => setMathKeyboardTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="mathKeyboardKeys">
+              {activeKeyboardTab?.keys.map((key, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className="mkKey"
+                  title={key.description}
+                  onClick={() => insertPlainMathHelper(key.insert)}
+                >
+                  {key.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-              <div className="equationPreview">
-                <MathTextBlock text={form.mathText} fallback="No math text yet." />
-              </div>
-
-              <label>
-                <span>Executable RHS (required for saving)</span>
-                <textarea
-                  value={form.rhsEquation}
-                  onChange={(e) => setForm((prev) => ({ ...prev, rhsEquation: e.target.value }))}
-                  rows={4}
-                  placeholder="Example: r*N*(1 - N/max(K, 1e-8)) - kill_coeff*dose*N"
-                />
-              </label>
-            </>
-          )}
-
-          {authoringMode === 'rhs' && (
-            <>
-              <label>
-                <span>Equation RHS (sets du[1])</span>
-                <textarea
-                  value={form.rhsEquation}
-                  onChange={(e) => setForm((prev) => ({ ...prev, rhsEquation: e.target.value }))}
-                  rows={4}
-                  placeholder="Example: r*N*(1 - N/max(K, 1e-8)) - kill_coeff*dose*N"
-                />
-              </label>
-
-              <label>
-                <span>Math Text (LaTeX, optional)</span>
-                <textarea
-                  value={form.mathText}
-                  onChange={(e) => setForm((prev) => ({ ...prev, mathText: e.target.value }))}
-                  rows={3}
-                  placeholder="Example: \\frac{dN}{dt} = rN\\left(1-\\frac{N}{K}\\right) - k_{kill}DN"
-                />
-              </label>
-
-              <div className="equationPreview">
-                <MathTextBlock text={form.mathText} fallback="No math text yet." />
-              </div>
-            </>
-          )}
-
-          <p className="metaLine">Available RHS symbols: N, dose, max, min, abs, exp, log, sqrt, clamp, plus parameter names below.</p>
+          <div className="sectionDivider">
+            <h3>Parameters</h3>
+            <p className="subtext">
+              These are the unknown constants the fitter will estimate from your data.
+              Give each one a short name and a plausible search range (min to max).
+            </p>
+          </div>
 
           <div className="tableWrap">
             <table>
               <thead>
                 <tr>
-                  <th>Parameter</th>
-                  <th>Lower Bound</th>
-                  <th>Upper Bound</th>
-                  <th>Action</th>
+                  <th>Name</th>
+                  <th>Min</th>
+                  <th>Max</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {(form.paramNames ?? []).map((param, idx) => (
-                  <tr key={`${idx}-${param}`}>
+                  <tr key={idx}>
                     <td>
                       <input
                         type="text"
@@ -477,10 +686,10 @@ function CustomModelBuilder({ templates, models, modelLoadInfo, onSaved, onRefre
 
           <div className="uploaderRow">
             <button type="button" className="secondaryBtn" onClick={addParameterRow}>
-              Add Parameter
+              + Add Parameter
             </button>
-            <button type="button" onClick={saveModel} disabled={saving || !form.name.trim() || !form.variant}>
-              {saving ? 'Saving...' : 'Save Custom Model'}
+            <button type="button" onClick={saveModel} disabled={saving || !form.name.trim() || !form.variant || !juliaRhs.trim()}>
+              {saving ? 'Saving...' : 'Save Model'}
             </button>
           </div>
 
@@ -492,26 +701,300 @@ function CustomModelBuilder({ templates, models, modelLoadInfo, onSaved, onRefre
 
       <aside className="rightCol">
         <section className="card">
-          <h2>Saved Custom Models</h2>
-          <p className="subtext">These are persisted for later use in the model fitter.</p>
+          <h2>Saved Models</h2>
+          <p className="subtext">These are persisted and can be loaded into the fitter later.</p>
         </section>
 
         {models.map((model) => (
           <section className="card" key={model.name}>
             <div className="cardHeader">
               <h3>{model.name}</h3>
-              <span>{model.variant}</span>
+              <span className="variantBadge">{model.variant}</span>
             </div>
             {model.description && <p className="subtext">{model.description}</p>}
             <div className="equationPreview">
-              <MathTextBlock text={model.mathText} fallback="No math text provided" />
+              <MathTextBlock text={model.mathText} fallback="No equation display saved" />
             </div>
-            <p className="equationPreview">du[1] = {model.rhsEquation ?? '(legacy model without stored RHS)'}</p>
-            <p className="metaLine">Params: {(model.paramNames ?? []).join(', ')}</p>
-            <p className="metaLine">Created: {model.createdAt}</p>
+
+            <p className="metaLine">Parameters: {(model.paramNames ?? []).join(', ')}</p>
+            <p className="metaLine">Saved: {model.createdAt}</p>
           </section>
         ))}
       </aside>
+    </section>
+  )
+}
+
+function makePipelineStage(index) {
+  return {
+    id: `stage-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    label: `Stage ${index + 1}`,
+    description: '',
+    csvFileId: null,
+    models: []
+  }
+}
+
+function PipelinePlanner({ csvResults, availableModels, stages, onChange }) {
+  const builtInModelNames = ['Logistic Growth', 'Logistic + Linear Kill', 'Theta Logistic + Hill Inhibition', 'Theta Logistic + Hill Kill']
+  const allModelNames = [
+    ...builtInModelNames,
+    ...availableModels.map((m) => m.name).filter((n) => !builtInModelNames.includes(n))
+  ]
+
+  function addStage() {
+    onChange([...stages, makePipelineStage(stages.length)])
+  }
+
+  function removeStage(id) {
+    onChange(stages.filter((s) => s.id !== id))
+  }
+
+  function updateStage(id, patch) {
+    onChange(stages.map((s) => s.id === id ? { ...s, ...patch } : s))
+  }
+
+  function moveStage(id, dir) {
+    const idx = stages.findIndex((s) => s.id === id)
+    if (idx === -1) return
+    const next = stages.slice()
+    const swap = idx + dir
+    if (swap < 0 || swap >= next.length) return
+    ;[next[idx], next[swap]] = [next[swap], next[idx]]
+    onChange(next)
+  }
+
+  function toggleModel(stageId, modelName) {
+    const stage = stages.find((s) => s.id === stageId)
+    if (!stage) return
+    const has = stage.models.includes(modelName)
+    updateStage(stageId, {
+      models: has ? stage.models.filter((m) => m !== modelName) : [...stage.models, modelName]
+    })
+  }
+
+  return (
+    <section className="plannerLayout">
+      <div className="plannerLeft">
+        <section className="card">
+          <div className="cardHeader">
+            <h2>Pipeline Stages</h2>
+            <button type="button" onClick={addStage}>+ Add Stage</button>
+          </div>
+          <p className="subtext">
+            Define each analysis stage in order. Assign a dataset and pick which models to test against it.
+            This is planning only — nothing runs until Stage 4.
+          </p>
+        </section>
+
+        {stages.length === 0 && (
+          <section className="card">
+            <p className="subtext" style={{ textAlign: 'center', padding: '1rem 0' }}>
+              No stages yet. Click <strong>+ Add Stage</strong> to begin planning your pipeline.
+            </p>
+          </section>
+        )}
+
+        {stages.map((stage, idx) => (
+          <section className="card plannerStageCard" key={stage.id}>
+            <div className="cardHeader">
+              <div className="stageNumberBadge">{idx + 1}</div>
+              <input
+                className="stageLabelInput"
+                value={stage.label}
+                onChange={(e) => updateStage(stage.id, { label: e.target.value })}
+                placeholder="Stage name..."
+              />
+              <div className="stageCardActions">
+                <button type="button" className="iconBtn" title="Move up" onClick={() => moveStage(stage.id, -1)} disabled={idx === 0}>↑</button>
+                <button type="button" className="iconBtn" title="Move down" onClick={() => moveStage(stage.id, 1)} disabled={idx === stages.length - 1}>↓</button>
+                <button type="button" className="dangerBtn" onClick={() => removeStage(stage.id)}>Remove</button>
+              </div>
+            </div>
+
+            <label>
+              <span>Notes (optional)</span>
+              <textarea
+                rows={2}
+                value={stage.description}
+                onChange={(e) => updateStage(stage.id, { description: e.target.value })}
+                placeholder="What is this stage testing or comparing?"
+              />
+            </label>
+
+            <label>
+              <span>Dataset</span>
+              {csvResults.length === 0
+                ? <p className="fieldHint">No datasets loaded yet — go to Stage 1 to upload CSV files.</p>
+                : (
+                  <select
+                    value={stage.csvFileId ?? ''}
+                    onChange={(e) => updateStage(stage.id, { csvFileId: e.target.value || null })}
+                  >
+                    <option value="">(none selected)</option>
+                    {csvResults.filter((f) => f.ok).map((f) => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                )
+              }
+            </label>
+
+            <div className="sectionDivider">
+              <h3>Models to test</h3>
+            </div>
+
+            <div className="modelCheckGrid">
+              {allModelNames.map((name) => (
+                <label key={name} className="checkboxLabel">
+                  <input
+                    type="checkbox"
+                    checked={stage.models.includes(name)}
+                    onChange={() => toggleModel(stage.id, name)}
+                  />
+                  <span>{name}</span>
+                </label>
+              ))}
+            </div>
+
+            {stage.models.length === 0 && (
+              <p className="fieldHint">No models selected — check at least one model to test.</p>
+            )}
+          </section>
+        ))}
+      </div>
+
+      <aside className="plannerRight">
+        <section className="card">
+          <h2>Pipeline Summary</h2>
+          <p className="subtext">A quick overview of your planned pipeline.</p>
+        </section>
+
+        {stages.length === 0 && (
+          <section className="card">
+            <p className="subtext">No stages planned yet.</p>
+          </section>
+        )}
+
+        {stages.map((stage, idx) => {
+          const csvFile = csvResults.find((f) => f.id === stage.csvFileId)
+          return (
+            <section className="card summaryCard" key={stage.id}>
+              <div className="cardHeader">
+                <h3><span className="stageNumberBadge sm">{idx + 1}</span> {stage.label || `Stage ${idx + 1}`}</h3>
+              </div>
+              <p className="metaLine">Dataset: {csvFile ? csvFile.name : <em>not assigned</em>}</p>
+              <p className="metaLine">Models: {stage.models.length === 0 ? <em>none selected</em> : stage.models.join(', ')}</p>
+              {stage.description && <p className="subtext">{stage.description}</p>}
+            </section>
+          )
+        })}
+      </aside>
+    </section>
+  )
+}
+
+function PipelineReview({ csvResults, stages }) {
+  const [activeIdx, setActiveIdx] = useState(0)
+  const stage = stages[activeIdx] ?? null
+  const csvFile = stage ? csvResults.find((f) => f.id === stage.csvFileId) : null
+
+  if (stages.length === 0) {
+    return (
+      <section className="card">
+        <h2>Stage 4: Pipeline Review</h2>
+        <p className="subtext">No pipeline stages have been planned yet. Go to Stage 3 to build your pipeline first.</p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="reviewLayout">
+      <aside className="reviewNav">
+        <section className="card">
+          <h2>Pipeline Stages</h2>
+          <p className="subtext">{stages.length} stage{stages.length !== 1 ? 's' : ''} planned</p>
+        </section>
+
+        {stages.map((s, idx) => {
+          const complete = s.csvFileId && s.models.length > 0
+          return (
+            <button
+              key={s.id}
+              type="button"
+              className={`reviewNavBtn ${activeIdx === idx ? 'active' : ''} ${complete ? '' : 'incomplete'}`}
+              onClick={() => setActiveIdx(idx)}
+            >
+              <span className="stageNumberBadge sm">{idx + 1}</span>
+              <span className="reviewNavLabel">{s.label || `Stage ${idx + 1}`}</span>
+              {!complete && <span className="incompleteTag">Needs setup</span>}
+            </button>
+          )
+        })}
+      </aside>
+
+      <div className="reviewMain">
+        {stage && (
+          <>
+            <section className="card">
+              <div className="cardHeader">
+                <h2><span className="stageNumberBadge">{activeIdx + 1}</span> {stage.label || `Stage ${activeIdx + 1}`}</h2>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="secondaryBtn" onClick={() => setActiveIdx(Math.max(0, activeIdx - 1))} disabled={activeIdx === 0}>← Previous</button>
+                  <button type="button" className="secondaryBtn" onClick={() => setActiveIdx(Math.min(stages.length - 1, activeIdx + 1))} disabled={activeIdx === stages.length - 1}>Next →</button>
+                </div>
+              </div>
+              {stage.description && <p className="subtext">{stage.description}</p>}
+            </section>
+
+            <section className="card">
+              <h3>Dataset</h3>
+              {csvFile
+                ? (
+                  <div className="reviewDetail">
+                    <p className="reviewDetailRow"><span>File:</span> <strong>{csvFile.name}</strong></p>
+                    <p className="reviewDetailRow"><span>Rows:</span> {csvFile.nRows}</p>
+                    {csvFile.columns && (
+                      <p className="reviewDetailRow"><span>Columns:</span> {csvFile.columns.map((c) => c.name).join(', ')}</p>
+                    )}
+                  </div>
+                )
+                : <p className="fieldHint incompleteHint">No dataset assigned — go back to Stage 3 to assign one.</p>
+              }
+            </section>
+
+            <section className="card">
+              <h3>Models to Test</h3>
+              {stage.models.length === 0
+                ? <p className="fieldHint incompleteHint">No models selected — go back to Stage 3 to pick models.</p>
+                : (
+                  <div className="reviewModelList">
+                    {stage.models.map((name, i) => (
+                      <div key={name} className="reviewModelRow">
+                        <span className="reviewModelNum">{i + 1}</span>
+                        <span>{name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              }
+            </section>
+
+            <section className="card reviewReadyCard">
+              <h3>Stage Status</h3>
+              {stage.csvFileId && stage.models.length > 0
+                ? <p className="successLine">Ready — dataset and models are assigned.</p>
+                : (
+                  <ul className="warningList">
+                    {!stage.csvFileId && <li>No dataset assigned</li>}
+                    {stage.models.length === 0 && <li>No models selected</li>}
+                  </ul>
+                )
+              }
+            </section>
+          </>
+        )}
+      </div>
     </section>
   )
 }
@@ -529,6 +1012,7 @@ function App() {
   const [customModels, setCustomModels] = useState([])
   const [modelLoadInfo, setModelLoadInfo] = useState({ registryFile: '', loadHint: '', loadedAt: '' })
   const [modelsError, setModelsError] = useState('')
+  const [pipelineStages, setPipelineStages] = useState([])
 
   const selectedResult = useMemo(() => results.find((f) => f.id === selectedFileId) ?? results[0] ?? null, [results, selectedFileId])
 
@@ -803,6 +1287,22 @@ function App() {
             onRefresh={loadCustomModelContext}
           />
         </>
+      )}
+
+      {activeStage === 'planner' && (
+        <PipelinePlanner
+          csvResults={results}
+          availableModels={customModels}
+          stages={pipelineStages}
+          onChange={setPipelineStages}
+        />
+      )}
+
+      {activeStage === 'review' && (
+        <PipelineReview
+          csvResults={results}
+          stages={pipelineStages}
+        />
       )}
     </main>
   )
