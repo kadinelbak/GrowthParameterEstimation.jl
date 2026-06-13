@@ -18,7 +18,7 @@ using ..Registry
 
 export setUpProblem, calculate_bic, pQuickStat, run_single_fit,
     compare_models, compare_datasets, compare_models_dict, fit_three_datasets,
-    run_joint_fit, compare_joint_models_dict, fit_model, fit_condition
+    run_joint_fit, compare_joint_models_dict, fit_model, fit_condition, predict_model
 
 """
     setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time=100.0, maxiters=10_000)
@@ -303,7 +303,16 @@ function fit_model(
         n_trials = max(50, min(maxiters, 5000))
 
         for _ in 1:n_trials
-            candidate = [lb[j] + rand(rng) * max(ub[j] - lb[j], 1e-12) for j in eachindex(lb)]
+            # Use log-space sampling for parameters with wide bounds (ratio > 100)
+            # to give equal probability mass across orders of magnitude
+            candidate = [
+                if lb[j] > 0 && ub[j] / lb[j] > 1e2
+                    exp(log(lb[j]) + rand(rng) * (log(ub[j]) - log(lb[j])))
+                else
+                    lb[j] + rand(rng) * max(ub[j] - lb[j], 1e-12)
+                end
+                for j in eachindex(lb)
+            ]
             cand_ssr, cand_retcode = ssr_from_free(candidate)
             if cand_ssr < best_ssr
                 best_ssr = cand_ssr
@@ -326,6 +335,36 @@ function fit_model(
         ssr = best_ssr,
         retcode = best_retcode,
     )
+end
+
+"""
+    predict_model(model_spec, x_obs, params, dose, y0; n_curve=200, ...)
+
+Simulate a registered model with fixed parameters over a dense time grid from
+`x_obs[1]` to `x_obs[end]`, using `y0` as the initial condition.
+Returns `(x_dense, yhat_dense)`.  On solver failure, `yhat_dense` is all `NaN`.
+"""
+function predict_model(
+    model_spec::Registry.ModelSpec,
+    x_obs::Vector{Float64},
+    params::Vector{Float64},
+    dose = 0.0,
+    y0::Float64 = 1.0;
+    n_curve::Int = 200,
+    solver = model_spec.default_solver,
+    reltol::Float64 = 1e-6,
+    abstol::Float64 = 1e-6,
+)
+    x_dense = collect(range(x_obs[1], x_obs[end], length = n_curve))
+    u0 = _default_u0(max(y0, 1e-12), model_spec.n_states)
+    exposure_fn = _exposure_fn(dose)
+    try
+        _, yhat = _simulate_observed(model_spec, x_dense, params, solver, u0, exposure_fn;
+                                     reltol = reltol, abstol = abstol)
+        return x_dense, Float64.(yhat)
+    catch
+        return x_dense, fill(NaN, n_curve)
+    end
 end
 
 function _auto_measurement_col(df::DataFrame)

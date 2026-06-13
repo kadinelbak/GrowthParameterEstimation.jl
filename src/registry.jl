@@ -259,6 +259,13 @@ function _ode_adapter(model!::Function)
     end
 end
 
+function _logistic_linear_kill!(du, u, p, t, exposure)
+    r, K, kill_coeff = p
+    N = max(u[1], 0.0)
+    dose = max(exposure(t), 0.0)
+    du[1] = r * N * (1 - N / max(K, 1e-8)) - kill_coeff * dose * N
+end
+
 function _theta_hill_inhibition!(du, u, p, t, exposure)
     r, K, theta, ic50, hill = p
     N = max(u[1], 0.0)
@@ -376,6 +383,19 @@ end
 
 function register_builtin_models!()
     clear_registry!()
+
+    register_model!(ModelSpec(
+        name="logistic_linear_kill",
+        ode! = _logistic_linear_kill!,
+        param_names=[:r, :K, :kill_coeff],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0)],
+        n_states=1,
+        observable=u -> u[1],
+        base_growth_family="logistic",
+        default_solver=Tsit5(),
+        state_names=[:N],
+        metadata=Dict(:family => :baseline_kill),
+    ))
 
     register_model!(ModelSpec(
         name="logistic_growth",

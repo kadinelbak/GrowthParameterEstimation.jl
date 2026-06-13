@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BlockMath } from 'react-katex'
 import {
   CartesianGrid,
+  ComposedChart,
   ErrorBar,
   Legend,
   Line,
   LineChart,
   ResponsiveContainer,
+  Scatter,
   Tooltip,
   XAxis,
   YAxis
@@ -21,6 +23,13 @@ const STAGES = [
   { id: 'review', label: 'Stage 4: Pipeline Review' }
 ]
 
+const BUILTIN_VARIANT_LABELS = {
+  logistic_basic: 'Logistic Growth',
+  logistic_linear_kill: 'Logistic + Linear Kill',
+  theta_logistic_hill_inhibition: 'Theta Logistic + Hill Inhibition',
+  theta_logistic_hill_kill: 'Theta Logistic + Hill Kill'
+}
+
 function buildUploadPayload(fileRecords) {
   return {
     files: fileRecords.map((item) => ({
@@ -29,6 +38,20 @@ function buildUploadPayload(fileRecords) {
       content: item.content
     }))
   }
+}
+
+function parseFixedParams(text) {
+  const result = {}
+  for (const line of String(text ?? '').split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const eqIdx = trimmed.indexOf('=')
+    if (eqIdx === -1) continue
+    const key = trimmed.slice(0, eqIdx).trim()
+    const val = trimmed.slice(eqIdx + 1).trim()
+    if (key) result[key] = val
+  }
+  return result
 }
 
 function makeModelForm(templateMap, variant) {
@@ -172,11 +195,9 @@ function isIdentifierLike(name) {
   return norm === 'id' || norm.endsWith('_id') || /(sample|file|path|replicate|rep)\b/.test(norm)
 }
 
-function eligibleFitColumnsForFile(fileResult, mapping) {
+function eligibleCovariateColumnsForFile(fileResult, mapping) {
   const blocked = new Set([mapping?.time, mapping?.count, mapping?.id].filter(Boolean))
   return (fileResult.columns ?? [])
-    .filter((col) => isNumericTypeName(col.type))
-    .filter((col) => !isIdentifierLike(col.name))
     .filter((col) => !blocked.has(col.name))
     .map((col) => col.name)
 }
@@ -217,8 +238,8 @@ function summarizeSeries(points) {
 
 function FileMappingCard({ fileResult, mapping, onUpdate }) {
   const columns = fileResult.columns?.map((c) => c.name) ?? []
-  const eligibleFitColumns = eligibleFitColumnsForFile(fileResult, mapping)
-  const fitSet = new Set((mapping.fitCandidates ?? []).filter((name) => eligibleFitColumns.includes(name)))
+  const eligibleCovariateColumns = eligibleCovariateColumnsForFile(fileResult, mapping)
+  const covariateSet = new Set((mapping.extraColumns ?? []).filter((name) => eligibleCovariateColumns.includes(name)))
 
   return (
     <section className="card">
@@ -262,27 +283,33 @@ function FileMappingCard({ fileResult, mapping, onUpdate }) {
           </div>
 
           <div>
-            <p className="fitTitle">Variables to fit or set later</p>
-            <div className="fitColumns">
-              {eligibleFitColumns.map((name) => (
-                <label key={`${fileResult.id}-${name}`} className="checkboxLabel">
-                  <input
-                    type="checkbox"
-                    checked={fitSet.has(name)}
-                    onChange={(e) => {
-                      const next = new Set(mapping.fitCandidates)
-                      if (e.target.checked) {
-                        next.add(name)
-                      } else {
-                        next.delete(name)
-                      }
-                      onUpdate(fileResult.id, { fitCandidates: Array.from(next) })
-                    }}
-                  />
-                  <span>{name}</span>
-                </label>
-              ))}
-            </div>
+            <p className="fitTitle">Additional covariate columns</p>
+            <p className="fieldHint">Select any numeric columns to carry forward as covariates (e.g. drug concentration, dose level). These will be available when configuring fits in later stages.</p>
+            {eligibleCovariateColumns.length === 0
+              ? <p className="fieldHint"><em>No additional numeric columns detected beyond time, count, and ID.</em></p>
+              : (
+                <div className="fitColumns">
+                  {eligibleCovariateColumns.map((name) => (
+                    <label key={`${fileResult.id}-${name}`} className="checkboxLabel">
+                      <input
+                        type="checkbox"
+                        checked={covariateSet.has(name)}
+                        onChange={(e) => {
+                          const next = new Set(mapping.extraColumns)
+                          if (e.target.checked) {
+                            next.add(name)
+                          } else {
+                            next.delete(name)
+                          }
+                          onUpdate(fileResult.id, { extraColumns: Array.from(next) })
+                        }}
+                      />
+                      <span>{name}</span>
+                    </label>
+                  ))}
+                </div>
+              )
+            }
           </div>
 
           {fileResult.warnings?.length > 0 && (
@@ -731,16 +758,24 @@ function makePipelineStage(index) {
     label: `Stage ${index + 1}`,
     description: '',
     csvFileId: null,
-    models: []
+    models: [],
+    fixedParamsText: '',
+    carryFromStageId: null  // id of a prior pipeline stage whose fitted params are locked in for this stage
   }
 }
 
-function PipelinePlanner({ csvResults, availableModels, stages, onChange }) {
-  const builtInModelNames = ['Logistic Growth', 'Logistic + Linear Kill', 'Theta Logistic + Hill Inhibition', 'Theta Logistic + Hill Kill']
-  const allModelNames = [
-    ...builtInModelNames,
-    ...availableModels.map((m) => m.name).filter((n) => !builtInModelNames.includes(n))
-  ]
+function PipelinePlanner({ csvResults, availableModels, modelTemplates, stages, onChange }) {
+  const allModels = useMemo(() => {
+    const builtIn = Object.entries(BUILTIN_VARIANT_LABELS).map(([variant, name]) => ({
+      name,
+      paramNames: modelTemplates?.[variant]?.paramNames ?? []
+    }))
+    const customNames = new Set(builtIn.map((m) => m.name))
+    const customs = availableModels
+      .filter((m) => !customNames.has(m.name))
+      .map((m) => ({ name: m.name, paramNames: m.paramNames ?? [] }))
+    return [...builtIn, ...customs]
+  }, [modelTemplates, availableModels])
 
   function addStage() {
     onChange([...stages, makePipelineStage(stages.length)])
@@ -840,26 +875,103 @@ function PipelinePlanner({ csvResults, availableModels, stages, onChange }) {
               }
             </label>
 
+            {(() => {
+              // Prior stages (only stages that come before this one in the list)
+              const priorStages = stages.slice(0, idx)
+              if (priorStages.length === 0) return null
+
+              // Which params does the carry-source stage expose?
+              const sourceStage = stages.find((s) => s.id === stage.carryFromStageId) ?? null
+              const sourceParams = sourceStage
+                ? [...new Set(sourceStage.models.flatMap((name) => allModels.find((m) => m.name === name)?.paramNames ?? []))]
+                : []
+
+              return (
+                <div className="carrySection">
+                  <label style={{ marginBottom: 0 }}>
+                    <span>Carry fitted values from</span>
+                    <select
+                      value={stage.carryFromStageId ?? ''}
+                      onChange={(e) => updateStage(stage.id, { carryFromStageId: e.target.value || null })}
+                    >
+                      <option value="">(none)</option>
+                      {priorStages.map((s, i) => (
+                        <option key={s.id} value={s.id}>{s.label || `Stage ${i + 1}`}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {sourceStage && (
+                    <p className="fieldHint" style={{ marginTop: '0.3rem' }}>
+                      Fitted values of{' '}
+                      {sourceParams.length > 0
+                        ? sourceParams.map((p) => <code key={p} style={{ marginRight: '0.25rem' }}>{p}</code>)
+                        : <em>no shared parameters</em>}
+                      {' '}from <strong>{sourceStage.label}</strong> will be locked in as fixed inputs for this stage.
+                      Override individual values below using <em>Fixed parameters</em> if needed.
+                    </p>
+                  )}
+                </div>
+              )
+            })()}
+
             <div className="sectionDivider">
               <h3>Models to test</h3>
             </div>
 
             <div className="modelCheckGrid">
-              {allModelNames.map((name) => (
-                <label key={name} className="checkboxLabel">
-                  <input
-                    type="checkbox"
-                    checked={stage.models.includes(name)}
-                    onChange={() => toggleModel(stage.id, name)}
-                  />
-                  <span>{name}</span>
-                </label>
-              ))}
+              {allModels.map(({ name, paramNames }) => {
+                const fixedParams = parseFixedParams(stage.fixedParamsText)
+                const sourceStage = stages.find((s) => s.id === stage.carryFromStageId) ?? null
+                const carriedParams = sourceStage
+                  ? new Set(sourceStage.models.flatMap((mn) => allModels.find((m) => m.name === mn)?.paramNames ?? []))
+                  : new Set()
+                const isChecked = stage.models.includes(name)
+                return (
+                  <label key={name} className={`modelCard${isChecked ? ' selected' : ''}`}>
+                    <div className="modelCardHeader">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleModel(stage.id, name)}
+                      />
+                      <span className="modelCardName">{name}</span>
+                    </div>
+                    {paramNames.length > 0 && (
+                      <div className="paramChips">
+                        {paramNames.map((p) =>
+                          fixedParams[p] !== undefined
+                            ? <span key={p} className="paramChip fixed" title="Manually fixed — not estimated">{p} = {fixedParams[p]}</span>
+                            : carriedParams.has(p)
+                              ? <span key={p} className="paramChip carry" title="Locked in from a prior pipeline stage">↳ {p}</span>
+                              : <span key={p} className="paramChip fitted" title="Will be estimated from data">{p}</span>
+                        )}
+                      </div>
+                    )}
+                  </label>
+                )
+              })}
             </div>
 
             {stage.models.length === 0 && (
               <p className="fieldHint">No models selected — check at least one model to test.</p>
             )}
+
+            <div className="fixedParamsSection">
+              <details>
+                <summary>Fixed parameters (optional)</summary>
+                <p className="subtext" style={{ marginBottom: '0.4rem' }}>
+                  Enter one <code>param = value</code> per line. Fixed parameters are held constant and not estimated.
+                  They apply to all selected models that share that parameter name.
+                </p>
+                <textarea
+                  rows={3}
+                  value={stage.fixedParamsText ?? ''}
+                  onChange={(e) => updateStage(stage.id, { fixedParamsText: e.target.value })}
+                  placeholder={'r = 2.5\nK = 1e6'}
+                  style={{ fontFamily: 'monospace', fontSize: '0.83rem' }}
+                />
+              </details>
+            </div>
           </section>
         ))}
       </div>
@@ -885,6 +997,13 @@ function PipelinePlanner({ csvResults, availableModels, stages, onChange }) {
               </div>
               <p className="metaLine">Dataset: {csvFile ? csvFile.name : <em>not assigned</em>}</p>
               <p className="metaLine">Models: {stage.models.length === 0 ? <em>none selected</em> : stage.models.join(', ')}</p>
+              {(() => {
+                const fixed = parseFixedParams(stage.fixedParamsText)
+                const keys = Object.keys(fixed)
+                return keys.length > 0
+                  ? <p className="metaLine">Fixed: {keys.map((k) => `${k}=${fixed[k]}`).join(', ')}</p>
+                  : null
+              })()}
               {stage.description && <p className="subtext">{stage.description}</p>}
             </section>
           )
@@ -894,10 +1013,32 @@ function PipelinePlanner({ csvResults, availableModels, stages, onChange }) {
   )
 }
 
-function PipelineReview({ csvResults, stages }) {
+function PipelineReview({ csvResults, stages, availableModels, modelTemplates, stageResults, runningStageId, onRunStage }) {
   const [activeIdx, setActiveIdx] = useState(0)
   const stage = stages[activeIdx] ?? null
   const csvFile = stage ? csvResults.find((f) => f.id === stage.csvFileId) : null
+
+  const modelParamMap = useMemo(() => {
+    const map = {}
+    for (const [variant, name] of Object.entries(BUILTIN_VARIANT_LABELS)) {
+      map[name] = modelTemplates?.[variant]?.paramNames ?? []
+    }
+    for (const m of (availableModels ?? [])) {
+      map[m.name] = m.paramNames ?? []
+    }
+    return map
+  }, [modelTemplates, availableModels])
+
+  // A stage is runnable when all prior stages are done and this stage is configured
+  function isRunnable(idx) {
+    const s = stages[idx]
+    if (!s?.csvFileId || s.models.length === 0) return false
+    if (runningStageId) return false
+    for (let i = 0; i < idx; i++) {
+      if (stageResults[stages[i]?.id]?.status !== 'done') return false
+    }
+    return stageResults[s.id]?.status !== 'running'
+  }
 
   if (stages.length === 0) {
     return (
@@ -918,6 +1059,8 @@ function PipelineReview({ csvResults, stages }) {
 
         {stages.map((s, idx) => {
           const complete = s.csvFileId && s.models.length > 0
+          const sr = stageResults[s.id]
+          const statusBadge = sr?.status === 'done' ? '✓' : sr?.status === 'error' ? '!' : sr?.status === 'running' ? '…' : null
           return (
             <button
               key={s.id}
@@ -927,7 +1070,8 @@ function PipelineReview({ csvResults, stages }) {
             >
               <span className="stageNumberBadge sm">{idx + 1}</span>
               <span className="reviewNavLabel">{s.label || `Stage ${idx + 1}`}</span>
-              {!complete && <span className="incompleteTag">Needs setup</span>}
+              {statusBadge && <span className={`stageStatusBadge ${sr.status}`}>{statusBadge}</span>}
+              {!complete && !statusBadge && <span className="incompleteTag">Needs setup</span>}
             </button>
           )
         })}
@@ -967,31 +1111,196 @@ function PipelineReview({ csvResults, stages }) {
               <h3>Models to Test</h3>
               {stage.models.length === 0
                 ? <p className="fieldHint incompleteHint">No models selected — go back to Stage 3 to pick models.</p>
-                : (
-                  <div className="reviewModelList">
-                    {stage.models.map((name, i) => (
-                      <div key={name} className="reviewModelRow">
-                        <span className="reviewModelNum">{i + 1}</span>
-                        <span>{name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )
+                : (() => {
+                  const fixedParams = parseFixedParams(stage.fixedParamsText)
+                  return (
+                    <div className="reviewModelList">
+                      {stage.models.map((name, i) => {
+                        const paramNames = modelParamMap[name] ?? []
+                        return (
+                          <div key={name} className="reviewModelRow">
+                            <span className="reviewModelNum">{i + 1}</span>
+                            <div>
+                              <span>{name}</span>
+                              {paramNames.length > 0 && (
+                                <div className="paramChips" style={{ marginTop: '0.2rem' }}>
+                                  {paramNames.map((p) =>
+                                    fixedParams[p] !== undefined
+                                      ? <span key={p} className="paramChip fixed" title="Fixed — not estimated">{p} = {fixedParams[p]}</span>
+                                      : <span key={p} className="paramChip fitted" title="Fitted from data">{p}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()
               }
             </section>
 
-            <section className="card reviewReadyCard">
-              <h3>Stage Status</h3>
-              {stage.csvFileId && stage.models.length > 0
-                ? <p className="successLine">Ready — dataset and models are assigned.</p>
-                : (
-                  <ul className="warningList">
-                    {!stage.csvFileId && <li>No dataset assigned</li>}
-                    {stage.models.length === 0 && <li>No models selected</li>}
-                  </ul>
-                )
-              }
-            </section>
+            {(() => {
+              const sourceStage = stages.find((s) => s.id === stage.carryFromStageId) ?? null
+              if (!sourceStage) return null
+              const sourceIdx = stages.findIndex((s) => s.id === stage.carryFromStageId)
+              const reviewModelParamMapLocal = { ...modelParamMap }
+              const sourceCarriedParams = [...new Set(
+                sourceStage.models.flatMap((mn) => reviewModelParamMapLocal[mn] ?? [])
+              )]
+              const manualFixed = parseFixedParams(stage.fixedParamsText)
+              const effectivelyCarried = sourceCarriedParams.filter((p) => manualFixed[p] === undefined)
+
+              // If source stage has results, show resolved values
+              const sourceResult = stageResults[sourceStage.id]
+              const resolvedCarry = sourceResult?.bestModel && sourceResult?.fits
+                ? (() => {
+                  const bestFit = sourceResult.fits.find((f) => f.model === sourceResult.bestModel)
+                  return Object.fromEntries((bestFit?.params ?? []).filter((p) => effectivelyCarried.includes(p.name)).map((p) => [p.name, p.value]))
+                })()
+                : {}
+
+              return (
+                <section className="card">
+                  <h3>Parameter Carry-Forward</h3>
+                  <p className="reviewDetailRow">
+                    <span>Source stage:</span>
+                    <strong><span className="stageNumberBadge sm" style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '0.3rem' }}>{sourceIdx + 1}</span>{sourceStage.label || `Stage ${sourceIdx + 1}`}</strong>
+                  </p>
+                  {effectivelyCarried.length > 0
+                    ? (
+                      <div className="paramChips" style={{ marginTop: '0.45rem' }}>
+                        {effectivelyCarried.map((p) => (
+                          resolvedCarry[p] !== undefined
+                            ? <span key={p} className="paramChip carry" title="Resolved from prior stage fit">↳ {p} = {resolvedCarry[p].toPrecision(4)}</span>
+                            : <span key={p} className="paramChip carry" title="Will be locked in from prior stage results">↳ {p}</span>
+                        ))}
+                      </div>
+                    )
+                    : <p className="fieldHint">No parameters overlap between the source and this stage's models.</p>
+                  }
+                  {Object.keys(manualFixed).length > 0 && (
+                    <p className="subtext" style={{ marginTop: '0.4rem' }}>
+                      Manual overrides in Fixed parameters will take priority over carried values.
+                    </p>
+                  )}
+                </section>
+              )
+            })()}
+
+            {/* ── Run button + results ───────────────────────────────── */}
+            {(() => {
+              const sr = stageResults[stage.id]
+              const canRun = isRunnable(activeIdx)
+              const isRunning = sr?.status === 'running'
+              const isDone = sr?.status === 'done'
+              const isError = sr?.status === 'error'
+              const configured = stage.csvFileId && stage.models.length > 0
+              const priorBlocked = activeIdx > 0 && stageResults[stages[activeIdx - 1]?.id]?.status !== 'done'
+
+              return (
+                <section className="card runCard">
+                  <div className="cardHeader">
+                    <h3>Run Stage {activeIdx + 1}</h3>
+                    <button
+                      type="button"
+                      className="runBtn"
+                      disabled={!canRun}
+                      onClick={() => onRunStage(activeIdx)}
+                    >
+                      {isRunning ? 'Running…' : isDone ? '↺ Re-run' : '▶ Run Stage'}
+                    </button>
+                  </div>
+                  {!configured && <p className="fieldHint incompleteHint">Assign a dataset and select models in Stage 3 before running.</p>}
+                  {configured && priorBlocked && <p className="fieldHint">Complete the prior pipeline stage first.</p>}
+                  {isRunning && <p className="subtext runningHint">Fitting models — this may take a moment…</p>}
+                  {isError && <p className="error">{sr.error}</p>}
+                  {isDone && (
+                    <div className="resultsBlock">
+                      {/* ── Fit chart ─────────────────────────────────── */}
+                      {sr.scatter?.length > 0 && (
+                        <div className="fitChartWrap">
+                          <ResponsiveContainer width="100%" height={240}>
+                            <ComposedChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#c9d6d0" />
+                              <XAxis dataKey="x" type="number" name="Time" domain={['auto', 'auto']} scale="auto" />
+                              <YAxis dataKey="y" type="number" name="Count" domain={['auto', 'auto']} width={55} />
+                              <Tooltip
+                                formatter={(v, name) => [typeof v === 'number' ? v.toPrecision(4) : v, name]}
+                                labelFormatter={(l) => `t = ${Number(l).toPrecision(4)}`}
+                              />
+                              <Legend />
+                              <Scatter
+                                name="Data"
+                                data={sr.scatter.map(([t, c]) => ({ x: t, y: c }))}
+                                fill="#8b9a96"
+                                opacity={0.55}
+                                r={3}
+                              />
+                              {sr.rankedFits.map((fit, ri) => {
+                                const color = makeColor(ri)
+                                const isBest = fit.model === sr.bestModel
+                                return (
+                                  <Line
+                                    key={fit.model}
+                                    data={(fit.curve ?? []).map(([t, c]) => ({ x: t, y: c }))}
+                                    dataKey="y"
+                                    name={`${fit.model}${isBest ? ' ★' : ''}`}
+                                    stroke={color}
+                                    strokeWidth={isBest ? 2.5 : 1.5}
+                                    strokeDasharray={isBest ? undefined : '5 3'}
+                                    dot={false}
+                                    isAnimationActive={false}
+                                  />
+                                )
+                              })}
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                      {/* ── Results table ─────────────────────────────── */}
+                      <table className="resultsTable">
+                        <thead>
+                          <tr>
+                            <th>Rank</th>
+                            <th>Model</th>
+                            <th>BIC</th>
+                            <th>SSR</th>
+                            {(sr.rankedFits[0]?.params ?? []).map((p) => <th key={p.name}>{p.name}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sr.rankedFits.map((fit, ri) => (
+                            <tr key={fit.model} className={fit.model === sr.bestModel ? 'bestRow' : ''}>
+                              <td>{ri + 1}{fit.model === sr.bestModel ? ' ★' : ''}</td>
+                              <td>{fit.model}</td>
+                              <td>{fit.bic?.toFixed(2) ?? '—'}</td>
+                              <td>{fit.ssr?.toExponential(2) ?? '—'}</td>
+                              {(fit.params ?? []).map((p) => <td key={p.name}>{p.value?.toPrecision(4)}</td>)}
+                            </tr>
+                          ))}
+                          {sr.fits.filter((f) => !f.ok).map((fit) => (
+                            <tr key={fit.model} className="errorRow">
+                              <td>—</td>
+                              <td>{fit.model}</td>
+                              <td colSpan={2 + (sr.rankedFits[0]?.params?.length ?? 0)} style={{ color: 'var(--accent-2)', fontSize: '0.82rem' }}>
+                                Failed: {fit.error}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {sr.bestModel && (
+                        <p className="successLine" style={{ marginTop: '0.5rem' }}>
+                          Best model by BIC: <strong>{sr.bestModel}</strong>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </section>
+              )
+            })()}
           </>
         )}
       </div>
@@ -1013,6 +1322,8 @@ function App() {
   const [modelLoadInfo, setModelLoadInfo] = useState({ registryFile: '', loadHint: '', loadedAt: '' })
   const [modelsError, setModelsError] = useState('')
   const [pipelineStages, setPipelineStages] = useState([])
+  const [stageResults, setStageResults] = useState({})   // { [stageId]: { status, fits, rankedFits, bestModel, error } }
+  const [runningStageId, setRunningStageId] = useState(null)
 
   const selectedResult = useMemo(() => results.find((f) => f.id === selectedFileId) ?? results[0] ?? null, [results, selectedFileId])
 
@@ -1116,11 +1427,11 @@ function App() {
           count: f.columnSuggestions?.count ?? null,
           id: f.columnSuggestions?.id ?? null
         }
-        const eligibleFitColumns = eligibleFitColumnsForFile(f, baseMapping)
+        const eligibleCovariateColumns = eligibleCovariateColumnsForFile(f, baseMapping)
 
         initialMappings[f.id] = {
           ...baseMapping,
-          fitCandidates: (f.columnSuggestions?.fitCandidates ?? []).filter((name) => eligibleFitColumns.includes(name))
+          extraColumns: (f.columnSuggestions?.fitCandidates ?? []).filter((name) => eligibleCovariateColumns.includes(name))
         }
       }
       setMappingByFile(initialMappings)
@@ -1128,6 +1439,75 @@ function App() {
       setError(e.message)
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function runPipelineStage(stageIdx) {
+    const stage = pipelineStages[stageIdx]
+    if (!stage || runningStageId) return
+
+    const fileRecord = files.find((f) => f.id === stage.csvFileId)
+    if (!fileRecord) return
+
+    setRunningStageId(stage.id)
+    setStageResults((prev) => ({ ...prev, [stage.id]: { status: 'running', fits: [], rankedFits: [], bestModel: null, error: null } }))
+
+    try {
+      // Build anchor params from the carry-from stage's best fit
+      let anchorParams = {}
+      if (stage.carryFromStageId) {
+        const sourceResult = stageResults[stage.carryFromStageId]
+        if (sourceResult?.bestModel && sourceResult?.fits) {
+          const bestFit = sourceResult.fits.find((f) => f.model === sourceResult.bestModel)
+          if (bestFit?.params) {
+            for (const { name, value } of bestFit.params) {
+              anchorParams[name] = value
+            }
+          }
+        }
+      }
+
+      // Parse manual fixed params — these override carried values
+      const fixedParams = {}
+      for (const [k, v] of Object.entries(parseFixedParams(stage.fixedParamsText ?? ''))) {
+        const num = parseFloat(v)
+        if (Number.isFinite(num)) fixedParams[k] = num
+      }
+
+      const response = await fetch(`${API_BASE}/api/pipeline/run_stage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stageId: stage.id,
+          csvContent: fileRecord.content,
+          csvName: fileRecord.file.name,
+          models: stage.models,
+          anchorParams,
+          fixedParams,
+        })
+      })
+
+      const payload = await response.json()
+      if (!response.ok || !payload.ok) throw new Error(payload.error ?? 'Stage run failed')
+
+      setStageResults((prev) => ({
+        ...prev,
+        [stage.id]: {
+          status: 'done',
+          fits: payload.fits ?? [],
+          rankedFits: payload.rankedFits ?? [],
+          bestModel: payload.bestModel ?? null,
+          scatter: payload.scatter ?? [],
+          error: null,
+        }
+      }))
+    } catch (e) {
+      setStageResults((prev) => ({
+        ...prev,
+        [stage.id]: { status: 'error', fits: [], rankedFits: [], bestModel: null, error: e.message }
+      }))
+    } finally {
+      setRunningStageId(null)
     }
   }
 
@@ -1259,7 +1639,7 @@ function App() {
               <FileMappingCard
                 key={fileResult.id}
                 fileResult={fileResult}
-                mapping={mappingByFile[fileResult.id] ?? { time: null, count: null, id: null, fitCandidates: [] }}
+                mapping={mappingByFile[fileResult.id] ?? { time: null, count: null, id: null, extraColumns: [] }}
                 onUpdate={updateMapping}
               />
             ))}
@@ -1293,6 +1673,7 @@ function App() {
         <PipelinePlanner
           csvResults={results}
           availableModels={customModels}
+          modelTemplates={modelTemplates}
           stages={pipelineStages}
           onChange={setPipelineStages}
         />
@@ -1302,6 +1683,11 @@ function App() {
         <PipelineReview
           csvResults={results}
           stages={pipelineStages}
+          availableModels={customModels}
+          modelTemplates={modelTemplates}
+          stageResults={stageResults}
+          runningStageId={runningStageId}
+          onRunStage={runPipelineStage}
         />
       )}
     </main>

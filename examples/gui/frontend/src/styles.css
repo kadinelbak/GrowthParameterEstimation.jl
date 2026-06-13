@@ -536,9 +536,118 @@ th {
 
 .modelCheckGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.4rem;
   margin-top: 0.4rem;
+}
+
+.modelCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  cursor: pointer;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fafaf5;
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+
+.modelCard:hover {
+  border-color: var(--accent);
+}
+
+.modelCard.selected {
+  border-color: var(--accent);
+  background: #eef4f6;
+}
+
+.modelCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+}
+
+.modelCardName {
+  font-weight: 500;
+}
+
+.paramChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding-left: 1.35rem;
+}
+
+.paramChip {
+  font-size: 0.68rem;
+  padding: 0.1rem 0.38rem;
+  border-radius: 4px;
+  font-family: "IBM Plex Mono", "Fira Mono", monospace;
+  font-weight: 500;
+  line-height: 1.5;
+  cursor: default;
+}
+
+.paramChip.fitted {
+  background: #ddf0e4;
+  color: #1a5c30;
+  border: 1px solid #a8d9b8;
+}
+
+.paramChip.fixed {
+  background: #fde8c8;
+  color: #7a3a10;
+  border: 1px solid #f0c08c;
+}
+
+.paramChip.carry {
+  background: #e8e4f8;
+  color: #3a2080;
+  border: 1px solid #b4a8e8;
+}
+
+.fixedParamsSection {
+  margin-top: 0.75rem;
+  border-top: 1px dashed var(--line);
+  padding-top: 0.65rem;
+}
+
+.fixedParamsSection summary {
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--accent);
+  user-select: none;
+  list-style: none;
+}
+
+.fixedParamsSection summary::-webkit-details-marker {
+  display: none;
+}
+
+.fixedParamsSection summary::before {
+  content: '▸ ';
+}
+
+.fixedParamsSection details[open] summary::before {
+  content: '▾ ';
+}
+
+.fixedParamsSection details[open] summary {
+  margin-bottom: 0.4rem;
+}
+
+/* ── Stage 3: Parameter carry-forward ───────────────────────────────────── */
+
+.carrySection {
+  margin-top: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #c4b8f0;
+  border-radius: 10px;
+  background: #f3f0fc;
 }
 
 .summaryCard {
@@ -546,6 +655,106 @@ th {
 }
 
 /* ── Stage 4: Pipeline Review ────────────────────────────────────────────── */
+
+/* Stage status badges in sidebar nav */
+.stageStatusBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.38rem;
+  border-radius: 4px;
+  line-height: 1.4;
+}
+
+.stageStatusBadge.done {
+  background: #ddf0e4;
+  color: #1a5c30;
+}
+
+.stageStatusBadge.error {
+  background: #fde8e8;
+  color: #7a1010;
+}
+
+.stageStatusBadge.running {
+  background: #e8f0fc;
+  color: #1a3a7a;
+}
+
+/* Run card */
+.runCard {
+  border-left: 4px solid var(--accent);
+}
+
+.runBtn {
+  background: var(--accent);
+  color: #f8f8f8;
+  font-weight: 700;
+  padding: 0.55rem 1.1rem;
+  border-radius: 9px;
+}
+
+.runBtn:disabled {
+  background: #c4ccc4;
+  color: #5a665a;
+  cursor: not-allowed;
+}
+
+.runningHint {
+  font-style: italic;
+  color: var(--muted);
+  margin-top: 0.35rem;
+}
+
+/* Results table */
+.resultsBlock {
+  margin-top: 0.75rem;
+  overflow: auto;
+}
+
+.fitChartWrap {
+  margin-bottom: 1rem;
+  background: #fafaf8;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem 0.25rem 0.25rem;
+}
+
+.resultsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.resultsTable th {
+  background: #f0ede0;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 2px solid var(--line);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+
+.resultsTable td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid #eceade;
+  white-space: nowrap;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+}
+
+.resultsTable tr.bestRow {
+  background: #eef8f2;
+}
+
+.resultsTable tr.bestRow td:first-child {
+  font-weight: 700;
+  color: #1a5c30;
+}
+
+.resultsTable tr.errorRow td {
+  background: #fdf5f5;
+}
 
 .reviewLayout {
   display: grid;

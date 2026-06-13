@@ -5,7 +5,9 @@ using DataFrames
 using Dates
 using HTTP
 using JSON3
+using Statistics
 using Tables
+using GrowthParameterEstimation
 
 const DEFAULT_PORT = 8050
 const MAX_PREVIEW_ROWS = 25
@@ -13,6 +15,14 @@ const MAX_PLOT_POINTS_PER_FILE = 2000
 const BACKEND_DATA_DIR = normpath(joinpath(@__DIR__, "..", "data"))
 const CUSTOM_MODELS_STORE = joinpath(BACKEND_DATA_DIR, "custom_models.json")
 const CUSTOM_MODELS_REGISTRY_FILE = joinpath(BACKEND_DATA_DIR, "custom_models_registry.jl")
+
+# Maps frontend display names → GrowthParameterEstimation registry names
+const GUI_MODEL_REGISTRY_NAMES = Dict{String,String}(
+    "Logistic Growth"                    => "logistic_growth",
+    "Logistic + Linear Kill"             => "logistic_linear_kill",
+    "Theta Logistic + Hill Inhibition"   => "theta_logistic_hill_inhibition",
+    "Theta Logistic + Hill Kill"         => "theta_logistic_hill_kill",
+)
 
 const CUSTOM_MODEL_TEMPLATES = Dict{String,Any}(
     "logistic_basic" => Dict(
@@ -478,6 +488,117 @@ function _inspect_one_file(payload)
     )
 end
 
+function _infer_dose_column(df::DataFrame)
+    names_raw = String.(names(df))
+    names_norm = _normalize_name.(names_raw)
+    priority = Set(["dose", "concentration", "conc", "drug", "treatment", "exposure"])
+    for (raw, norm) in zip(names_raw, names_norm)
+        if norm in priority && is_numeric_column(df[!, raw])
+            return raw
+        end
+    end
+    for (raw, norm) in zip(names_raw, names_norm)
+        if (occursin("dose", norm) || occursin("conc", norm) || occursin("drug", norm)) && is_numeric_column(df[!, raw])
+            return raw
+        end
+    end
+    return nothing
+end
+
+# Parse "param = value" text into a Dict{String,Float64}. Lines starting with # are skipped.
+function _parse_fixed_params_text(text::AbstractString)
+    result = Dict{String,Float64}()
+    for line in split(text, '\n')
+        line = strip(line)
+        isempty(line) && continue
+        startswith(line, '#') && continue
+        idx = findfirst('=', line)
+        isnothing(idx) && continue
+        key = strip(line[1:idx-1])
+        val_str = strip(line[idx+1:end])
+        isempty(key) && continue
+        val = tryparse(Float64, val_str)
+        isnothing(val) && continue
+        result[String(key)] = val
+    end
+    return result
+end
+
+function _run_one_model(
+    display_name::AbstractString,
+    x::Vector{Float64},
+    y::Vector{Float64},
+    dose::Float64,
+    anchor_params::Dict{String,Float64},
+)::Dict{String,Any}
+    registry_name = get(GUI_MODEL_REGISTRY_NAMES, String(display_name), nothing)
+    spec = if !isnothing(registry_name)
+        try
+            GrowthParameterEstimation.Registry.get_model(registry_name)
+        catch
+            nothing
+        end
+    else
+        # Try to find a custom model by display name in the registry
+        try
+            GrowthParameterEstimation.Registry.get_model(
+                replace(lowercase(strip(String(display_name))), r"[^a-z0-9]+" => "_")
+            )
+        catch
+            nothing
+        end
+    end
+
+    if isnothing(spec)
+        return Dict("model" => String(display_name), "ok" => false, "error" => "Model not found in registry: $(display_name)")
+    end
+
+    # Aggregate replicates: group by unique time, take mean count
+    # This prevents duplicate saveat entries from destabilising the ODE solver
+    time_groups = Dict{Float64,Vector{Float64}}()
+    for (xi, yi) in zip(x, y)
+        push!(get!(time_groups, xi, Float64[]), yi)
+    end
+    x_agg = sort(collect(keys(time_groups)))
+    y_agg = [mean(time_groups[xi]) for xi in x_agg]
+
+    # Build index-keyed anchor map (anchor_params keys are param name strings)
+    anchor_idx = Dict{Int,Float64}()
+    for (pname, pval) in anchor_params
+        idx = findfirst(s -> string(s) == pname, spec.param_names)
+        !isnothing(idx) && (anchor_idx[idx] = pval)
+    end
+
+    result = try
+        fr = GrowthParameterEstimation.Fitting.fit_model(spec, x_agg, y_agg, dose; anchor_params=anchor_idx, verbose=false)
+        params_out = [Dict("name" => string(spec.param_names[i]), "value" => fr.params[i]) for i in eachindex(spec.param_names)]
+
+        # Generate dense curve for plotting
+        curve = try
+            x_c, yhat_c = GrowthParameterEstimation.Fitting.predict_model(
+                spec, x_agg, Float64.(fr.params), dose, Float64(y_agg[1])
+            )
+            [[x_c[i], yhat_c[i]] for i in eachindex(x_c) if isfinite(yhat_c[i])]
+        catch
+            nothing
+        end
+
+        Dict(
+            "model"   => String(display_name),
+            "ok"      => true,
+            "params"  => params_out,
+            "bic"     => isfinite(fr.bic) ? fr.bic : nothing,
+            "ssr"     => isfinite(fr.ssr) ? fr.ssr : nothing,
+            "retcode" => string(fr.retcode),
+            "curve"   => curve,
+        )
+    catch e
+        Dict("model" => String(display_name), "ok" => false, "error" => sprint(showerror, e))
+    end
+
+    return result
+end
+
 function _cors_headers()
     return [
         "Access-Control-Allow-Origin" => "*",
@@ -584,11 +705,94 @@ function _route(req::HTTP.Request)
         ))
     end
 
+    if req.method == "POST" && req.target == "/api/pipeline/run_stage"
+        body = try
+            JSON3.read(String(req.body))
+        catch err
+            return _json_response(400, Dict("ok" => false, "error" => "Invalid JSON body", "details" => sprint(showerror, err)))
+        end
+
+        stage_id    = haskey(body, :stageId)     ? String(body[:stageId])     : ""
+        csv_content = haskey(body, :csvContent)  ? String(body[:csvContent])  : ""
+        model_names = haskey(body, :models)      ? [String(m) for m in body[:models]] : String[]
+
+        if isempty(csv_content)
+            return _json_response(422, Dict("ok" => false, "error" => "csvContent is required"))
+        end
+        if isempty(model_names)
+            return _json_response(422, Dict("ok" => false, "error" => "At least one model is required"))
+        end
+
+        # Parse CSV
+        df = try
+            CSV.read(IOBuffer(csv_content), DataFrame)
+        catch err
+            return _json_response(422, Dict("ok" => false, "error" => "Failed to parse CSV: $(sprint(showerror, err))"))
+        end
+
+        time_col  = _infer_time_column(df)
+        count_col = _infer_count_column(df, time_col)
+        dose_col  = _infer_dose_column(df)
+
+        if isnothing(time_col) || isnothing(count_col)
+            return _json_response(422, Dict("ok" => false, "error" => "Could not infer time/count columns. Ensure Stage 1 mappings are correct."))
+        end
+
+        x = Float64.(df[!, time_col])
+        y = Float64.(df[!, count_col])
+        dose = isnothing(dose_col) ? 0.0 : Float64(mean(skipmissing(df[!, dose_col])))
+
+        # Build combined anchor map: carried params first, manual fixed params override
+        anchor_raw   = haskey(body, :anchorParams) && !isnothing(body[:anchorParams]) ?
+            Dict{String,Float64}(String(k) => Float64(v) for (k, v) in pairs(body[:anchorParams])) :
+            Dict{String,Float64}()
+        fixed_raw_in = haskey(body, :fixedParams) && !isnothing(body[:fixedParams]) ?
+            Dict{String,Float64}(String(k) => Float64(v) for (k, v) in pairs(body[:fixedParams])) :
+            Dict{String,Float64}()
+        # fixedParamsText is a fallback if caller sends the raw text instead
+        if haskey(body, :fixedParamsText)
+            merge!(fixed_raw_in, _parse_fixed_params_text(String(body[:fixedParamsText])))
+        end
+        combined_anchor = Dict{String,Float64}(merge(anchor_raw, fixed_raw_in))  # manual fixed overrides carried
+
+        fits = Any[]
+        for mname in model_names
+            push!(fits, _run_one_model(mname, x, y, dose, combined_anchor))
+        end
+
+        # Rank by BIC (lower is better); failed fits go last
+        ok_fits = filter(f -> get(f, "ok", false) && !isnothing(get(f, "bic", nothing)), fits)
+        sort!(ok_fits; by = f -> f["bic"])
+        best_model = isempty(ok_fits) ? nothing : ok_fits[1]["model"]
+
+        # Build scatter data for frontend chart: raw x/y points (all replicates)
+        scatter_pts = [[x[i], y[i]] for i in eachindex(x)]
+
+        return _json_response(200, Dict(
+            "ok"        => true,
+            "stageId"   => stage_id,
+            "fits"      => fits,
+            "rankedFits"=> ok_fits,
+            "bestModel" => best_model,
+            "columns"   => Dict("time" => time_col, "count" => count_col, "dose" => dose_col),
+            "scatter"   => scatter_pts,
+        ))
+    end
+
     return _json_response(404, Dict("ok" => false, "error" => "Route not found"))
 end
 
 function run_server(; host::AbstractString = "127.0.0.1", port::Integer = DEFAULT_PORT)
     _generate_custom_model_registry!(_read_custom_models())
+    GrowthParameterEstimation.Registry.register_builtin_models!()
+    # Also load any saved custom models into the GPE registry
+    if isfile(CUSTOM_MODELS_REGISTRY_FILE)
+        try
+            GrowthParameterEstimation.register_models_from_file!(CUSTOM_MODELS_REGISTRY_FILE)
+        catch e
+            @warn "Could not load custom model registry on startup" exception=e
+        end
+    end
     println("Starting GPE GUI backend on http://$(host):$(port)")
     HTTP.serve(_route, host, port)
 end
