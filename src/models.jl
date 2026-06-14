@@ -185,7 +185,4 @@ function to_ode!(model::AbstractBaseModel)
     end
 end
 
-# Include legacy ODE RHS functions for backward compatibility
-include("models_legacy.jl")
-
 end # module Models
