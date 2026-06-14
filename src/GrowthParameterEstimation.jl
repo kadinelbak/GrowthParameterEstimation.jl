@@ -10,6 +10,7 @@ include("observation.jl")
 include("fitting.jl")
 include("analysis.jl")
 include("workflow.jl")
+include("models_legacy.jl")  # Add legacy ODE RHS functions for backward compatibility
 
 using .DataLayer
 using .Exposure
@@ -66,3 +67,4 @@ function __init__()
 end
 
 end # module GrowthParameterEstimation
+
