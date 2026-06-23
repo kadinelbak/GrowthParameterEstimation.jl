@@ -7,6 +7,7 @@ compathelper
 compathelper.pub
 *.pem
 *.key
+opencode.json
 
 # GUI frontend generated artifacts
 examples/gui/frontend/node_modules/

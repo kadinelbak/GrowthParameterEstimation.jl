@@ -28,7 +28,24 @@ const BUILTIN_VARIANT_LABELS = {
   logistic_linear_kill: 'Logistic + Linear Kill',
   theta_logistic_hill_inhibition: 'Theta Logistic + Hill Inhibition',
   theta_logistic_hill_kill: 'Theta Logistic + Hill Kill'
-}
+};
+
+const MODIFIER_TEMPLATES = [
+  {
+    id: 'linear_kill',
+    label: 'Linear Kill',
+    snippet: ' - sub(k,kill) * dose * N',
+    constant: 'k',
+    defaultBounds: [0.0, 10.0]
+  },
+  {
+    id: 'hill_inhibition',
+    label: 'Hill Inhibition',
+    snippet: ' - (dose^h) / (IC50^h + dose^h) * N',
+    constant: 'IC50',
+    defaultBounds: [0.0, 100.0]
+  }
+]
 
 function buildUploadPayload(fileRecords) {
   return {

@@ -185,4 +185,53 @@ function to_ode!(model::AbstractBaseModel)
     end
 end
 
+# Legacy ODE RHS functions (in-place)
+function logistic_growth!(du, u, p, t)
+    r, K = p
+    du[1] = r * u[1] * (1 - u[1] / K)
+    nothing
+end
+
+function logistic_growth_with_death!(du, u, p, t)
+    r, K, death_rate = p
+    du[1] = r * u[1] * (1 - u[1] / K) - death_rate * u[1]
+    nothing
+end
+
+function gompertz_growth!(du, u, p, t)
+    a, b, K = p
+    u[1] <= 0 || u[1] >= K ? du[1] = 0.0 : du[1] = a * u[1] * log(K / u[1])
+    nothing
+end
+
+function gompertz_growth_with_death!(du, u, p, t)
+    a, b, K, death_rate = p
+    u[1] <= 0 || u[1] >= K ? du[1] = -death_rate * u[1] : du[1] = a * u[1] * log(K / u[1]) - death_rate * u[1]
+    nothing
+end
+
+function exponential_growth!(du, u, p, t)
+    r = p[1]
+    du[1] = r * u[1]
+    nothing
+end
+
+function exponential_growth_with_delay!(du, u, p, t)
+    r, K, tlag = p
+    du[1] = (t >= tlag ? r : 0.0) * u[1] * (1 - u[1] / K)
+    nothing
+end
+
+function logistic_growth_with_delay!(du, u, p, t)
+    r, K, tlag = p
+    du[1] = (t >= tlag ? r : 0.0) * u[1] * (1 - u[1] / K)
+    nothing
+end
+
+function exponential_growth_with_death_and_delay!(du, u, p, t)
+    r, K, death_rate, tlag = p
+    du[1] = (t >= tlag ? r : 0.0) * u[1] * (1 - u[1] / K) - death_rate * u[1]
+    nothing
+end
+
 end # module Models
