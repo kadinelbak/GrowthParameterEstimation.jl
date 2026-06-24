@@ -16,3 +16,9 @@ examples/gui/frontend/.vite/
 examples/gui/frontend/.env.local
 
 
+
+# Logs and runtime data
+log/
+results/
+.continue/
+__dash_*
