@@ -1,3 +1,0 @@
-module GrowthParameterEstimationGUIBackend
-
-end
