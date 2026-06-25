@@ -57,9 +57,22 @@
   - fitting.jl - Parameter estimation and fitting routines
   - analysis.jl - Post-fit analysis and diagnostics
   - workflow.jl - Workflow automation and pipeline management
-- test/ — Test files
+- test/ — Test files (including all test scripts ending in .jl)
 - examples/ — Example scripts and applications
-- docs/ — Documentation files
-- context/ — Project context files (this directory)
+- docs/ — Documentation files (all .md files except README.md and CHANGELOG.md)
+- context/ — Project context files (this directory) - Internal project documentation
 - results/ — Output from runs (generated, not committed)
-- logs/ — Log files (generated, not committed)
+- log/ — Log files (generated, not committed)
+- assets/ — Static assets (images, data files, etc.)
+- Root directory should contain only:
+  - Essential configuration files: .gitattributes, .gitignore, .JuliaFormatter.toml, .theme
+  - Standard project files: CHANGELOG.md, LICENSE, Manifest.toml, Project.toml, README.md
+  - Tool configuration: ci.yml, opencode.json
+  - No loose test scripts, documentation files, or temporary files
+
+### Organization Principles
+1. **Separation of Concerns**: Each directory has a clear, single purpose
+2. **Consistency**: Follow established patterns for file placement
+3. **Clarity**: Root directory should be clean and minimal
+4. **Automation**: Generated files (results, logs) should be excluded from version control
+5. **Discoverability**: Related files should be colocated in logical directories

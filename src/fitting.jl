@@ -25,6 +25,42 @@ export setUpProblem, calculate_bic, pQuickStat, run_single_fit,
 
 Set up and solve an ODE fitting problem using Optimization.jl (BFGS/Fminbox).
 Returns the optimized parameters, the dense solution, and the optimized problem.
+
+# Arguments
+- `model`: The ODE model function (du, u, p, t) -> nothing
+- `x::Vector{<:Real}`: Independent variable values (typically time points)
+- `y::Vector{<:Real>`: Dependent variable values to fit against
+- `solver`: DifferentialEquations.jl solver algorithm to use
+- `u0::AbstractVector{<:Real}`: Initial condition vector for the ODE
+- `p0::AbstractVector{<:Real>`: Initial parameter guess for optimization
+- `tspan::Tuple{Real,Real}`: Time span for the ODE problem (t_start, t_end)
+- `bounds`: Parameter bounds for optimization (see below)
+- `max_time::Real = 100.0`: Maximum time allowed for optimization (seconds)
+- `maxiters::Integer = 10_000`: Maximum iterations for optimizer
+
+# Returns
+- `p_opt::Vector{Float64}`: Optimized parameter values
+- `sol_opt`: Dense ODE solution at optimized parameters
+- `prob_opt`: Remade ODE problem with optimized parameters
+
+# Examples
+```julia
+# Define a simple exponential growth model
+exp_growth!(du, u, p, t) = du[1] = p[1] * u[1]
+
+# Generate synthetic data
+t = 0.0:0.5:5.0
+y = [1.0 * exp(0.5 * ti) for ti in t] + 0.1*randn(length(t))  # with noise
+
+# Set up the problem
+u0 = [1.0]
+p0 = [0.3]  # initial guess for growth rate
+tspan = (0.0, 5.0)
+bounds = [(0.0, 2.0)]  # growth rate must be positive
+
+# Solve the fitting problem
+p_opt, sol_opt, prob_opt = setUpProblem(exp_growth!, t, y, Tsit5(), u0, p0, tspan, bounds)
+```
 """
 function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time::Real = 100.0, maxiters::Integer = 10_000)
     p0_vec = collect(p0)
@@ -64,6 +100,37 @@ end
     calculate_bic(prob, x, y, solver, p)
 
 Compute BIC and SSR for a solved ODE model with parameters `p`.
+
+# Arguments
+- `prob`: The ODE problem object
+- `x::Vector{<:Real}`: Independent variable values (typically time points)
+- `y::Vector{<:Real>`: Observed dependent variable values
+- `solver`: DifferentialEquations.jl solver algorithm to use
+- `p::AbstractVector{<:Real}`: Parameter values for which to compute BIC
+
+# Returns
+- `bic::Float64`: Bayesian Information Criterion value
+- `ssr::Float64`: Sum of squared residuals between model and data
+
+# Examples
+```julia
+# Define a simple exponential growth model
+exp_growth!(du, u, p, t) = du[1] = p[1] * u[1]
+
+# Generate synthetic data
+t = 0.0:0.5:5.0
+y = [1.0 * exp(0.5 * ti) for ti in t] + 0.1*randn(length(t))  # with noise
+
+# Set up and solve the problem
+u0 = [1.0]
+p0 = [0.3]  # initial guess for growth rate
+tspan = (0.0, 5.0)
+bounds = [(0.0, 2.0)]  # growth rate must be positive
+p_opt, sol_opt, prob_opt = setUpProblem(exp_growth!, t, y, Tsit5(), u0, p0, tspan, bounds)
+
+# Calculate BIC for the optimized parameters
+bic, ssr = calculate_bic(prob_opt, t, y, Tsit5(), p_opt)
+```
 """
 function calculate_bic(prob, x, y, solver, p)
     sol   = solve(remake(prob; p = p), solver; reltol = 1e-15, abstol = 1e-15, saveat = x)
@@ -79,6 +146,38 @@ end
     pQuickStat(x, y, p, sol, prob, bic, ssr)
 
 Print a short summary of optimized parameters and fit statistics.
+
+# Arguments
+- `x::Vector{<:Real}`: Independent variable values (typically time points)
+- `y::Vector{<:Real>`: Observed dependent variable values
+- `p::AbstractVector{<:Real}`: Optimized parameter values
+- `sol`: ODE solution object at optimized parameters
+- `prob`: The ODE problem object
+- `bic::Float64`: Bayesian Information Criterion value
+- `ssr::Float64`: Sum of squared residuals between model and data
+
+# Examples
+```julia
+# Define a simple exponential growth model
+exp_growth!(du, u, p, t) = du[1] = p[1] * u[1]
+
+# Generate synthetic data
+t = 0.0:0.5:5.0
+y = [1.0 * exp(0.5 * ti) for ti in t] + 0.1*randn(length(t))  # with noise
+
+# Set up and solve the problem
+u0 = [1.0]
+p0 = [0.3]  # initial guess for growth rate
+tspan = (0.0, 5.0)
+bounds = [(0.0, 2.0)]  # growth rate must be positive
+p_opt, sol_opt, prob_opt = setUpProblem(exp_growth!, t, y, Tsit5(), u0, p0, tspan, bounds)
+
+# Calculate BIC for the optimized parameters
+bic, ssr = calculate_bic(prob_opt, t, y, Tsit5(), p_opt)
+
+# Print summary statistics
+pQuickStat(t, y, p_opt, sol_opt, prob_opt, bic, ssr)
+```
 """
 function pQuickStat(x, y, p, sol, prob, bic, ssr)
     println("Optimized params: ", p)
@@ -87,10 +186,44 @@ function pQuickStat(x, y, p, sol, prob, bic, ssr)
 end
 
 """
-run_single_fit(x, y, p0; model=Models.build_logistic(), fixed_params=nothing,
-               solver=Rodas5(), bounds=nothing, max_time=100.0, show_stats=true)
+    run_single_fit(x, y, p0; model=Models.build_logistic(), fixed_params=nothing,
+                   solver=Rodas5(), bounds=nothing, max_time=100.0, show_stats=true)
 
 Fit a single model to `x`, `y` data with optional fixed parameters and bounds.
+
+# Arguments
+- `x::Vector{<:Real}`: Independent variable values (typically time points)
+- `y::Vector{<:Real>`: Observed dependent variable values
+- `p0::Vector{<:Real>`: Initial parameter guess for optimization
+- `model`: The ODE model function (du, u, p, t) -> nothing to fit
+- `fixed_params`: Dictionary mapping parameter indices to fixed values
+- `solver`: DifferentialEquations.jl solver algorithm to use (default: Rodas5())
+- `bounds`: Parameter bounds for optimization (see below)
+- `max_time::Real = 100.0`: Maximum time allowed for optimization (seconds)
+- `show_stats::Bool = true`: Whether to print optimization statistics
+
+# Returns
+- Named tuple with:
+  - `params::Vector{Float64}`: Optimized parameter values
+  - `bic::Float64`: Bayesian Information Criterion value
+  - `ssr::Float64`: Sum of squared residuals
+  - `solution`: Dense ODE solution at optimized parameters
+
+# Examples
+```julia
+# Generate synthetic logistic growth data
+t = 0.0:0.5:10.0
+y = [100.0 / (1.0 + 99.0 * exp(-0.5 * ti)) for ti in t] + 0.5*randn(length(t))  # with noise
+
+# Fit a logistic growth model
+p0 = [0.3, 50.0]  # [growth rate, carrying capacity]
+fit_result = run_single_fit(t, y, p0; model=Models.build_logistic())
+
+# Access results
+println("Optimized growth rate: $(fit_result.params[1])")
+println("Optimized carrying capacity: $(fit_result.params[2])")
+println("BIC: $(fit_result.bic)")
+```
 """
 function run_single_fit(
     x::Vector{<:Real},
@@ -215,10 +348,64 @@ function _simulate_observed(
 end
 
 """
-    fit_model(model_spec, x, y, dose=0.0; ...)
+    fit_model(
+        model_spec::Registry.ModelSpec,
+        x::Vector{Float64},
+        y::Vector{Float64},
+        dose = 0.0;
+        solver = model_spec.default_solver,
+        optimizer_method::Symbol = :de_rand_1_bin,
+        max_time::Float64 = 45.0,
+        maxiters::Int = 50_000,
+        reltol::Float64 = 1e-6,
+        abstol::Float64 = 1e-6,
+        p0::Union{Vector{Float64},Nothing} = nothing,
+        anchor_params::Dict{Int,Float64} = Dict{Int,Float64}(),
+        verbose::Bool = false,
+    )
 
 Unified fitting API for registered custom models. Supports fixed/anchored parameters,
 custom observables, and constant or time-varying exposures.
+
+# Arguments
+- `model_spec::Registry.ModelSpec`: The model specification to fit
+- `x::Vector{Float64}`: Independent variable values (typically time points)
+- `y::Vector{Float64}`: Observed dependent variable values
+- `dose`: Drug dose value or function (constant or time-varying exposure)
+- `solver`: DifferentialEquations.jl solver algorithm to use (default: model_spec.default_solver)
+- `optimizer_method::Symbol`: Optimization algorithm to use (:de_rand_1_bin, :nelder_mead, :bfgs)
+- `max_time::Float64 = 45.0`: Maximum time allowed for optimization (seconds)
+- `maxiters::Int = 50_000`: Maximum iterations for optimizer
+- `reltol::Float64 = 1e-6`: Relative tolerance for ODE solver
+- `abstol::Float64 = 1e-6`: Absolute tolerance for ODE solver
+- `p0::Union{Vector{Float64},Nothing} = nothing`: Initial parameter guess (if nothing, uses model-spec defaults)
+- `anchor_params::Dict{Int,Float64} = Dict{Int,Float64}()`: Parameters to anchor to specific values
+- `verbose::Bool = false`: Whether to print optimization progress
+
+# Returns
+- Named tuple with:
+  - `params::Vector{Float64}`: Optimized parameter values
+  - `bic::Float64`: Bayesian Information Criterion value
+  - `ssr::Float64`: Sum of squared residuals
+  - `retcode`: Solver return code indicating success/failure
+
+# Examples
+```julia
+# Get a model specification from the registry
+spec = Registry.get_model("logistic_growth")
+
+# Generate synthetic data
+t = 0.0:0.5:10.0
+y = [100.0 / (1.0 + 99.0 * exp(-0.5 * ti)) for ti in t] + 0.5*randn(length(t))  # with noise
+
+# Fit the model
+result = fit_model(spec, t, y, dose=5.0)  # 5.0 units of drug exposure
+
+# Access results
+println("Optimized parameters: $(result.params)")
+println("BIC: $(result.bic)")
+println("SSR: $(result.ssr)")
+```
 """
 function fit_model(
     model_spec::Registry.ModelSpec,
@@ -338,11 +525,56 @@ function fit_model(
 end
 
 """
-    predict_model(model_spec, x_obs, params, dose, y0; n_curve=200, ...)
+    predict_model(
+        model_spec::Registry.ModelSpec,
+        x_obs::Vector{Float64},
+        params::Vector{Float64},
+        dose = 0.0,
+        y0::Float64 = 1.0;
+        n_curve::Int = 200,
+        solver = model_spec.default_solver,
+        reltol::Float64 = 1e-6,
+        abstol::Float64 = 1e-6,
+    )
 
 Simulate a registered model with fixed parameters over a dense time grid from
 `x_obs[1]` to `x_obs[end]`, using `y0` as the initial condition.
 Returns `(x_dense, yhat_dense)`.  On solver failure, `yhat_dense` is all `NaN`.
+
+# Arguments
+- `model_spec::Registry.ModelSpec`: The model specification to simulate
+- `x_obs::Vector{Float64}`: Observed time points (used to determine simulation range)
+- `params::Vector{Float64}`: Parameter values for the model
+- `dose`: Drug dose value or function (constant or time-varying exposure)
+- `y0::Float64 = 1.0`: Initial observable value
+- `n_curve::Int = 200`: Number of points in the dense simulation grid
+- `solver`: DifferentialEquations.jl solver algorithm to use (default: model_spec.default_solver)
+- `reltol::Float64 = 1e-6`: Relative tolerance for ODE solver
+- `abstol::Float64 = 1e-6`: Absolute tolerance for ODE solver
+
+# Returns
+- `x_dense::Vector{Float64}`: Dense time grid from x_obs[1] to x_obs[end]
+- `yhat_dense::Vector{Float64}`: Model predictions at each point in x_dense (NaN if solver failed)
+
+# Examples
+```julia
+# Get a model specification from the registry
+spec = Registry.get_model("logistic_growth")
+
+# Generate synthetic data
+t = 0.0:0.5:10.0
+y = [100.0 / (1.0 + 99.0 * exp(-0.5 * ti)) for ti in t] + 0.5*randn(length(t))  # with noise
+
+# Fit the model
+result = fit_model(spec, t, y, dose=5.0)
+
+# Predict over a dense time grid
+t_dense, y_dense = predict_model(spec, t, result.params, dose=5.0, y0=y[1])
+
+# Plot results
+# plot(t, y, seriestype=:scatter, label="Data")
+# plot!(t_dense, y_dense, label="Model Prediction")
+```
 """
 function predict_model(
     model_spec::Registry.ModelSpec,
@@ -459,9 +691,67 @@ function fit_condition(
 end
 
 """
-    compare_models(x, y, name1, model1, p0_1, name2, model2, p0_2; ...)
+    compare_models(
+        x::Vector{<:Real},
+        y::Vector{<:Real>,
+        name1::String, model1::Function, p0_1::Vector{<:Real>,
+        name2::String, model2::Function, p0_2::Vector{<:Real>;
+        solver             = Rodas5(),
+        bounds1            = nothing,
+        bounds2            = nothing,
+        fixed_params1      = nothing,
+        fixed_params2      = nothing,
+        show_stats::Bool   = false,
+        output_csv::String = "model_comparison.csv",
+    )
 
 Fit two models to the same dataset and return a summary plus the best model.
+
+# Arguments
+- `x::Vector{<:Real}`: Independent variable values (typically time points)
+- `y::Vector{<:Real>`: Observed dependent variable values
+- `name1::String`: Name/identifier for the first model
+- `model1::Function`: First ODE model function (du, u, p, t) -> nothing
+- `p0_1::Vector{<:Real>`: Initial parameter guess for the first model
+- `name2::String`: Name/identifier for the second model
+- `model2::Function`: Second ODE model function (du, u, p, t) -> nothing
+- `p0_2::Vector{<:Real>`: Initial parameter guess for the second model
+- `solver`: DifferentialEquations.jl solver algorithm to use (default: Rodas5())
+- `bounds1`: Parameter bounds for the first model (see below)
+- `bounds2`: Parameter bounds for the second model (see below)
+- `fixed_params1`: Dictionary mapping parameter indices to fixed values for first model
+- `fixed_params2`: Dictionary mapping parameter indices to fixed values for second model
+- `show_stats::Bool = false`: Whether to print optimization statistics for each model
+- `output_csv::String = "model_comparison.csv"`: Path to CSV file for results summary
+
+# Returns
+- Named tuple containing:
+  - `model1`: Results for the first model (name, params, BIC, SSR, solution)
+  - `model2`: Results for the second model (name, params, BIC, SSR, solution)
+  - `best_model`: The model with lower BIC (same format as above)
+
+# Examples
+```julia
+# Define two competing models
+linear_growth!(du, u, p, t) = du[1] = p[1]  # constant growth rate
+exponential_growth!(du, u, p, t) = du[1] = p[1] * u[1]  # exponential growth
+
+# Generate synthetic exponential growth data
+t = 0.0:0.5:5.0
+y = [1.0 * exp(0.3 * ti) for ti in t] + 0.1*randn(length(t))  # with noise
+
+# Compare the models
+comparison = compare_models(
+    t, y,
+    "linear", linear_growth!, [0.5],
+    "exponential", exponential_growth!, [0.1]
+)
+
+# Access results
+println("Linear model BIC: $(comparison.model1.bic)")
+println("Exponential model BIC: $(comparison.model2.bic)")
+println("Best model: $(comparison.best_model.name)")
+```
 """
 function compare_models(
     x::Vector{<:Real},
@@ -507,9 +797,64 @@ function compare_models(
 end
 
 """
-    compare_datasets(x1, y1, name1, model1, p0_1, x2, y2, name2, model2, p0_2; ...)
+    compare_datasets(
+        x1::Vector{<:Real}, y1::Vector{<:Real>, name1::String, model1::Function, p0_1::Vector{<:Real>,
+        x2::Vector{<:Real>, y2::Vector{<:Real>, name2::String, model2::Function, p0_2::Vector{<:Real>;
+        solver             = Rodas5(),
+        bounds1            = nothing,
+        bounds2            = nothing,
+        fixed_params1      = nothing,
+        fixed_params2      = nothing,
+        show_stats::Bool   = false,
+        output_csv::String = "dataset_comparison.csv",
+    )
 
 Fit a model to two datasets and write a CSV summary.
+
+# Arguments
+- `x1::Vector{<:Real}`: Independent variable values for first dataset
+- `y1::Vector{<:Real>`: Observed dependent variable values for first dataset
+- `name1::String`: Name/identifier for first dataset
+- `model1::Function`: ODE model function to fit to both datasets
+- `p0_1::Vector{<:Real>`: Initial parameter guess for the model
+- `x2::Vector{<:Real}`: Independent variable values for second dataset
+- `y2::Vector{<:Real>`: Observed dependent variable values for second dataset
+- `name2::String`: Name/identifier for second dataset
+- `model2::Function`: ODE model function to fit to both datasets (should be same as model1)
+- `p0_2::Vector{<:Real>`: Initial parameter guess for the model (should be same as p0_1)
+- `solver`: DifferentialEquations.jl solver algorithm to use (default: Rodas5())
+- `bounds1`: Parameter bounds for the first fit (see below)
+- `bounds2`: Parameter bounds for the second fit (see below)
+- `fixed_params1`: Dictionary mapping parameter indices to fixed values for first fit
+- `fixed_params2`: Dictionary mapping parameter indices to fixed values for second fit
+- `show_stats::Bool = false`: Whether to print optimization statistics for each fit
+- `output_csv::String = "dataset_comparison.csv"`: Path to CSV file for results summary
+
+# Returns
+- Named tuple containing:
+  - `fit1`: Results for the first dataset fit (params, BIC, SSR, solution)
+  - `fit2`: Results for the second dataset fit (params, BIC, SSR, solution)
+
+# Examples
+```julia
+# Define a model
+exponential_growth!(du, u, p, t) = du[1] = p[1] * u[1]
+
+# Generate synthetic data for two conditions
+t = 0.0:0.5:5.0
+y1 = [1.0 * exp(0.3 * ti) for ti in t] + 0.1*randn(length(t))  # control group
+y2 = [1.0 * exp(0.1 * ti) for ti in t] + 0.1*randn(length(t))  # treatment group
+
+# Compare the same model fit to both datasets
+comparison = compare_datasets(
+    t, y1, "control", exponential_growth!, [0.2],
+    t, y2, "treatment", exponential_growth!, [0.05]
+)
+
+# Access results
+println("Control group growth rate: $(comparison.fit1.params[1])")
+println("Treatment group growth rate: $(comparison.fit2.params[1])")
+```
 """
 function compare_datasets(
     x1::Vector{<:Real}, y1::Vector{<:Real}, name1::String, model1::Function, p0_1::Vector{<:Real},
@@ -543,9 +888,57 @@ function compare_datasets(
 end
 
 """
-    compare_models_dict(x, y, specs; default_solver=Rodas5(), show_stats=false, output_csv=\"all_models_comparison.csv\")
+    compare_models_dict(
+        x::Vector{<:Real>,
+        y::Vector{<:Real>,
+        specs::Dict{String,<:NamedTuple};
+        default_solver        = Rodas5(),
+        show_stats::Bool      = false,
+        output_csv::String    = "all_models_comparison.csv",
+    )
 
 Fit each model in `specs` (a Dict of NamedTuples) to `x`, `y` and write summary tables.
+
+# Arguments
+- `x::Vector{<:Real}`: Independent variable values (typically time points)
+- `y::Vector{<:Real>`: Observed dependent variable values
+- `specs::Dict{String,<:NamedTuple}`: Dictionary mapping model names to tuples containing:
+  - `:model`: The ODE model function (du, u, p, t) -> nothing
+  - `:p0`: Initial parameter guess vector
+  - Optional: `:solver`, `:fixed_params`, `:bounds`
+- `default_solver`: DifferentialEquations.jl solver to use when not specified in specs (default: Rodas5())
+- `show_stats::Bool = false`: Whether to print optimization statistics for each model
+- `output_csv::String = "all_models_comparison.csv"`: Path to CSV file for results summary
+
+# Returns
+- `fits::Dict{String,Any}`: Dictionary mapping model names to their fitting results
+
+# Examples
+```julia
+# Define several models to compare
+linear_growth!(du, u, p, t) = du[1] = p[1]
+exponential_growth!(du, u, p, t) = du[1] = p[1] * u[1]
+logistic_growth!(du, u, p, t) = du[1] = p[1] * u[1] * (1 - u[1]/p[2])
+
+# Generate synthetic logistic growth data
+t = 0.0:0.5:10.0
+y = [100.0 / (1.0 + 99.0 * exp(-0.5 * ti)) for ti in t] + 0.5*randn(length(t))
+
+# Define model specifications
+specs = Dict(
+    "linear" => (model = linear_growth!, p0 = [0.5]),
+    "exponential" => (model = exponential_growth!, p0 = [0.1]),
+    "logistic" => (model = logistic_growth!, p0 = [0.5, 50.0])
+)
+
+# Compare all models
+fits = compare_models_dict(t, y, specs)
+
+# Access results
+for (name, fit) in fits
+    println("$name: BIC = $(fit.bic), SSR = $(fit.ssr)")
+end
+```
 """
 function compare_models_dict(
     x::Vector{<:Real},

@@ -38,6 +38,15 @@ y = [5.0, 8.0, 12.0, 18.0, 22.0, 28.0]
 result = run_single_fit(collect(x), collect(y), [0.2, 50.0]; show_stats=false)
 ```
 
+## Tutorials
+
+New users should start with our tutorial series:
+
+- [Installation](installation.md)
+- [Getting Started](tutorial/getting_started.md)
+- [Basic Examples](tutorial/basic_examples.md)
+- [Advanced Usage](tutorial/advanced_usage.md)
+
 ## API
 
 ```@autodocs

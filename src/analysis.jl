@@ -16,19 +16,55 @@ export leave_one_out_validation, k_fold_cross_validation, parameter_sensitivity_
        residual_analysis, enhanced_bic_analysis
 
 """
-leave_one_out_validation(
-    x::Vector{<:Real},
-    y::Vector{<:Real},
-    p0::Vector{<:Real};
-    model                = Models.build_logistic(),
-    fixed_params         = nothing,
-    solver               = Rodas5(),
-    bounds               = nothing,
-    show_stats::Bool     = false
-)
+    leave_one_out_validation(
+        x::Vector{<:Real>,
+        y::Vector{<:Real>,
+        p0::Vector{<:Real>;
+        model                = Models.build_logistic(),
+        fixed_params         = nothing,
+        solver               = Rodas5(),
+        bounds               = nothing,
+        show_stats::Bool     = false
+    )
 
 Performs leave-one-out cross-validation by fitting the model with each data point 
 removed and predicting that point. Returns validation metrics including RMSE and R².
+
+# Arguments
+- `x::Vector{<:Real}`: Independent variable values (typically time points)
+- `y::Vector{<:Real>`: Observed dependent variable values
+- `p0::Vector{<:Real>`: Initial parameter guess for optimization
+- `model`: The ODE model function (du, u, p, t) -> nothing to validate
+- `fixed_params`: Dictionary mapping parameter indices to fixed values
+- `solver`: DifferentialEquations.jl solver algorithm to use
+- `bounds`: Parameter bounds for optimization (see below)
+- `show_stats::Bool = false`: Whether to print progress statistics
+
+# Returns
+- Named tuple containing:
+  - `predictions::Vector{Float64}`: Predicted values for each data point
+  - `actual::Vector{Float64}`: Actual observed values
+  - `rmse::Float64`: Root mean squared error of predictions
+  - `mae::Float64`: Mean absolute error of predictions
+  - `r_squared::Float64`: Coefficient of determination
+  - `fit_params::Vector{Vector{Float64}}`: Parameter values for each fit
+  - `param_std::Vector{Float64}`: Standard deviation of parameter estimates
+  - `n_valid::Int`: Number of successful predictions
+
+# Examples
+```julia
+# Generate synthetic logistic growth data with noise
+t = 0.0:0.5:10.0
+y = [100.0 / (1.0 + 99.0 * exp(-0.5 * ti)) for ti in t] + 0.5*randn(length(t))
+
+# Perform leave-one-out cross-validation
+loo_results = leave_one_out_validation(t, y, [0.3, 50.0]; 
+                                      model=Models.build_logistic())
+
+# Access results
+println("LOO RMSE: $(loo_results.rmse)")
+println("LOO R²: $(loo_results.r_squared)")
+```
 """
 leave_one_out_validation(
     x::Vector{<:Real},
@@ -133,20 +169,56 @@ leave_one_out_validation(
 end
 
 """
-k_fold_cross_validation(
-    x::Vector{<:Real>,
-    y::Vector{<:Real},
-    p0::Vector{<:Real>;
-    k_folds::Int         = 5,
-    model                = Models.build_logistic(),
-    fixed_params         = nothing,
-    solver               = Rodas5(),
-    bounds               = nothing,
-    show_stats::Bool     = false
-)
+    k_fold_cross_validation(
+        x::Vector{<:Real>,
+        y::Vector{<:Real>,
+        p0::Vector{<:Real>;
+        k_folds::Int         = 5,
+        model                = Models.build_logistic(),
+        fixed_params         = nothing,
+        solver               = Rodas5(),
+        bounds               = nothing,
+        show_stats::Bool     = false
+    )
 
 Performs k-fold cross-validation by splitting data into k folds and using each 
 fold as validation set while training on the remaining folds.
+
+# Arguments
+- `x::Vector{<:Real>`: Independent variable values (typically time points)
+- `y::Vector{<:Real>`: Observed dependent variable values
+- `p0::Vector{<:Real>`: Initial parameter guess for optimization
+- `k_folds::Int = 5`: Number of folds for cross-validation
+- `model`: The ODE model function (du, u, p, t) -> nothing to validate
+- `fixed_params`: Dictionary mapping parameter indices to fixed values
+- `solver`: DifferentialEquations.jl solver algorithm to use
+- `bounds`: Parameter bounds for optimization (see below)
+- `show_stats::Bool = false`: Whether to print progress statistics
+
+# Returns
+- Named tuple containing:
+  - `fold_metrics::Vector{NamedTuple}`: RMSE and MAE for each fold
+  - `overall_rmse::Float64`: Overall root mean squared error
+  - `overall_mae::Float64`: Overall mean absolute error
+  - `r_squared::Float64`: Overall coefficient of determination
+  - `predictions::Vector{Float64}`: All out-of-fold predictions
+  - `actual::Vector{Float64>`: All actual observed values
+
+# Examples
+```julia
+# Generate synthetic logistic growth data with noise
+t = 0.0:0.5:10.0
+y = [100.0 / (1.0 + 99.0 * exp(-0.5 * ti)) for ti in t] + 0.5*randn(length(t))
+
+# Perform 5-fold cross-validation
+cv_results = k_fold_cross_validation(t, y, [0.3, 50.0]; 
+                                    model=Models.build_logistic(),
+                                    k_folds=5)
+
+# Access results
+println("Overall CV RMSE: $(cv_results.overall_rmse)")
+println("Overall CV R²: $(cv_results.r_squared)")
+```
 """
 function k_fold_cross_validation(
     x::Vector{<:Real},

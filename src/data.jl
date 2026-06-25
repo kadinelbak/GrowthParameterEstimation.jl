@@ -6,7 +6,20 @@ using DataFrames
 export REQUIRED_COLUMNS, STRICT_REQUIRED_METADATA, load_timeseries, normalize_schema,
        validate_timeseries, validate_required_metadata
 
+"""
+    REQUIRED_COLUMNS
+
+Vector of column names that are required in every timeseries DataFrame.
+These columns must be present for the data to be considered valid.
+"""
 const REQUIRED_COLUMNS = [:time, :count, :error, :dose, :treatment_amount, :cell_line, :density, :replicate, :unit_time, :unit_count]
+
+"""
+    STRICT_REQUIRED_METADATA
+
+Vector of column names that are required for strict schema validation.
+In strict mode, these metadata columns must be present and contain valid values.
+"""
 const STRICT_REQUIRED_METADATA = [:culture_type, :population_type, :cell_line, :treatment_amount, :density]
 
 function _as_float_or_missing(v)
@@ -49,25 +62,66 @@ function _as_int_or_default(v, default::Int = 1)
     end
 end
 
+"""
+    load_timeseries(path::AbstractString; kwargs...)
+
+Load a timeseries CSV file and normalize its schema to match the expected format.
+
+This function reads a CSV file using CSV.jl and applies schema normalization
+to ensure all required columns are present with appropriate data types and
+default values.
+
+# Arguments
+- `path::AbstractString`: Path to the CSV file to load
+- `kwargs...`: Additional keyword arguments passed to `CSV.read`
+
+# Returns
+- `DataFrame`: A DataFrame with normalized schema containing all required columns
+
+# Examples
+```julia
+# Load a timeseries file
+df = load_timeseries("data/experiment.csv")
+
+# Load with specific CSV options
+df = load_timeseries("data/experiment.csv", delim='\t', dateformat="yyyy-mm-dd")
+```
+"""
 function load_timeseries(path::AbstractString; kwargs...)
     df = CSV.read(path, DataFrame; kwargs...)
     return normalize_schema(df)
 end
 
-function normalize_schema(
-    df::DataFrame;
-    column_map::Dict{Symbol,Symbol} = Dict{Symbol,Symbol}(),
-    defaults::Dict{Symbol,Any} = Dict(
-        :error => missing,
-        :dose => 0.0,
-        :treatment_amount => missing,
-        :cell_line => "unknown",
-        :density => missing,
-        :replicate => 1,
-        :unit_time => "h",
-        :unit_count => "count",
-    ),
-)
+"""
+    normalize_schema(df::DataFrame; column_map=nothing, defaults=nothing)
+
+Normalize a DataFrame to match the expected timeseries schema.
+
+This function ensures that a DataFrame contains all required columns with
+appropriate data types and default values. It can also remap column names
+and fill missing values with defaults.
+
+# Arguments
+- `df::DataFrame`: The DataFrame to normalize
+- `column_map::Dict{Symbol,Symbol}=Dict{Symbol,Symbol}()`: A dictionary mapping 
+  source column names to target column names
+- `defaults::Dict{Symbol,Any}=Dict{Symbol,Any}()`: Default values for missing columns
+
+# Returns
+- `DataFrame`: A normalized DataFrame with all required columns present
+
+# Examples
+```julia
+# Normalize a DataFrame with default settings
+normalized_df = normalize_schema(raw_df)
+
+# Normalize with column mapping
+normalized_df = normalize_schema(raw_df, column_map=Dict(:obs => :count))
+
+# Normalize with custom defaults
+normalized_df = normalize_schema(raw_df, defaults=Dict(:unit_time => "min"))
+```
+"""
     work = copy(df)
     current_names = Set(Symbol.(names(work)))
     had_dose = :dose in current_names
@@ -152,6 +206,31 @@ function normalize_schema(
     return work
 end
 
+"""
+    validate_timeseries(df::DataFrame)
+
+Validate that a DataFrame conforms to the required timeseries schema.
+
+This function checks that the DataFrame contains all required columns,
+that time and count values are valid (finite, nonnegative for count),
+that time is monotonic within each experimental condition, and that
+error values are positive.
+
+# Arguments
+- `df::DataFrame`: The DataFrame to validate
+
+# Returns
+- `Bool`: true if validation passes
+
+# Examples
+```julia
+# Validate a timeseries DataFrame
+is_valid = validate_timeseries(df)
+
+# This will throw an error if validation fails
+validate_timeseries(df)
+```
+"""
 function validate_timeseries(df::DataFrame)
     missing_cols = setdiff(REQUIRED_COLUMNS, Symbol.(names(df)))
     if !isempty(missing_cols)
@@ -181,6 +260,35 @@ function validate_timeseries(df::DataFrame)
     return true
 end
 
+"""
+    validate_required_metadata(
+        df::DataFrame;
+        required_metadata::Vector{Symbol} = copy(STRICT_REQUIRED_METADATA),
+    )
+
+Validate that a DataFrame contains all required metadata columns with valid values.
+
+This function checks for the presence of required metadata columns and validates
+that they contain meaningful values (not entirely missing, not containing only
+missing values, and for string columns, not containing empty strings).
+
+# Arguments
+- `df::DataFrame`: The DataFrame to validate
+- `required_metadata::Vector{Symbol}=copy(STRICT_REQUIRED_METADATA)`: 
+  The metadata columns to validate for presence and validity
+
+# Returns
+- `Bool`: true if validation passes
+
+# Examples
+```julia
+# Validate required metadata using defaults
+is_valid = validate_required_metadata(df)
+
+# Validate with custom required metadata
+is_valid = validate_required_metadata(df, required_metadata=[:cell_line, :density])
+```
+"""
 function validate_required_metadata(
     df::DataFrame;
     required_metadata::Vector{Symbol} = copy(STRICT_REQUIRED_METADATA),

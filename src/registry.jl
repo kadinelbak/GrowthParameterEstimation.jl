@@ -11,12 +11,28 @@ export ModelSpec, register_model!, register_model, register_models_from_file!, g
 
 Public model specification used for registration, simulation, and fitting.
 
-Primary fields:
-- `name`, `ode!`, `param_names`, `bounds`, `n_states`, `observable`
-- `base_growth_family`, `default_solver`, `p0_factory`, `fixed_params`
+This struct defines the interface for growth models in the package. It contains
+all necessary information to simulate, fit, and compare models.
 
-Compatibility fields are kept so legacy workflow/simulation APIs continue to work:
-- `dynamics!`, `state_names`, `observation`, `solver_type`, `metadata`
+# Fields
+- `name::String`: Unique identifier for the model
+- `ode!::Function`: The ODE function defining model dynamics (du, u, p, t) -> nothing
+- `param_names::Vector{Symbol}`: Names of model parameters in order
+- `bounds::Vector{Tuple{Float64,Float64}}`: Lower/upper bounds for each parameter
+- `n_states::Int`: Number of state variables in the model
+- `observable::Function`: Function mapping state vector to observable output
+- `base_growth_family::String`: Category of model (e.g., "logistic", "gompertz")
+- `default_solver`: Default ODE solver to use for simulation
+- `p0_factory::Union{Function,Nothing}`: Function to generate initial parameter guesses
+- `fixed_params::Dict{Int,Float64}`: Parameters fixed to specific values (index => value)
+
+# Legacy Compatibility Fields
+These fields are maintained for backward compatibility with older workflow/simulation APIs:
+- `dynamics!::Function`: Legacy ODE function (same as ode!)
+- `state_names::Vector{Symbol}`: Names of state variables
+- `observation::Function`: Legacy observation function (same as observable)
+- `solver_type::Symbol`: Symbol indicating solver type (:ode or :stiff_ode)
+- `metadata::Dict{Symbol,Any}`: Additional model metadata
 """
 struct ModelSpec
     name::String
@@ -63,9 +79,54 @@ function _default_state_names(n_states::Int)
 end
 
 """
-    ModelSpec(; ...)
+    ModelSpec(; 
+        name::AbstractString,
+        ode!::Function,
+        param_names::AbstractVector{Symbol},
+        bounds::AbstractVector,
+        n_states::Integer,
+        observable::Function = u -> u[1],
+        base_growth_family::AbstractString = "custom",
+        default_solver = Tsit5(),
+        p0_factory::Union{Function,Nothing} = nothing,
+        fixed_params::Dict{Int,<:Real} = Dict{Int,Float64}(),
+        state_names::Union{Nothing,AbstractVector{Symbol}} = nothing,
+        metadata::AbstractDict{Symbol,<:Any} = Dict{Symbol,Any}(),
+    )
 
 Preferred constructor for custom model registration.
+
+This constructor allows creating a ModelSpec with named arguments, making it
+easier to specify only the parameters you need to customize.
+
+# Arguments
+- `name::AbstractString`: Unique identifier for the model
+- `ode!::Function`: The ODE function defining model dynamics (du, u, p, t) -> nothing
+- `param_names::AbstractVector{Symbol}`: Names of model parameters in order
+- `bounds::AbstractVector`: Lower/upper bounds for each parameter
+- `n_states::Integer`: Number of state variables in the model
+- `observable::Function = u -> u[1]`: Function mapping state vector to observable output
+- `base_growth_family::AbstractString = "custom"`: Category of model (e.g., "logistic", "gompertz")
+- `default_solver = Tsit5()`: Default ODE solver to use for simulation
+- `p0_factory::Union{Function,Nothing} = nothing`: Function to generate initial parameter guesses
+- `fixed_params::Dict{Int,<:Real} = Dict{Int,Float64}()`: Parameters fixed to specific values (index => value)
+- `state_names::Union{Nothing,AbstractVector{Symbol}} = nothing`: Names of state variables (auto-generated if nothing)
+- `metadata::AbstractDict{Symbol,<:Any} = Dict{Symbol,Any}()`: Additional model metadata
+
+# Examples
+```julia
+# Create a ModelSpec for a logistic growth model
+spec = ModelSpec(
+    name="logistic_growth",
+    ode! = (du, u, p, t) -> begin
+        du[1] = p[1] * u[1] * (1 - u[1] / p[2])
+        nothing
+    end,
+    param_names=[:r, :K],
+    bounds=[(1e-6, 5.0), (1e-3, 1e7)],
+    n_states=1
+)
+```
 """
 function ModelSpec(
     ;
@@ -119,7 +180,40 @@ end
 """
     ModelSpec(name, dynamics!, param_names, bounds, state_names, observation, solver_type, metadata)
 
-Legacy positional constructor maintained for backward compatibility.
+Legacy positional constructor for ModelSpec maintained for backward compatibility.
+
+This constructor creates a ModelSpec using positional arguments, matching the
+original API before keyword arguments were added. It is kept for compatibility
+with existing code but the keyword constructor `ModelSpec(; ...)` is preferred
+for new code.
+
+# Arguments
+- `name::String`: Unique identifier for the model
+- `dynamics!::Function`: Legacy ODE function (will be used as ode!)
+- `param_names::Vector{Symbol}`: Names of model parameters in order
+- `bounds::Vector{Tuple{Float64,Float64}}`: Lower/upper bounds for each parameter
+- `state_names::Vector{Symbol}`: Names of state variables
+- `observation::Function`: Function mapping state vector to observable value
+- `solver_type::Symbol`: Symbol indicating solver type (:ode or :stiff_ode)
+- `metadata::AbstractDict{Symbol,<:Any}`: Additional model metadata
+
+# Examples
+```julia
+# Legacy style constructor
+spec = ModelSpec(
+    "logistic_growth",
+    (du, u, p, t) -> begin
+        du[1] = p[1] * u[1] * (1 - u[1] / p[2])
+        nothing
+    end,
+    [:r, :K],
+    [(1e-6, 5.0), (1e-3, 1e7)],
+    [:N],
+    u -> u[1],
+    :ode,
+    Dict(:family => :baseline)
+)
+```
 """
 function ModelSpec(
     name::String,
@@ -171,9 +265,25 @@ function ModelSpec(
 end
 
 """
-    register_model!(spec::ModelSpec; overwrite=false) -> nothing
+    register_model!(spec::ModelSpec; overwrite::Bool=false) -> nothing
 
 Register a model specification in the central registry.
+
+This function adds a model specification to the global MODEL_REGISTRY dictionary,
+making it available for simulation, fitting, and other operations.
+
+# Arguments
+- `spec::ModelSpec`: The model specification to register
+- `overwrite::Bool=false`: If true, allows overwriting an existing model with the same name
+
+# Examples
+```julia
+# Register a new model spec
+register_model!(my_model_spec)
+
+# Register a model spec, allowing overwrite if it already exists
+register_model!(my_model_spec, overwrite=true)
+```
 """
 function register_model!(spec::ModelSpec; overwrite::Bool=false)
     if haskey(MODEL_REGISTRY, spec.name) && !overwrite
@@ -184,9 +294,25 @@ function register_model!(spec::ModelSpec; overwrite::Bool=false)
 end
 
 """
-    register_model(spec::ModelSpec; overwrite=false) -> ModelSpec
+    register_model(spec::ModelSpec; overwrite::Bool=false) -> ModelSpec
 
-Compatibility wrapper returning the registered spec.
+Compatibility wrapper for registering a model specification and returning the registered spec.
+
+This function registers a model specification (via register_model!) and returns the spec that was registered.
+It is provided for backward compatibility with code that expects the register_model function to return the spec.
+
+# Arguments
+- `spec::ModelSpec`: The model specification to register
+- `overwrite::Bool=false`: If true, allows overwriting an existing model with the same name
+
+# Returns
+- `ModelSpec`: The model specification that was registered
+
+# Examples
+```julia
+# Register a model spec and get it back
+registered_spec = register_model(my_model_spec)
+```
 """
 function register_model(spec::ModelSpec; overwrite::Bool=false)
     register_model!(spec; overwrite=overwrite)

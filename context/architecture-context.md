@@ -23,10 +23,13 @@
   - `fitting.jl` - Parameter estimation and fitting routines
   - `analysis.jl` - Post-fit analysis and diagnostics
   - `workflow.jl` - Workflow automation and pipeline management
-- `test/` — Test files and test scripts
+- `test/` — Test files and test scripts (all .jl and .ipynb test files)
 - `examples/` — Example scripts
-- `docs/` — Documentation files
-- `assets/` — Additional resources
+- `docs/` — Documentation files (all .md files except README.md and CHANGELOG.md)
+- `context/` — Project context files (internal documentation, specs, etc.)
+- `assets/` — Additional resources (images, data files, etc.)
+- `results/` — Output from runs (generated, not committed)
+- `log/` — Log files (generated, not committed)
 
 ## Storage Model
 

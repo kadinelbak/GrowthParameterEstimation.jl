@@ -24,16 +24,47 @@ export FitCondition, PipelineConfig,
     bootstrap_stage_uncertainty,
     build_conditions, fit, rank_models, plot_topk, export_results, run_pipeline, run_staged_pipeline
 
+"""
+    FitCondition
+
+Experimental condition data for workflow processing.
+
+# Fields
+- `name::String`: Identifier for this condition
+- `time::Vector{Float64}`: Time points of measurements
+- `count::Vector{Float64}`: Observed counts/measurements at each time point
+- `error::Vector{Float64}`: Measurement errors/uncertainties at each time point
+- `u0::Vector{Float64>`: Initial condition for model simulation
+- `exposure::Exposure.AbstractExposure`: Drug exposure function affecting model dynamics
+- `metadata::Dict{Symbol,Any}`: Additional metadata associated with this condition
+"""
 struct FitCondition
     name::String
     time::Vector{Float64}
     count::Vector{Float64}
-    error::Vector{Float64}
-    u0::Vector{Float64}
+    error::Vector{Float64>
+    u0::Vector{Float64>
     exposure::Exposure.AbstractExposure
     metadata::Dict{Symbol,Any}
 end
 
+"""
+    PipelineConfig
+
+Configuration settings for the workflow pipeline.
+
+# Fields
+- `version::String`: Version identifier for the pipeline configuration
+- `model_names::Vector{String}`: List of model names to consider in fitting
+- `n_starts::Int`: Number of starting points for optimization
+- `top_k::Int`: Number of top models to retain for analysis
+- `maxiters::Int`: Maximum iterations for optimization algorithms
+- `reltol::Float64`: Relative tolerance for ODE solvers
+- `abstol::Float64`: Absolute tolerance for ODE solvers
+- `weighted::Bool`: Whether to weight residuals by measurement error
+- `seed::Int`: Random seed for reproducibility
+- `output_dir::String`: Directory for output files
+"""
 struct PipelineConfig
     version::String
     model_names::Vector{String}
@@ -47,6 +78,21 @@ struct PipelineConfig
     output_dir::String
 end
 
+"""
+    PipelineStage
+
+Definition of a stage in the workflow pipeline.
+
+# Fields
+- `name::String`: Identifier for this pipeline stage
+- `description::String`: Human-readable description of what this stage does
+- `condition_filter::Function`: Function that determines if a data row belongs to this stage
+- `condition_cols::Vector{Symbol}`: Columns used to identify unique conditions within this stage
+- `model_names::Vector{String}`: List of model names to evaluate in this stage
+- `shared_params::Vector{Symbol}`: Parameters that are shared across all conditions in this stage
+- `fixed_params::Dict{Symbol,Float64>`: Parameters fixed to specific values in this stage
+- `inherited_params::Dict{Symbol,Tuple{String,Symbol}}`: Parameters inherited from other stages (format: dest_param => (source_stage, source_param))
+"""
 struct PipelineStage
     name::String
     description::String
@@ -54,10 +100,30 @@ struct PipelineStage
     condition_cols::Vector{Symbol}
     model_names::Vector{String}
     shared_params::Vector{Symbol}
-    fixed_params::Dict{Symbol,Float64}
+    fixed_params::Dict{Symbol,Float64>
     inherited_params::Dict{Symbol,Tuple{String,Symbol}}
 end
 
+"""
+    default_config(; output_dir::String = "results")
+
+Create a default pipeline configuration with standard settings.
+
+# Arguments
+- `output_dir::String = "results"`: Directory for output files
+
+# Returns
+- `PipelineConfig`: Configuration object with default values
+
+# Examples
+```julia
+# Create default config
+config = default_config()
+
+# Create default config with custom output directory
+config = default_config(output_dir="my_results")
+```
+"""
 function default_config(; output_dir::String = "results")
     return PipelineConfig(
         "1.0.0",
@@ -1413,20 +1479,70 @@ function _initial_theta(index_map, lb::Vector{Float64}, ub::Vector{Float64}, rng
     return theta
 end
 
-function fit(
-    spec::Registry.ModelSpec,
-    conditions::Vector{FitCondition};
-    shared_params::Vector{Symbol} = copy(spec.param_names),
-    fixed_params::Dict{Symbol,Float64} = Dict{Symbol,Float64}(),
-    tie_constraints::Dict{Symbol,Symbol} = Dict{Symbol,Symbol}(),
-    n_starts::Int = 20,
-    maxiters::Int = 800,
-    weighted::Bool = true,
-    reltol::Float64 = 1e-8,
-    abstol::Float64 = 1e-8,
-    seed::Int = 42,
-    top_k::Int = 5,
-)
+"""
+    fit(
+        spec::Registry.ModelSpec,
+        conditions::Vector{FitCondition};
+        shared_params::Vector{Symbol} = copy(spec.param_names),
+        fixed_params::Dict{Symbol,Float64} = Dict{Symbol,Float64}(),
+        tie_constraints::Dict{Symbol,Symbol} = Dict{Symbol,Symbol}(),
+        n_starts::Int = 20,
+        maxiters::Int = 800,
+        weighted::Bool = true,
+        reltol::Float64 = 1e-8,
+        abstol::Float64 = 1e-8,
+        seed::Int = 42,
+        top_k::Int = 5,
+    )
+
+Fit a model to multiple conditions with optional parameter sharing and constraints.
+
+# Arguments
+- `spec::Registry.ModelSpec`: The model specification to fit
+- `conditions::Vector{FitCondition}`: Experimental conditions to fit the model to
+- `shared_params::Vector{Symbol} = copy(spec.param_names)`: Parameters to share across conditions
+- `fixed_params::Dict{Symbol,Float64} = Dict{Symbol,Float64}()`: Parameters to fix to specific values
+- `tie_constraints::Dict{Symbol,Symbol} = Dict{Symbol,Symbol}()`: Parameters to tie together (equal across conditions)
+- `n_starts::Int = 20`: Number of starting points for optimization
+- `maxiters::Int = 800`: Maximum iterations for optimization
+- `weighted::Bool = true`: Whether to weight residuals by measurement error
+- `reltol::Float64 = 1e-8`: Relative tolerance for ODE solvers
+- `abstol::Float64 = 1e-8`: Absolute tolerance for ODE solvers
+- `seed::Int = 42`: Random seed for reproducibility
+- `top_k::Int = 5`: Number of top fits to retain
+
+# Returns
+- Named tuple containing:
+  - `model::String`: Name of the model that was fitted
+  - `best`: Best optimization result (objective value, convergence info, parameters)
+  - `top_fits::Vector{NamedTuple}`: Top `k` optimization results
+  - `n_obs::Int`: Total number of observations across all conditions
+  - `n_params::Int`: Number of free parameters in the optimization
+  - `per_condition::Vector{NamedTuple}`: Fit results for each condition
+  - `failures::DataFrame`: Record of any failures during fitting
+
+# Examples
+```julia
+# Get a model specification
+spec = Registry.get_model("logistic_growth")
+
+# Prepare some conditions (would normally come from experimental data)
+conditions = [
+    FitCondition("control", [0,1,2,3,4,5], [1,2,4,8,16,32], [0.1,0.2,0.4,0.8,1.6,3.2], [1.0], Exposure.ConstantExposure(0.0), Dict()),
+    FitCondition("treated", [0,1,2,3,4,5], [1,1.5,2,2.5,3,3.5], [0.1,0.15,0.2,0.25,0.3,0.35], [1.0], Exposure.ConstantExposure(10.0), Dict())
+]
+
+# Fit the model with shared growth rate but separate carrying capacities
+result = fit(spec, conditions; 
+             shared_params=[:r],  # share growth rate
+             fixed_params=Dict(), # no fixed parameters
+             tie_constraints=Dict()) # no tied parameters
+
+# Access results
+println("Best objective value: $(result.best.objective)")
+println("Number of successful conditions: $(sum([pc.success for pc in result.per_condition]))")
+```
+"""
     rng = MersenneTwister(seed)
     n_conditions = length(conditions)
     n_obs = sum(length(c.time) for c in conditions)

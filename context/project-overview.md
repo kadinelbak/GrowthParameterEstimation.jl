@@ -49,6 +49,7 @@ GrowthParameterEstimation.jl is a Julia package for fitting growth ODE models to
 ### Interfaces
 
 - Programmatic API with multiple entry points for different use cases
+- Comprehensive docstrings accessible via Julia's REPL help system (`?`)
 - Practice notebooks and pipeline templates for learning
 
 ## Scope

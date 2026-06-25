@@ -437,3 +437,11 @@ when `weighted=true`.
 - Time vectors should be monotone for stable ODE fitting and diagnostics.
 - Lower BIC/AIC is better; BIC weights approximate relative model support.
 - If no model fits succeed in a workflow run, plotting/export may be skipped and failures should be inspected.
+
+## Documentation Feature Specification
+
+See `context/feature-specs/FEATURE_SPEC_DOCUMENTATION.md` for the comprehensive plan to implement code documentation including:
+- Docstring standards for all public API functions
+- External tutorial documentation structure  
+- Implementation phases and acceptance criteria
+- Guidelines for maintaining documentation quality
