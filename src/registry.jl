@@ -4,7 +4,7 @@ using DifferentialEquations
 
 using ..Models
 
-export ModelSpec, register_model!, register_model, register_models_from_file!, get_model, list_models, models_by_family, clear_registry!, register_builtin_models!
+export ModelSpec, register_model!, register_model, register_models_from_file!, get_model, list_models, models_by_family, clear_registry!, register_builtin_models!, register_composable_model
 
 """
     ModelSpec
@@ -252,12 +252,7 @@ end
 
 clear_registry!() = empty!(MODEL_REGISTRY)
 
-function _ode_adapter(model!::Function)
-    return function (du, u, p, t, exposure)
-        model!(du, u, p, t)
-        return nothing
-    end
-end
+
 
 function _logistic_linear_kill!(du, u, p, t, exposure)
     r, K, kill_coeff = p
@@ -381,6 +376,132 @@ function _transit_chain_erlang!(du, u, p, t, exposure)
     du[4] = ktr * (X2 - X3)
 end
 
+# ---------------------------------------------------------------------------
+# Helper functions for automatic ModelSpec generation from composable models
+# ---------------------------------------------------------------------------
+"""
+    _extract_param_names(model::AbstractBaseModel)
+
+Extract parameter names from a composable model's fields.
+"""
+function _extract_param_names(model::AbstractBaseModel)
+    return fieldnames(typeof(model))
+end
+
+"""
+    _detect_n_states(model::AbstractBaseModel)
+
+Attempt to detect the number of states from a model.
+For most base models, this is 1 state.
+"""
+function _detect_n_states(model::AbstractBaseModel)
+    # Default assumption for simple growth models
+    return 1
+end
+
+"""
+    _suggest_default_bounds(model::AbstractBaseModel)
+
+Suggest reasonable default bounds for model parameters.
+"""
+function _suggest_default_bounds(model::AbstractBaseModel)
+    param_names = _extract_param_names(model)
+    bounds = Tuple{Float64,Float64}[]
+    
+    for param in param_names
+        param_str = string(param)
+        if param_str in ("r", "a")  # growth rates
+            push!(bounds, (1e-6, 5.0))
+        elseif param_str in ("K",)   # carrying capacity
+            push!(bounds, (1e-3, 1e7))
+        elseif param_str in ("death_rate", "emax", "kill_coeff", "emax_kill")  # death/inhibition rates
+            push!(bounds, (0.0, 20.0))
+        elseif param_str in ("tlag", "hill")  # time delay / Hill coefficient
+            push!(bounds, (0.0, 10.0))
+        elseif param_str in ("ic50", "KR", "KS", "KR", "IC50")  # concentrations / EC50
+            push!(bounds, (1e-8, 1e4))
+        elseif param_str in ("ktr", "k_damage", "k_repair", "k_death", "k_adapt", "k_elim", "k_in")  # rate constants
+            push!(bounds, (1e-6, 10.0))
+        elseif param_str in ("theta", "b")  # shape parameters
+            push!(bounds, (0.1, 5.0))
+        else
+            push!(bounds, (1e-6, 10.0))  # sensible default
+        end
+    end
+    
+    return bounds
+end
+
+"""
+    composable_model_spec(; name, model, bounds=nothing, observable=u->u[1], 
+                          default_solver=Tsit5(), kwargs...)
+
+Create a ModelSpec from a composable model, automatically extracting
+parameter names and suggesting bounds.
+"""
+function composable_model_spec(; 
+                               name::AbstractString,
+                               model::AbstractBaseModel,
+                               bounds=nothing,
+                               observable::Function = u -> u[1],
+                               default_solver = Tsit5(),
+                               kwargs...)
+    # Auto-extract information from the model
+    param_names = _extract_param_names(model)
+    n_states = _detect_n_states(model)
+    
+    # Use provided bounds or suggest defaults
+    if isnothing(bounds)
+        bounds = _suggest_default_bounds(model)
+    end
+    
+    # Convert the model to an ODE function
+    ode_func = Models.to_ode!(model)
+    
+    # Process metadata from kwargs
+    meta = Dict{Symbol,Any}(kwargs)
+    base_family = get(meta, :family, "custom")
+    delete!(meta, :family)  # Remove family from metadata as it's stored separately
+    
+    # Create the ModelSpec
+    return ModelSpec(
+        String(name),
+        ode_func,
+        collect(param_names),
+        [(Float64(first(b)), Float64(last(b))) for b in bounds],
+        Int(n_states),
+        observable,
+        String(base_family),
+        default_solver,
+        nothing,  # p0_factory
+        Dict{Int,Float64}(),  # fixed_params
+        _default_state_names(n_states),  # state_names
+        Models.to_ode!(model),  # dynamics! (legacy)
+        _default_state_names(n_states),  # state_names (legacy)
+        observable,  # observation (legacy)
+        _solver_to_symbol(default_solver),  # solver_type (legacy)
+        meta  # metadata
+    )
+end
+
+"""
+    register_composable_model(name::String, model::AbstractBaseModel;
+                              bounds=nothing, observable=u->u[1],
+                              default_solver=Tsit5(), kwargs...)
+
+Convenience function to register a composable model.
+Automatically extracts parameter information and creates a ModelSpec.
+"""
+function register_composable_model(name::String, model::AbstractBaseModel;
+                                  bounds=nothing,
+                                  observable::Function = u -> u[1],
+                                  default_solver = Tsit5(),
+                                  kwargs...)
+    spec = composable_model_spec(; name=name, model=model, bounds=bounds, 
+                                 observable=observable, default_solver=default_solver, kwargs...)
+    return register_model!(spec)
+end
+
 function register_builtin_models!()
     clear_registry!()
 
@@ -397,29 +518,23 @@ function register_builtin_models!()
         metadata=Dict(:family => :baseline_kill),
     ))
 
-    register_model!(ModelSpec(
+    register_model!(composable_model_spec(
         name="logistic_growth",
-        ode! = _ode_adapter(Models.logistic_growth!),
-        param_names=[:r, :K],
+        model=build_logistic(),
         bounds=[(1e-6, 5.0), (1e-3, 1e7)],
-        n_states=1,
         observable=u -> u[1],
         base_growth_family="logistic",
         default_solver=Tsit5(),
-        state_names=[:N],
         metadata=Dict(:family => :baseline),
     ))
 
-    register_model!(ModelSpec(
+    register_model!(composable_model_spec(
         name="gompertz_growth",
-        ode! = _ode_adapter(Models.gompertz_growth!),
-        param_names=[:a, :b, :K],
+        model=build_gompertz(),
         bounds=[(1e-6, 5.0), (1e-6, 10.0), (1e-3, 1e7)],
-        n_states=1,
         observable=u -> u[1],
         base_growth_family="gompertz",
         default_solver=Tsit5(),
-        state_names=[:N],
         metadata=Dict(:family => :baseline),
     ))
 

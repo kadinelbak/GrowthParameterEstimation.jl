@@ -12,14 +12,14 @@ using Random
     u0 = [1.0]
     p  = (0.5, 10.0)  # tuple avoids param-scalar inference
     tspan = (0.0, 2.0)
-    prob = ODEProblem(GrowthParameterEstimation.Models.logistic_growth!, u0, tspan, p)
+    prob = ODEProblem(GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), u0, tspan, p)
     sol  = solve(prob, Tsit5(); saveat = 0.5)
     @test sol.u[end][1] > 0  # check scalar state value, not the whole vector
 
     # Smoke test: evaluate BIC on a known solution
     x = [0.0, 1.0, 2.0, 3.0]
     y = [1.0, 1.8, 2.6, 3.4]
-    prob_fit = ODEProblem(GrowthParameterEstimation.Models.logistic_growth!, [y[1]], (x[1], x[end]), [0.1, 5.0])
+    prob_fit = ODEProblem(GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), [y[1]], (x[1], x[end]), [0.1, 5.0])
     bic, ssr = GrowthParameterEstimation.Fitting.calculate_bic(prob_fit, x, y, Tsit5(), [0.1, 5.0])
     @test ssr >= 0
     @test isfinite(bic)
@@ -68,19 +68,19 @@ using Random
 
     @testset "Model RHS Smoke" begin
         du = [0.0]
-        logistic_growth!(du, [2.0], [0.2, 10.0], 0.0)
+        GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic())(du, [2.0], [0.2, 10.0], 0.0)
         @test isfinite(du[1])
 
         logistic_growth_with_death!(du, [2.0], [0.2, 10.0, 0.01], 0.0)
         @test isfinite(du[1])
 
-        gompertz_growth!(du, [2.0], [0.2, 1.0, 10.0], 0.0)
+        GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_gompertz())(du, [2.0], [0.2, 1.0, 10.0], 0.0)
         @test isfinite(du[1])
 
         gompertz_growth_with_death!(du, [2.0], [0.2, 1.0, 10.0, 0.01], 0.0)
         @test isfinite(du[1])
 
-        exponential_growth!(du, [2.0], [0.2], 0.0)
+        GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_exponential())(du, [2.0], [0.2], 0.0)
         @test isfinite(du[1])
 
         exponential_growth_with_delay!(du, [2.0], [0.2, 10.0, 1.0], 2.0)
@@ -353,8 +353,8 @@ using Random
 
         comp = compare_models(
             x, y,
-            "Logistic", logistic_growth!, [0.2, 8.0],
-            "Gompertz", gompertz_growth!, [0.2, 1.0, 8.0];
+            "Logistic", GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), [0.2, 8.0],
+            "Gompertz", GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_gompertz()), [0.2, 1.0, 8.0];
             solver = Tsit5(),
             bounds1 = [(0.01, 2.0), (2.0, 100.0)],
             bounds2 = [(0.01, 2.0), (0.1, 5.0), (2.0, 100.0)],
@@ -364,8 +364,8 @@ using Random
         @test haskey(comp, :best_model)
 
         compare_datasets(
-            x, y, "A", logistic_growth!, [0.2, 8.0],
-            x, y .* 0.95, "B", logistic_growth!, [0.2, 8.0];
+            x, y, "A", GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), [0.2, 8.0],
+            x, y .* 0.95, "B", GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), [0.2, 8.0];
             solver = Tsit5(),
             bounds1 = [(0.01, 2.0), (2.0, 100.0)],
             bounds2 = [(0.01, 2.0), (2.0, 100.0)],
@@ -375,8 +375,8 @@ using Random
         @test isfile(joinpath(tempdir(), "gpe_compare_datasets_test.csv"))
 
         specs = Dict(
-            "Logistic" => (model = logistic_growth!, p0 = [0.2, 8.0], bounds = [(0.01, 2.0), (2.0, 100.0)]),
-            "Exp" => (model = exponential_growth!, p0 = [0.2], bounds = [(0.001, 2.0)]),
+            "Logistic" => (model = GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), p0 = [0.2, 8.0], bounds = [(0.01, 2.0), (2.0, 100.0)]),
+            "Exp" => (model = GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_exponential()), p0 = [0.2], bounds = [(0.001, 2.0)]),
         )
         dict_fits = compare_models_dict(x, y, specs; default_solver = Tsit5(), show_stats = false, output_csv = joinpath(tempdir(), "gpe_compare_dict_test.csv"))
         @test haskey(dict_fits, "Logistic")
@@ -386,7 +386,7 @@ using Random
             x, y .* 0.9, "B",
             x, y .* 1.1, "C",
             [0.2, 8.0];
-            model = logistic_growth!,
+            model = GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()),
             solver = Tsit5(),
             bounds = [(0.01, 2.0), (2.0, 100.0)],
             show_stats = false,
@@ -396,7 +396,7 @@ using Random
 
         x_many = [collect(x), collect(x)]
         y_many = [collect(y), collect(y .* 0.95)]
-        three_many = fit_three_datasets(x_many, y_many; model = logistic_growth!, solver = Tsit5(), bounds = [(0.01, 2.0), (2.0, 100.0)])
+        three_many = fit_three_datasets(x_many, y_many; model = GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), solver = Tsit5(), bounds = [(0.01, 2.0), (2.0, 100.0)])
         @test three_many.summary.n_total == 2
     end
 
@@ -530,24 +530,24 @@ using Random
         p0 = [0.2, 12.0]
         bounds = [(0.01, 2.0), (2.0, 100.0)]
 
-        fit = run_single_fit(x, y, p0; model = logistic_growth!, solver = Tsit5(), bounds = bounds, show_stats = false)
+        fit = run_single_fit(x, y, p0; model = GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), solver = Tsit5(), bounds = bounds, show_stats = false)
 
-        loo = leave_one_out_validation(x, y, p0; model = logistic_growth!, solver = Tsit5(), bounds = bounds, show_stats = false)
+        loo = leave_one_out_validation(x, y, p0; model = GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), solver = Tsit5(), bounds = bounds, show_stats = false)
         @test isfinite(loo.rmse)
 
-        kfold = k_fold_cross_validation(x, y, p0; k_folds = 3, model = logistic_growth!, solver = Tsit5(), bounds = bounds, show_stats = false)
+        kfold = k_fold_cross_validation(x, y, p0; k_folds = 3, model = GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), solver = Tsit5(), bounds = bounds, show_stats = false)
         @test isfinite(kfold.overall_rmse)
 
-        sens = parameter_sensitivity_analysis(x, y, fit; perturbation = 0.1, model = logistic_growth!, solver = Tsit5())
+        sens = parameter_sensitivity_analysis(x, y, fit; perturbation = 0.1, model = GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), solver = Tsit5())
         @test length(sens.ranking) >= 1
 
-        resid = residual_analysis(x, y, fit; model = logistic_growth!, solver = Tsit5())
+        resid = residual_analysis(x, y, fit; model = GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic()), solver = Tsit5())
         @test isfinite(resid.statistics.rmse)
 
         enh = enhanced_bic_analysis(
             x,
             y;
-            models = [logistic_growth!],
+            models = [GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic())],
             model_names = ["Logistic"],
             p0_values = [[0.2, 12.0]],
             solver = Tsit5(),

@@ -87,8 +87,8 @@ function pQuickStat(x, y, p, sol, prob, bic, ssr)
 end
 
 """
-    run_single_fit(x, y, p0; model=Models.logistic_growth!, fixed_params=nothing,
-                   solver=Rodas5(), bounds=nothing, max_time=100.0, show_stats=true)
+run_single_fit(x, y, p0; model=Models.build_logistic(), fixed_params=nothing,
+               solver=Rodas5(), bounds=nothing, max_time=100.0, show_stats=true)
 
 Fit a single model to `x`, `y` data with optional fixed parameters and bounds.
 """
@@ -96,7 +96,7 @@ function run_single_fit(
     x::Vector{<:Real},
     y::Vector{<:Real},
     p0::Vector{<:Real};
-    model            = Models.logistic_growth!,
+    model            = Models.build_logistic(),
     fixed_params     = nothing,
     solver           = Tsit5(),
     bounds           = nothing,
@@ -608,7 +608,7 @@ function fit_three_datasets(
     x2::Vector{<:Real}, y2::Vector{<:Real}, name2::String,
     x3::Vector{<:Real}, y3::Vector{<:Real}, name3::String,
     p0::Vector{<:Real};
-    model                = Models.logistic_growth!,
+    model                = Models.build_logistic(),
     fixed_params         = nothing,
     solver               = Rodas5(),
     bounds               = nothing,
@@ -650,7 +650,7 @@ function fit_three_datasets(
     x_datasets::Vector{<:Vector{<:Real}},
     y_datasets::Vector{<:Vector{<:Real}};
     p0::Vector{<:Real}     = [0.1, 100.0],
-    model                  = Models.logistic_growth!,
+    model                  = Models.build_logistic(),
     fixed_params           = nothing,
     solver                 = Rodas5(),
     bounds                 = nothing,

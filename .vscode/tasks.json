@@ -1,16 +1,4 @@
 {
 	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "Restart GUI App",
-			"type": "shell",
-			"command": "powershell",
-			"args": [
-				"-NoProfile",
-				"-Command",
-				"$ports=8050,8051,8052; $conns=Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in $ports }; if($conns){$pids=$conns | Select-Object -ExpandProperty OwningProcess -Unique; foreach($p in $pids){try{Stop-Process -Id $p -Force -ErrorAction Stop}catch{}}}; $env:GPE_GUI_PORT='8050'; julia --project=examples/gui examples/gui/pipeline_gui_app_genie.jl"
-			],
-			"isBackground": true
-		}
-	]
+	"tasks": []
 }

@@ -20,7 +20,7 @@ leave_one_out_validation(
     x::Vector{<:Real},
     y::Vector{<:Real},
     p0::Vector{<:Real};
-    model                = Models.logistic_growth!,
+    model                = Models.build_logistic(),
     fixed_params         = nothing,
     solver               = Rodas5(),
     bounds               = nothing,
@@ -30,11 +30,11 @@ leave_one_out_validation(
 Performs leave-one-out cross-validation by fitting the model with each data point 
 removed and predicting that point. Returns validation metrics including RMSE and R².
 """
-function leave_one_out_validation(
+leave_one_out_validation(
     x::Vector{<:Real},
     y::Vector{<:Real},
-    p0::Vector{<:Real};
-    model                = Models.logistic_growth!,
+    p0::Vector{<:Real>;
+    model                = Models.build_logistic(),
     fixed_params         = nothing,
     solver               = Rodas5(),
     bounds               = nothing,
@@ -134,11 +134,11 @@ end
 
 """
 k_fold_cross_validation(
-    x::Vector{<:Real},
+    x::Vector{<:Real>,
     y::Vector{<:Real},
-    p0::Vector{<:Real};
+    p0::Vector{<:Real>;
     k_folds::Int         = 5,
-    model                = Models.logistic_growth!,
+    model                = Models.build_logistic(),
     fixed_params         = nothing,
     solver               = Rodas5(),
     bounds               = nothing,
@@ -274,11 +274,11 @@ end
 
 """
 parameter_sensitivity_analysis(
-    x::Vector{<:Real},
-    y::Vector{<:Real},
+    x::Vector{<:Real>,
+    y::Vector{<:Real>,
     fit_result::NamedTuple;
     perturbation::Float64    = 0.1,
-    model                   = Models.logistic_growth!,
+    model                   = Models.build_logistic(),
     solver                  = Rodas5()
 )
 
@@ -484,10 +484,10 @@ end
 
 """
 residual_analysis(
-    x::Vector{<:Real},
-    y::Vector{<:Real},
+    x::Vector{<:Real>,
+    y::Vector{<:Real>,
     fit_result::NamedTuple;
-    model              = Models.logistic_growth!,
+    model              = Models.build_logistic(),
     solver             = Rodas5(),
     outlier_threshold::Float64 = 2.0
 )
@@ -599,11 +599,11 @@ end
 
 """
 enhanced_bic_analysis(
-    x::Vector{<:Real},
-    y::Vector{<:Real};
-    models = [Models.logistic_growth!, Models.gompertz_growth!, Models.exponential_growth_with_delay!],
-    model_names = ["Logistic", "Gompertz", "Exponential+Delay"],
-    p0_values = [[0.1, 100.0], [0.1, 100.0], [0.1, 1.0, 1.0]],
+    x::Vector{<:Real>,
+    y::Vector{<:Real>;
+    models = [Models.build_logistic(), Models.build_gompertz(), Models.build_exponential()],
+    model_names = ["Logistic", "Gompertz", "Exponential"],
+    p0_values = [[0.1, 100.0], [0.1, 100.0, 1.0], [0.1, 100.0]],
     solver = Rodas5(),
     population_size::Int = 150,
     max_time::Float64 = 60.0

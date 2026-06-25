@@ -1,1 +1,50 @@
+# JuliaFormatter configuration for GrowthParameterEstimation.jl
 # See https://domluna.github.io/JuliaFormatter.jl/stable/ for a list of options
+
+# Indentation
+indent = 4
+
+# Maximum line width
+width = 100
+
+# Whether to add a space after a colon in dictionaries
+spaces_after_colons_in_dicts = true
+
+# Whether to add a space before a colon in dictionaries
+spaces_before_colons_in_dicts = false
+
+# Whether to add spaces around binary operators
+spaces_around_operators = true
+
+# Whether to add a space after a comma
+spaces_after_comma = true
+
+# Whether to add a space before a comma
+spaces_before_comma = false
+
+# Whether to unary minus should have a space
+unary_minus_space = false
+
+# Whether to add a space after a semicolon in for loops and while loops
+spaces_after_semicolon_in_control_flow = true
+
+# Whether to add a space before a semicolon in for loops and while loops
+spaces_before_semicolon_in_control_flow = false
+
+# Whether to add a space after an opening bracket
+spaces_after_opening_brackets = false
+
+# Whether to add a space before a closing bracket
+spaces_before_closing_brackets = false
+
+# Whether to add a space after an opening parenthesis
+spaces_after_opening_parentheses = false
+
+# Whether to add a space before a closing parenthesis
+spaces_before_closing_parentheses = false
+
+# Whether to add a space after an opening brace
+spaces_after_opening_braces = false
+
+# Whether to add a space before a closing brace
+spaces_before_closing_braces = false

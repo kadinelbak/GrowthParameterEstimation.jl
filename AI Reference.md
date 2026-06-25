@@ -150,7 +150,7 @@ where `s = spec.scale`, `g = spec.map_fn`.
 
 Let \(N=u_1\).
 
-### `logistic_growth!(du,u,p,t)`
+### `Models.to_ode!(Models.build_logistic())(du,u,p,t)`
 \[
 \frac{dN}{dt}=rN\left(1-\frac{N}{K}\right)
 \]
@@ -160,7 +160,7 @@ Let \(N=u_1\).
 \frac{dN}{dt}=rN\left(1-\frac{N}{K}\right)-dN
 \]
 
-### `gompertz_growth!(du,u,p,t)`
+### `Models.to_ode!(Models.build_gompertz())(du,u,p,t)`
 \[
 \frac{dN}{dt}=aN\log\left(\frac{K}{N}\right)
 \]
@@ -171,7 +171,7 @@ Let \(N=u_1\).
 \frac{dN}{dt}=aN\log\left(\frac{K}{N}\right)-dN
 \]
 
-### `exponential_growth!(du,u,p,t)`
+### `Models.to_ode!(Models.build_exponential())(du,u,p,t)`
 \[
 \frac{dN}{dt}=rN
 \]

@@ -39,10 +39,12 @@ export
     ObservationSpec, observed_signal, viable_total, sum_states,
 
     # Model functions
-    logistic_growth!, logistic_growth_with_death!, gompertz_growth!,
-    gompertz_growth_with_death!, exponential_growth_with_delay!,
-    logistic_growth_with_delay!, exponential_growth!,
-    exponential_growth_with_death_and_delay!,
+    # Note: Legacy ODE RHS functions (logistic_growth!, gompertz_growth!, exponential_growth!, etc.) 
+    # have been removed. Use the composable API instead:
+    # - build_logistic() instead of logistic_growth!
+    # - build_gompertz() instead of gompertz_growth!
+    # - build_exponential() instead of exponential_growth!
+    # - See Models module for other available builders
 
     # Fitting functions
     setUpProblem, calculate_bic, pQuickStat, run_single_fit,

@@ -113,7 +113,7 @@ The package exports many symbols, but most users should focus on the entry point
 
 These are available, but they are not the best first-stop APIs for most users:
 
-- Raw RHS model functions such as `logistic_growth!` and `gompertz_growth!` are useful when building your own `ODEProblem`, but most users should start with `run_single_fit`, `simulate`, or `run_pipeline`.
+- Raw RHS model functions such as `logistic_growth!` and `gompertz_growth!` have been removed in favor of the composable API. Use `build_logistic()`, `build_gompertz()`, etc. from the `Models` module instead, or use `Models.to_ode!(model)` to get an ODE function. Most users should start with `run_single_fit`, `simulate`, or `run_pipeline`.
 - `register_model` and `ModelSpec` are for extending the model registry, not for routine fitting of built-in models.
 - `setUpProblem`, `calculate_bic`, and `pQuickStat` are lower-level fitting/statistics helpers.
 - Submodule internals and underscore-prefixed helpers such as `_stage_filter` or `_build_layout` are implementation details and should not be treated as stable public API.
@@ -320,8 +320,8 @@ y = [1.0, 1.8, 2.6, 3.4, 3.8]
 
 comp = compare_models(
     x, y,
-    "Logistic", logistic_growth!, [0.1, 5.0],
-    "Gompertz", gompertz_growth!, [0.1, 1.0, 5.0];
+    "Logistic", Models.to_ode!(Models.build_logistic()), [0.1, 5.0],
+    "Gompertz", Models.to_ode!(Models.build_gompertz()), [0.1, 1.0, 5.0];
     solver = Tsit5(), show_stats = false,
 )
 
@@ -335,19 +335,19 @@ using GrowthParameterEstimation, DifferentialEquations, OrdinaryDiffEq
 x = [0.0, 1.0, 2.0, 3.0, 4.0]
 y = [1.0, 1.8, 2.6, 3.4, 3.8]
 
-prob = ODEProblem(logistic_growth!, [y[1]], (x[1], x[end]), [0.1, 5.0])
+prob = ODEProblem(Models.to_ode!(Models.build_logistic()), [y[1]], (x[1], x[end]), [0.1, 5.0])
 bic, ssr = calculate_bic(prob, x, y, Tsit5(), [0.1, 5.0])
 ```
 
 ## Available models (in `GrowthParameterEstimation.Models`)
-- `logistic_growth!(du,u,p,t)`               # p = [r, K]
-- `logistic_growth_with_death!(du,u,p,t)`    # p = [r, K, death_rate]
-- `gompertz_growth!(du,u,p,t)`               # p = [a, b, K]
-- `gompertz_growth_with_death!(du,u,p,t)`    # p = [a, b, K, death_rate]
-- `exponential_growth!(du,u,p,t)`            # p = [r]
-- `exponential_growth_with_delay!(du,u,p,t)` # p = [r, K, t_lag]
-- `logistic_growth_with_delay!(du,u,p,t)`    # p = [r, K, t_lag]
-- `exponential_growth_with_death_and_delay!(du,u,p,t)` # p = [r, K, death_rate, t_lag]
+- `Models.to_ode!(Models.build_logistic())(du,u,p,t)`               # p = [r, K]
+- `Models.to_ode!(Models.build_logistic_with_death())(du,u,p,t)`    # p = [r, K, death_rate]
+- `Models.to_ode!(Models.build_gompertz())(du,u,p,t)`               # p = [a, b, K]
+- `Models.to_ode!(Models.build_gompertz_with_death())(du,u,p,t)`    # p = [a, b, K, death_rate]
+- `Models.to_ode!(Models.build_exponential())(du,u,p,t)`            # p = [r]
+- `Models.to_ode!(Models.build_exponential_with_delay())(du,u,p,t)` # p = [r, K, t_lag]
+- `Models.to_ode!(Models.build_logistic_with_delay())(du,u,p,t)`    # p = [r, K, t_lag]
+- `Models.to_ode!(Models.build_exponential_with_death_and_delay())(du,u,p,t)` # p = [r, K, death_rate, t_lag]
 
 ## Key exported helpers (in `GrowthParameterEstimation`)
 - Fitting: `run_single_fit`, `compare_models`, `compare_datasets`, `compare_models_dict`, `fit_three_datasets`, `run_joint_fit`, `compare_joint_models_dict`, `calculate_bic`.

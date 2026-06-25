@@ -11,10 +11,10 @@ export
        DeathModifier, LagPhaseModifier, HillInhibitionModifier, HillKillModifier,
 
     CompositeModel, apply_modifier, create_model, from_params, to_ode!,
-    # Legacy ODE RHS functions (kept for backward compatibility)
-    logistic_growth!, logistic_growth_with_death!, gompertz_growth!, gompertz_growth_with_death!,
-    exponential_growth!, exponential_growth_with_delay!, logistic_growth_with_delay!,
-    exponential_growth_with_death_and_delay!
+    # Builder functions for easy model construction
+    build_logistic, build_gompertz, build_exponential,
+    apply_death, apply_lag, apply_hill_inhibition, apply_hill_kill,
+    compose_models
 
 # ---------------------------------------------------------------------------
 # Abstract types
@@ -96,12 +96,12 @@ create_model(::Type{ExponentialWithDeathAndDelayModel}, params) = ExponentialWit
 struct DeathModifier <: AbstractModifier
     death_rate::Real
 end
-(m::DeathModifier)(base_du, u, p, t) = base_du - get(p, :death_rate, m.death_rate) * u
+(m::DeathModifier)(base_du, u, p, t) = base_du - m.death_rate * u
 
 struct LagPhaseModifier <: AbstractModifier
     tlag::Real
 end
-(m::LagPhaseModifier)(base_du, u, p, t) = t >= get(p, :tlag, m.tlag) ? base_du : zero(base_du)
+(m::LagPhaseModifier)(base_du, u, p, t) = t >= m.tlag ? base_du : zero(base_du)
 
 struct HillInhibitionModifier <: AbstractModifier
     emax::Real
@@ -109,9 +109,9 @@ struct HillInhibitionModifier <: AbstractModifier
     hill::Real
 end
 function (m::HillInhibitionModifier)(base_du, u, p, t)
-    emax = get(p, :emax, m.emax)
-    ic50 = get(p, :ic50, m.ic50)
-    hill = get(p, :hill, m.hill)
+    emax = m.emax
+    ic50 = m.ic50
+    hill = m.hill
     drug = max(get(p, :drug, 0.0), 0.0)
     ic50_safe = max(ic50, eps(eltype(base_du)))
     inhibition = emax * drug^hill / (ic50_safe^hill + drug^hill + eps(eltype(base_du)))
@@ -124,9 +124,9 @@ struct HillKillModifier <: AbstractModifier
     hill::Real
 end
 function (m::HillKillModifier)(base_du, u, p, t)
-    emax_kill = get(p, :emax_kill, m.emax_kill)
-    ic50 = get(p, :ic50, m.ic50)
-    hill = get(p, :hill, m.hill)
+    emax_kill = m.emax_kill
+    ic50 = m.ic50
+    hill = m.hill
     drug = max(get(p, :drug, 0.0), 0.0)
     ic50_safe = max(ic50, eps(eltype(base_du)))
     kill = emax_kill * drug^hill / (ic50_safe^hill + drug^hill + eps(eltype(base_du)))
@@ -153,7 +153,7 @@ _get_param(params, key::Symbol, idx::Int) =
     params isa NamedTuple ? getfield(params, key) :
     params[idx]
 
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------- 
 # Modifier construction from generic parameter containers
 # ---------------------------------------------------------------------------
 from_params(::Type{DeathModifier}, params) = DeathModifier(_get_param(params, :death_rate, 1))
@@ -185,53 +185,102 @@ function to_ode!(model::AbstractBaseModel)
     end
 end
 
-# Legacy ODE RHS functions (in-place)
-function logistic_growth!(du, u, p, t)
-    r, K = p
-    du[1] = r * u[1] * (1 - u[1] / K)
-    nothing
+
+
+# ---------------------------------------------------------------------------
+# Builder functions for easy model construction
+# ---------------------------------------------------------------------------
+"""
+    build_logistic(; r=1.0, K=1.0)
+
+Create a LogisticModel with given parameters.
+"""
+function build_logistic(; r::Real = 1.0, K::Real = 1.0)
+    return LogisticModel(r, K)
 end
 
-function logistic_growth_with_death!(du, u, p, t)
-    r, K, death_rate = p
-    du[1] = r * u[1] * (1 - u[1] / K) - death_rate * u[1]
-    nothing
+"""
+    build_gompertz(; a=1.0, b=1.0, K=1.0)
+
+Create a GompertzModel with given parameters.
+"""
+function build_gompertz(; a::Real = 1.0, b::Real = 1.0, K::Real = 1.0)
+    return GompertzModel(a, b, K)
 end
 
-function gompertz_growth!(du, u, p, t)
-    a, b, K = p
-    u[1] <= 0 || u[1] >= K ? du[1] = 0.0 : du[1] = a * u[1] * log(K / u[1])
-    nothing
+"""
+    build_exponential(; r=1.0)
+
+Create an ExponentialModel with given growth rate.
+"""
+function build_exponential(; r::Real = 1.0)
+    return ExponentialModel(r)
 end
 
-function gompertz_growth_with_death!(du, u, p, t)
-    a, b, K, death_rate = p
-    u[1] <= 0 || u[1] >= K ? du[1] = -death_rate * u[1] : du[1] = a * u[1] * log(K / u[1]) - death_rate * u[1]
-    nothing
+"""
+    apply_death(model::AbstractBaseModel; death_rate=0.0)
+
+Apply a death modifier to a base model.
+"""
+function apply_death(model::AbstractBaseModel; death_rate::Real = 0.0)
+    return apply_modifier(model, DeathModifier, (death_rate,))
 end
 
-function exponential_growth!(du, u, p, t)
-    r = p[1]
-    du[1] = r * u[1]
-    nothing
+"""
+    apply_lag(model::AbstractBaseModel; tlag=0.0)
+
+Apply a lag phase modifier to a base model.
+"""
+function apply_lag(model::AbstractBaseModel; tlag::Real = 0.0)
+    return apply_modifier(model, LagPhaseModifier, (tlag,))
 end
 
-function exponential_growth_with_delay!(du, u, p, t)
-    r, K, tlag = p
-    du[1] = (t >= tlag ? r : 0.0) * u[1] * (1 - u[1] / K)
-    nothing
+"""
+    apply_hill_inhibition(model::AbstractBaseModel; emax=1.0, ic50=1.0, hill=1.0)
+
+Apply a Hill inhibition modifier to a base model.
+"""
+function apply_hill_inhibition(model::AbstractBaseModel; 
+                               emax::Real = 1.0, 
+                               ic50::Real = 1.0, 
+                               hill::Real = 1.0)
+    return apply_modifier(model, HillInhibitionModifier, (emax, ic50, hill))
 end
 
-function logistic_growth_with_delay!(du, u, p, t)
-    r, K, tlag = p
-    du[1] = (t >= tlag ? r : 0.0) * u[1] * (1 - u[1] / K)
-    nothing
+"""
+    apply_hill_kill(model::AbstractBaseModel; emax_kill=1.0, ic50=1.0, hill=1.0)
+
+Apply a Hill killing modifier to a base model.
+"""
+function apply_hill_kill(model::AbstractBaseModel; 
+                        emax_kill::Real = 1.0, 
+                        ic50::Real = 1.0, 
+                        hill::Real = 1.0)
+    return apply_modifier(model, HillKillModifier, (emax_kill, ic50, hill))
 end
 
-function exponential_growth_with_death_and_delay!(du, u, p, t)
-    r, K, death_rate, tlag = p
-    du[1] = (t >= tlag ? r : 0.0) * u[1] * (1 - u[1] / K) - death_rate * u[1]
-    nothing
+"""
+    compose_models(base::AbstractBaseModel, modifiers::Vector{Type{<:AbstractModifier}}; 
+                   kwargs...)
+
+Compose a base model with multiple modifiers.
+"""
+function compose_models(base::AbstractBaseModel, 
+                       modifiers::Vector{Type{<:AbstractModifier}}; 
+                       kwargs...)
+    model = base
+    for modifier_type in modifiers
+        # Extract parameters relevant to this modifier
+        mod_params = Dict{Symbol,Any}()
+        for (key, value) in kwargs
+            if hasfield(modifier_type, key)
+                mod_params[key] = value
+            end
+        end
+        model = apply_modifier(model, modifier_type; mod_params...)
+    end
+    return model
 end
 
 end # module Models
+
