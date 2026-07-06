@@ -6,12 +6,13 @@ change.
 ## Current Phase
 
 - Documentation implementation completed - Added docstrings to all modules and created external tutorial documentation
-- Identifying and documenting current issues in the package
+- Feature development initiated - Enhanced function tour notebook with staged pipeline example
 
 ## Current Goal
 
 - Establish comprehensive context for GrowthParameterEstimation.jl package
 - All context files now contain repository-specific information
+- Begin implementing prioritized features based on established specifications
 
 ## Completed
 
@@ -28,13 +29,16 @@ change.
 - Removed legacy ODE RHS functions from Models module exports
 - Updated registry to use composable_model_spec with builder functions instead of _ode_adapter
 - Removed _ode_adapter function as it's no longer needed
+- Enhanced function tour notebook with staged pipeline example demonstrating parameter inheritance
 
 ## In Progress
 
-- None - context establishment complete
+- Implementing ENHANCED_FUNCTION_TOUR_STAGED_PIPELINE feature specification
+- Adding staged pipeline example to function_tour.ipynb notebook
 
 ## Next Up
 
+- Complete implementation of staged pipeline example in function tour
 - Identify and document current issues in the package
 - Begin feature development using established context
 

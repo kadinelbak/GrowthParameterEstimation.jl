@@ -3,6 +3,7 @@
 ## Known Bugs
 - No known bugs reported in issue tracker (as of latest check)
 - Package appears to be actively maintained with recent commits
+- JSON parsing error in function_tour.ipynb notebook (being addressed in current feature development)
 
 ## Technical Debt
 - Legacy ODE RHS functions (logistic_growth!, gompertz_growth!, exponential_growth!, etc.) have been removed from src/models.jl export list and will be removed completely in a future version to reduce maintenance overhead
