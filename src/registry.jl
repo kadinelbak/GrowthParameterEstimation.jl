@@ -676,6 +676,26 @@ function register_builtin_models!()
         state_names=[:N],
         metadata=Dict(:family => :baseline_hill),
     ))
+    
+    register_model!(composable_model_spec(
+        name="logistic_growth_with_death",
+        model=apply_death(build_logistic()),
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.0, 20.0)],
+        observable=u -> u[1],
+        base_growth_family="logistic",
+        default_solver=Tsit5(),
+        metadata=Dict(:family => :baseline_death),
+    ))
+    
+    register_model!(composable_model_spec(
+        name="gompertz_growth_with_death",
+        model=apply_death(build_gompertz()),
+        bounds=[(1e-6, 5.0), (1e-6, 10.0), (1e-3, 1e7), (0.0, 20.0)],
+        observable=u -> u[1],
+        base_growth_family="gompertz",
+        default_solver=Tsit5(),
+        metadata=Dict(:family => :baseline_death),
+    ))
 
     register_model!(ModelSpec(
         name="theta_logistic_hill_kill",
