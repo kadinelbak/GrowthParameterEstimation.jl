@@ -1,2 +1,3 @@
+println("Testing import...")
 using GrowthParameterEstimation
-println("Package imported successfully")
+println("Success!")
