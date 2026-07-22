@@ -1034,6 +1034,7 @@ function build_conditions(
     condition_cols::Vector{Symbol} = [:dose, :cell_line, :density, :replicate],
 )
     normalized = DataLayer.normalize_schema(df)
+    sort!(normalized, :time)
     DataLayer.validate_timeseries(normalized)
     resolved_cols = _resolve_condition_cols(normalized, condition_cols)
     grouped = groupby(normalized, resolved_cols)
@@ -1798,7 +1799,12 @@ function plot_topk(
             end
         end
 
-        csv_path = joinpath(output_dir, replace(cond.name, '|' => '_', ' ' => '_') * "_overlay.csv")
+        safe_name = replace(cond.name, '|' => '_', ' ' => '_')
+        if length(safe_name) > 32
+            safe_name = first(safe_name, 32) * "_" * string(abs(hash(cond.name)))
+        end
+        csv_path = joinpath(output_dir, safe_name * "_overlay.csv")
+        mkpath(dirname(csv_path))
         CSV.write(csv_path, overlay)
         push!(generated, csv_path)
 

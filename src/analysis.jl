@@ -225,7 +225,7 @@ function k_fold_cross_validation(
     y::Vector{<:Real},
     p0::Vector{<:Real};
     k_folds::Int         = 5,
-    model                = Models.logistic_growth!,
+    model                = Models.build_logistic(),
     fixed_params         = nothing,
     solver               = Rodas5(),
     bounds               = nothing,
@@ -362,7 +362,7 @@ function parameter_sensitivity_analysis(
     y::Vector{<:Real},
     fit_result::NamedTuple;
     perturbation::Float64    = 0.1,
-    model                   = Models.logistic_growth!,
+    model                   = Models.build_logistic(),
     solver                  = Rodas5()
 )
     params = fit_result.params
@@ -510,7 +510,15 @@ function parameter_sensitivity_analysis(
 
     function simulate_with(params::Vector{Float64})
         ode4! = function (du, u, p, t)
-            spec.ode!(du, u, p, t, exposure_fn)
+            try
+                spec.ode!(du, u, p, t, exposure_fn)
+            catch err
+                if err isa MethodError
+                    spec.ode!(du, u, p, t)
+                else
+                    rethrow(err)
+                end
+            end
             return nothing
         end
         u0 = zeros(Float64, spec.n_states)
@@ -571,7 +579,7 @@ function residual_analysis(
     x::Vector{<:Real},
     y::Vector{<:Real},
     fit_result::NamedTuple;
-    model              = Models.logistic_growth!,
+    model              = Models.build_logistic(),
     solver             = Rodas5(),
     outlier_threshold::Float64 = 2.0
 )
@@ -687,7 +695,7 @@ Fits multiple models, calculates information criteria, and provides model recomm
 function enhanced_bic_analysis(
     x::Vector{<:Real},
     y::Vector{<:Real};
-    models = [Models.logistic_growth!, Models.gompertz_growth!, Models.exponential_growth_with_delay!],
+    models = [Models.build_logistic(), Models.build_gompertz(), Models.build_exponential()],
     model_names = ["Logistic", "Gompertz", "Exponential+Delay"],
     p0_values = [[0.1, 100.0], [0.1, 100.0], [0.1, 1.0, 1.0]],
     solver = Rodas5(),

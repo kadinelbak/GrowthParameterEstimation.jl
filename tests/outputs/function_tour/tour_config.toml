@@ -1,0 +1,10 @@
+reltol = 1.0e-6
+maxiters = 150
+n_starts = 1
+model_names = ["logistic_growth", "gompertz_growth"]
+top_k = 2
+abstol = 1.0e-6
+seed = 2026
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour\\rp"
+weighted = true
+version = "function-tour"

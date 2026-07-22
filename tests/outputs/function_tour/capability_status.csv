@@ -1,0 +1,9 @@
+area,capability,ok,output,detail
+inventory,public API and module export inventory,true,tables/public_api_symbols.csv,
+manufactured data,logistic/Gompertz/Hill/cooperation/cooperation-drug generators,true,manufactured_multistage_data.csv,
+data and exposure,load/normalize/validate/summarize/QC/preflight/exposure,true,figures/exposure_profiles.png,
+models/simulation,builders/modifiers/observation/registry/simulate/run_sweep,true,figures/registered_model_simulation_gallery.png,
+fitting,low-level/single/registry/condition/comparison/three-dataset,true,tables/fitting_api_summary.csv,
+joint/statistics,run_joint_fit/compare_joint_models/LOO/k-fold/sensitivity/residual/BIC,true,figures/joint_fit_multistate.png,
+workflow,conditions/fit/rank/plot/export/pipeline/staged/bootstrap,true,tables/workflow_summary.csv,
+figures,visual gallery for data/fits/statistics/workflows,true,figure_manifest.csv,

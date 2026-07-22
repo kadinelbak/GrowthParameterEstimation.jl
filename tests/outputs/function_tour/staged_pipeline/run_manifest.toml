@@ -1,0 +1,38 @@
+failure_count = 0
+resume_from_stage = ""
+timestamp = "2026-07-22T01:56:25.857"
+git_commit_hash = "2ba6762db455fa955d37cfbd10f92e61ff52b0b2"
+completed = false
+halted_stage = ""
+
+[uncertainty_bank.untreated_monoculture]
+
+[[stages]]
+selected_model = "gompertz_growth"
+name = "untreated_monoculture"
+status = "completed"
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour\\staged_pipeline\\untreated_monoculture"
+description = "Baseline monoculture fits on untreated conditions."
+n_conditions = 6
+candidate_models = ["gompertz_growth", "logistic_growth"]
+
+    [stages.fixed_params]
+
+    [stages.inherited_params]
+
+[config]
+reltol = 1.0e-6
+maxiters = 150
+n_starts = 1
+model_names = ["logistic_growth", "gompertz_growth"]
+top_k = 2
+abstol = 1.0e-6
+seed = 2026
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour\\staged_pipeline"
+weighted = true
+version = "function-tour-staged"
+
+[parameter_bank.untreated_monoculture]
+b = 5.000000499999264
+K = 1817.0182161458354
+a = 0.2473511680309002

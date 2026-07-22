@@ -1,0 +1,19 @@
+n_timepoints,min_time,max_time,duration_days,treatment_amount,ic50_reference,condition
+9,0.0,8.0,8.0,0.0,,cell_line=A549 | population_type=mixed | culture_type=coculture | treatment_amount=0.0 | dose=0.0 | density=1.0 | replicate=1
+9,0.0,8.0,8.0,0.0,,cell_line=A549 | population_type=mixed | culture_type=coculture | treatment_amount=0.0 | dose=0.0 | density=1.0 | replicate=2
+9,0.0,8.0,8.0,0.0,,cell_line=A549 | population_type=mixed | culture_type=coculture | treatment_amount=0.0 | dose=0.0 | density=1.0 | replicate=3
+9,0.0,8.0,8.0,0.0,,cell_line=A549 | population_type=naive | culture_type=monoculture | treatment_amount=0.0 | dose=0.0 | density=0.5 | replicate=1
+9,0.0,8.0,8.0,0.0,,cell_line=A549 | population_type=naive | culture_type=monoculture | treatment_amount=0.0 | dose=0.0 | density=0.5 | replicate=2
+9,0.0,8.0,8.0,0.0,,cell_line=A549 | population_type=naive | culture_type=monoculture | treatment_amount=0.0 | dose=0.0 | density=0.5 | replicate=3
+9,0.0,8.0,8.0,0.0,,cell_line=A549 | population_type=resistant | culture_type=monoculture | treatment_amount=0.0 | dose=0.0 | density=0.5 | replicate=1
+9,0.0,8.0,8.0,0.0,,cell_line=A549 | population_type=resistant | culture_type=monoculture | treatment_amount=0.0 | dose=0.0 | density=0.5 | replicate=2
+9,0.0,8.0,8.0,0.0,,cell_line=A549 | population_type=resistant | culture_type=monoculture | treatment_amount=0.0 | dose=0.0 | density=0.5 | replicate=3
+9,0.0,8.0,8.0,2.5,,cell_line=A549 | population_type=mixed | culture_type=coculture | treatment_amount=2.5 | dose=2.5 | density=1.0 | replicate=1
+9,0.0,8.0,8.0,2.5,,cell_line=A549 | population_type=mixed | culture_type=coculture | treatment_amount=2.5 | dose=2.5 | density=1.0 | replicate=2
+9,0.0,8.0,8.0,2.5,,cell_line=A549 | population_type=mixed | culture_type=coculture | treatment_amount=2.5 | dose=2.5 | density=1.0 | replicate=3
+9,0.0,8.0,8.0,2.5,,cell_line=A549 | population_type=naive | culture_type=monoculture | treatment_amount=2.5 | dose=2.5 | density=0.5 | replicate=1
+9,0.0,8.0,8.0,2.5,,cell_line=A549 | population_type=naive | culture_type=monoculture | treatment_amount=2.5 | dose=2.5 | density=0.5 | replicate=2
+9,0.0,8.0,8.0,2.5,,cell_line=A549 | population_type=naive | culture_type=monoculture | treatment_amount=2.5 | dose=2.5 | density=0.5 | replicate=3
+9,0.0,8.0,8.0,2.5,,cell_line=A549 | population_type=resistant | culture_type=monoculture | treatment_amount=2.5 | dose=2.5 | density=0.5 | replicate=1
+9,0.0,8.0,8.0,2.5,,cell_line=A549 | population_type=resistant | culture_type=monoculture | treatment_amount=2.5 | dose=2.5 | density=0.5 | replicate=2
+9,0.0,8.0,8.0,2.5,,cell_line=A549 | population_type=resistant | culture_type=monoculture | treatment_amount=2.5 | dose=2.5 | density=0.5 | replicate=3

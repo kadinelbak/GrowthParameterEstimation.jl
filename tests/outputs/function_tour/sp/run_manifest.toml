@@ -1,0 +1,98 @@
+failure_count = 30
+resume_from_stage = ""
+timestamp = "2026-07-22T03:15:09.138"
+git_commit_hash = "2ba6762db455fa955d37cfbd10f92e61ff52b0b2"
+completed = true
+halted_stage = ""
+
+[uncertainty_bank.treated_coculture]
+
+[uncertainty_bank.untreated_monoculture]
+
+[uncertainty_bank.treated_monoculture]
+
+[uncertainty_bank.untreated_coculture]
+
+[[stages]]
+selected_model = "gompertz_growth"
+name = "untreated_monoculture"
+status = "completed"
+output_dir = ""
+description = "Baseline monoculture fits on untreated conditions."
+n_conditions = 6
+candidate_models = ["gompertz_growth", "logistic_growth"]
+
+    [stages.fixed_params]
+
+    [stages.inherited_params]
+[[stages]]
+selected_model = "theta_logistic_hill_inhibition"
+name = "treated_monoculture"
+status = "completed"
+output_dir = ""
+description = "Treatment-response fits that can inherit untreated carrying capacity and growth parameters."
+n_conditions = 6
+candidate_models = ["theta_logistic_hill_inhibition", "theta_logistic_hill_kill", "transit_chain_erlang"]
+
+    [stages.fixed_params]
+    K = 1817.0182161458354
+
+    [stages.inherited_params.r]
+    source_stage = "untreated_monoculture"
+    source_param = "r"
+
+    [stages.inherited_params.K]
+    source_stage = "untreated_monoculture"
+    source_param = "K"
+[[stages]]
+selected_model = "null_coculture"
+name = "untreated_coculture"
+status = "completed"
+output_dir = ""
+description = "Competition model selection on untreated mixed-population conditions."
+n_conditions = 3
+candidate_models = ["null_coculture", "lotka_volterra_competition", "lotka_volterra_cooperation"]
+
+    [stages.fixed_params]
+
+    [stages.inherited_params]
+[[stages]]
+selected_model = "sensitive_resistant"
+name = "treated_coculture"
+status = "completed"
+output_dir = ""
+description = "Full treated coculture model ranking with interaction and drug-response terms."
+n_conditions = 3
+candidate_models = ["sensitive_resistant", "lotka_volterra_hill_competition", "lotka_volterra_hill_cooperation"]
+
+    [stages.fixed_params]
+
+    [stages.inherited_params]
+
+[config]
+reltol = 1.0e-6
+maxiters = 150
+n_starts = 1
+model_names = ["logistic_growth", "gompertz_growth"]
+top_k = 2
+abstol = 1.0e-6
+seed = 2026
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour\\sp"
+weighted = true
+version = "function-tour-staged"
+
+[parameter_bank.treated_coculture]
+
+[parameter_bank.untreated_monoculture]
+b = 5.000000499999264
+K = 1817.0182161458354
+a = 0.2473511680309002
+
+[parameter_bank.treated_monoculture]
+theta = 0.9345096542624655
+ic50 = 5000.000000004991
+hill = 4.049999998803835
+r = 0.5759705480395159
+K = 1817.0182161458354
+
+[parameter_bank.untreated_coculture]

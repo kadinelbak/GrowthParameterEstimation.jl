@@ -1,0 +1,5 @@
+stage,status,n_conditions,selected_model,best_bic
+untreated_monoculture,completed,6,gompertz_growth,61.31292628148456
+treated_monoculture,completed,6,theta_logistic_hill_inhibition,10.80386184542887
+untreated_coculture,completed,3,null_coculture,726.2625489340448
+treated_coculture,completed,3,sensitive_resistant,749.3334069960752

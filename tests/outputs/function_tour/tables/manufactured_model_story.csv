@@ -1,0 +1,7 @@
+culture_type,population_type,treatment_amount,model_generator,true_parameters,n_rows
+coculture,mixed,0.0,lotka_volterra_cooperation,rS=0.44;KS=900;betaSR=0.08;rR=0.31;KR=760;betaRS=0.05,27
+coculture,mixed,2.5,lotka_volterra_hill_cooperation,rS=0.46;KS=900;betaSR=0.06;rR=0.32;KR=760;betaRS=0.05;EmaxS=0.14;IC50S=2.1;EmaxR=0.05;IC50R=6.0;hill=1.5,27
+monoculture,naive,0.0,logistic_growth,r=0.55;K=1200,27
+monoculture,naive,2.5,theta_logistic_hill_kill,r=0.60;K=1200;theta=1.0;EmaxKill=0.16;EC50=2.4;hill=1.6,27
+monoculture,resistant,0.0,gompertz_growth,a=0.34;b=0;K=1500,27
+monoculture,resistant,2.5,theta_logistic_hill_inhibition,r=0.38;K=1500;Emax=0.65;EC50=4.5;hill=1.2,27

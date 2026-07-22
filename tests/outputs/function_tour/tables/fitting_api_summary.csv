@@ -1,0 +1,10 @@
+capability,ok,bic,ssr,output
+setUpProblem/calculate_bic/pQuickStat,true,43.44357357561557,689.5341189795382,tables/low_level_fit_summary.csv
+run_single_fit,true,43.44357357561557,689.5341189795382,
+fit_model/predict_model,true,86.13468758419695,79179.5463844407,tables/registry_fit_prediction_logistic.csv
+fit_model treated Hill kill,true,93.11398095603042,64757.58246736635,
+fit_condition,true,31.44829981037894,181.8546939896622,tables/fit_condition_results.csv
+compare_models,true,43.44357357561557,689.5341189795382,tables/compare_models_logistic_vs_gompertz.csv
+compare_datasets,true,NaN,NaN,tables/compare_datasets_naive_resistant.csv
+compare_models_dict,true,43.44357357561557,689.5341189795382,tables/compare_models_dict.csv
+fit_three_datasets both overloads,true,NaN,3501.517435299398,tables/fit_three_datasets.csv

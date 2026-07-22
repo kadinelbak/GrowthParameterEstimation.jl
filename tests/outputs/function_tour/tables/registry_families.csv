@@ -1,0 +1,10 @@
+family,n_models
+adaptive,1
+phenomenological,1
+mechanistic,2
+gompertz,2
+logistic,3
+coculture,5
+pkpd,1
+theta_logistic,2
+delay_surrogate,1

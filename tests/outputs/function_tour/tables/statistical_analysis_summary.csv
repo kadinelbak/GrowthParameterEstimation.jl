@@ -1,0 +1,4 @@
+capability,ok,metric,value,output
+leave_one_out_validation,true,rmse,25.516818029330608,tables
+k_fold_cross_validation,true,rmse,17.695049348357347,tables
+sensitivity/residual/enhanced_bic,true,count,3.0,tables

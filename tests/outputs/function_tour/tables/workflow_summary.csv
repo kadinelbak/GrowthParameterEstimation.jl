@@ -1,0 +1,11 @@
+capability,ok
+build_conditions,true
+fit,true
+rank_models,true
+plot_topk,true
+export_results,true
+save/load config,true
+run_pipeline,true
+run_staged_pipeline,true
+save/load manifest,true
+bootstrap_stage_uncertainty,true

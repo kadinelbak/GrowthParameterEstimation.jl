@@ -1,0 +1,9 @@
+stage,param,value
+untreated_monoculture,a,0.2473511680309002
+untreated_monoculture,b,5.000000499999264
+untreated_monoculture,K,1817.0182161458354
+treated_monoculture,ic50,5000.000000004991
+treated_monoculture,hill,4.049999998803835
+treated_monoculture,K,1817.0182161458354
+treated_monoculture,theta,0.9345096542624655
+treated_monoculture,r,0.5759705480395159
