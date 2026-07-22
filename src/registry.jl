@@ -1,4 +1,4 @@
-module Registry
+﻿module Registry
 
 using DifferentialEquations
 
@@ -433,6 +433,16 @@ function _lotka_volterra_competition!(du, u, p, t, exposure)
     du[2] = rR * R * max(0.0, 1 - (R + alpha_RS * S) / max(KR, 1e-8))
 end
 
+function _lotka_volterra_cooperation!(du, u, p, t, exposure)
+    rS, KS, beta_SR, rR, KR, beta_RS = p
+    S = max(u[1], 0.0)
+    R = max(u[2], 0.0)
+    supportS = beta_SR * R
+    supportR = beta_RS * S
+    du[1] = rS * S * (1 - max(S - supportS, 0.0) / max(KS, 1e-8))
+    du[2] = rR * R * (1 - max(R - supportR, 0.0) / max(KR, 1e-8))
+end
+
 function _lotka_volterra_hill_competition!(du, u, p, t, exposure)
     rS, KS, alpha_SR, rR, KR, alpha_RS, emaxS, ic50S, emaxR, ic50R, hill = p
     S = max(u[1], 0.0)
@@ -442,6 +452,21 @@ function _lotka_volterra_hill_competition!(du, u, p, t, exposure)
     effectR = emaxR * (drug^hill / (ic50R^hill + drug^hill + 1e-12))
     growthS = rS * S * max(0.0, 1 - (S + alpha_SR * R) / max(KS, 1e-8))
     growthR = rR * R * max(0.0, 1 - (R + alpha_RS * S) / max(KR, 1e-8))
+    du[1] = growthS - effectS * S
+    du[2] = growthR - effectR * R
+end
+
+function _lotka_volterra_hill_cooperation!(du, u, p, t, exposure)
+    rS, KS, beta_SR, rR, KR, beta_RS, emaxS, ic50S, emaxR, ic50R, hill = p
+    S = max(u[1], 0.0)
+    R = max(u[2], 0.0)
+    drug = max(exposure(t), 0.0)
+    effectS = emaxS * (drug^hill / (ic50S^hill + drug^hill + 1e-12))
+    effectR = emaxR * (drug^hill / (ic50R^hill + drug^hill + 1e-12))
+    supportS = beta_SR * R
+    supportR = beta_RS * S
+    growthS = rS * S * (1 - max(S - supportS, 0.0) / max(KS, 1e-8))
+    growthR = rR * R * (1 - max(R - supportR, 0.0) / max(KR, 1e-8))
     du[1] = growthS - effectS * S
     du[2] = growthR - effectR * R
 end
@@ -514,6 +539,10 @@ function _extract_param_names(model::AbstractBaseModel)
     return fieldnames(typeof(model))
 end
 
+function _extract_param_names(model::CompositeModel)
+    return vcat(collect(fieldnames(typeof(model.base))), collect(fieldnames(typeof(model.modifier))))
+end
+
 """
     _detect_n_states(model::AbstractBaseModel)
 
@@ -571,6 +600,8 @@ function composable_model_spec(;
                                bounds=nothing,
                                observable::Function = u -> u[1],
                                default_solver = Tsit5(),
+                               base_growth_family::AbstractString = "custom",
+                               metadata::AbstractDict{Symbol,<:Any} = Dict{Symbol,Any}(),
                                kwargs...)
     # Auto-extract information from the model
     param_names = _extract_param_names(model)
@@ -585,28 +616,20 @@ function composable_model_spec(;
     ode_func = Models.to_ode!(model)
     
     # Process metadata from kwargs
-    meta = Dict{Symbol,Any}(kwargs)
-    base_family = get(meta, :family, "custom")
-    delete!(meta, :family)  # Remove family from metadata as it's stored separately
-    
-    # Create the ModelSpec
+    meta = Dict{Symbol,Any}(metadata)
+    merge!(meta, Dict{Symbol,Any}(kwargs))
+
     return ModelSpec(
-        String(name),
-        ode_func,
-        collect(param_names),
-        [(Float64(first(b)), Float64(last(b))) for b in bounds],
-        Int(n_states),
-        observable,
-        String(base_family),
-        default_solver,
-        nothing,  # p0_factory
-        Dict{Int,Float64}(),  # fixed_params
-        _default_state_names(n_states),  # state_names
-        Models.to_ode!(model),  # dynamics! (legacy)
-        _default_state_names(n_states),  # state_names (legacy)
-        observable,  # observation (legacy)
-        _solver_to_symbol(default_solver),  # solver_type (legacy)
-        meta  # metadata
+        ;
+        name=String(name),
+        ode! = ode_func,
+        param_names=collect(param_names),
+        bounds=[(Float64(first(b)), Float64(last(b))) for b in bounds],
+        n_states=Int(n_states),
+        observable=observable,
+        base_growth_family=String(base_growth_family),
+        default_solver=default_solver,
+        metadata=meta,
     )
 end
 
@@ -737,6 +760,19 @@ function register_builtin_models!()
     ))
 
     register_model!(ModelSpec(
+        name="lotka_volterra_cooperation",
+        ode! = _lotka_volterra_cooperation!,
+        param_names=[:rS, :KS, :beta_SR, :rR, :KR, :beta_RS],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0)],
+        n_states=2,
+        observable=u -> u[1] + u[2],
+        base_growth_family="coculture",
+        default_solver=Tsit5(),
+        state_names=[:S, :R],
+        metadata=Dict(:family => :coculture_cooperation),
+    ))
+
+    register_model!(ModelSpec(
         name="lotka_volterra_hill_competition",
         ode! = _lotka_volterra_hill_competition!,
         param_names=[:rS, :KS, :alpha_SR, :rR, :KR, :alpha_RS, :emaxS, :ic50S, :emaxR, :ic50R, :hill],
@@ -747,6 +783,19 @@ function register_builtin_models!()
         default_solver=Tsit5(),
         state_names=[:S, :R],
         metadata=Dict(:family => :coculture_competition_hill),
+    ))
+
+    register_model!(ModelSpec(
+        name="lotka_volterra_hill_cooperation",
+        ode! = _lotka_volterra_hill_cooperation!,
+        param_names=[:rS, :KS, :beta_SR, :rR, :KR, :beta_RS, :emaxS, :ic50S, :emaxR, :ic50R, :hill],
+        bounds=[(1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (1e-6, 5.0), (1e-3, 1e7), (0.0, 5.0), (0.0, 20.0), (1e-8, 1e4), (0.0, 20.0), (1e-8, 1e4), (0.1, 8.0)],
+        n_states=2,
+        observable=u -> u[1] + u[2],
+        base_growth_family="coculture",
+        default_solver=Tsit5(),
+        state_names=[:S, :R],
+        metadata=Dict(:family => :coculture_cooperation_hill),
     ))
 
     register_model!(ModelSpec(

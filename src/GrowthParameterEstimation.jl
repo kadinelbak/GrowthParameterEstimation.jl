@@ -1,4 +1,4 @@
-module GrowthParameterEstimation
+﻿module GrowthParameterEstimation
 
 # Include submodules
 include("data.jl")
@@ -69,4 +69,3 @@ function __init__()
 end
 
 end # module GrowthParameterEstimation
-

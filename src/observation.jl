@@ -1,4 +1,4 @@
-module Observation
+﻿module Observation
 
 export ObservationSpec, observed_signal, viable_total, sum_states
 

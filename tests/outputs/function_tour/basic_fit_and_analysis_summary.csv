@@ -1,0 +1,12 @@
+metric,value
+setUpProblem_r,0.4601336030111236
+setUpProblem_K,1441.5333022927307
+single_fit_bic,33.89628280925397
+single_fit_ssr,238.69965655084837
+best_comparison,Logistic
+loo_rmse,21.164093610201945
+kfold_rmse,18.537459711023015
+enhanced_best,Logistic
+fit_model_bic,71.13116452031194
+fit_condition_rows,1
+joint_fit_bic,-543.6043282130526

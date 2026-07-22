@@ -1,4 +1,4 @@
-module Simulation
+﻿module Simulation
 
 using DifferentialEquations
 using DataFrames
@@ -186,13 +186,31 @@ if result.success
 end
 ```
 """
+function simulate(
+    spec::Registry.ModelSpec,
+    times::AbstractVector{<:Real},
+    params::AbstractVector{<:Real};
+    u0::AbstractVector{<:Real},
+    exposure::Exposure.AbstractExposure = Exposure.ConstantExposure(0.0),
+    reltol::Float64 = 1e-8,
+    abstol::Float64 = 1e-8,
+    enforce_nonnegative::Bool = true,
+)
     t_obs = Float64.(collect(times))
     tspan = (minimum(t_obs), maximum(t_obs))
     param_vec = collect(params)
     value_type = promote_type(Float64, eltype(param_vec), eltype(u0))
 
     wrapped! = function (du, u, p, t)
-        spec.dynamics!(du, u, p, t, exposure)
+        try
+            spec.dynamics!(du, u, p, t, exposure)
+        catch err
+            if err isa MethodError
+                spec.dynamics!(du, u, p, t)
+            else
+                rethrow(err)
+            end
+        end
         if enforce_nonnegative
             for i in eachindex(du)
                 if !isfinite(du[i])
@@ -279,6 +297,15 @@ summary_df = sweep_result.summary
 first_result = sweep_result.simulations[(seed_total=1.0, resistant_fraction=0.0, dose=0.0)]
 ```
 """
+function run_sweep(
+    spec::Registry.ModelSpec,
+    params::AbstractVector{<:Real},
+    grid::SweepGrid;
+    exposure_builder::Function = dose -> Exposure.ConstantExposure(Float64(dose)),
+    reltol::Float64 = 1e-8,
+    abstol::Float64 = 1e-8,
+    enforce_nonnegative::Bool = true,
+)
     rows = NamedTuple[]
     sims = Dict{NamedTuple,SimulationResult}()
 

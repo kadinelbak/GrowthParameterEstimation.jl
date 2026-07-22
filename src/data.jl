@@ -1,4 +1,4 @@
-# Data layer module - Contains data loading, normalization, and validation functions
+﻿# Data layer module - Contains data loading, normalization, and validation functions
 module DataLayer
 
 using CSV
@@ -93,7 +93,7 @@ function normalize_schema(df::DataFrame)
     # Ensure required columns exist, add missing ones with defaults
     required_cols = [:time, :count, :error, :dose, :cell_line, :density, :replicate]
     for col in required_cols
-        if !(col in names(normalized))
+        if !(col in Symbol.(names(normalized)))
             if col == :time || col == :count || col == :error || col == :dose || col == :density
                 normalized[!, col] = fill(0.0, nrow(normalized))
             elseif col == :cell_line
@@ -172,7 +172,7 @@ Validate that all required metadata fields are present and have valid data.
 """
 function validate_required_metadata(df::DataFrame; required_metadata::Vector{Symbol}=STRICT_REQUIRED_METADATA)
     # Check that all required columns exist
-    missing_cols = setdiff(required_metadata, names(df))
+    missing_cols = setdiff(required_metadata, Symbol.(names(df)))
     if !isempty(missing_cols)
         throw(ErrorException("Missing required metadata fields: $(string.(missing_cols))"))
     end
@@ -208,8 +208,8 @@ function load_timeseries(file_path::AbstractString)
     end
     
     # Try to read as CSV
-    try
-        raw_data = CSV.File(file_path; ignorerepeated=false) |> DataFrame!
+    raw_data = try
+        CSV.File(file_path; ignorerepeated=false) |> DataFrame
     catch
         throw(ArgumentError("Unable to read file as CSV: $file_path"))
     end

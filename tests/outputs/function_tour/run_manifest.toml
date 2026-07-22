@@ -1,0 +1,190 @@
+failure_count = 17
+resume_from_stage = ""
+timestamp = "2026-07-20T21:20:22.248"
+git_commit_hash = "1d02647787e209bbee4dd4e658f87e0d21418609"
+completed = true
+halted_stage = ""
+
+[uncertainty_bank.untreated_monoculture_naive]
+
+[uncertainty_bank.treated_coculture_a549]
+
+[uncertainty_bank.untreated_monoculture_resistant]
+
+[uncertainty_bank.treated_monoculture_naive_a549]
+
+[uncertainty_bank.untreated_coculture_a549]
+
+[uncertainty_bank.treated_monoculture_resistant_a549]
+
+[[stages]]
+selected_model = "logistic_growth"
+name = "untreated_monoculture_naive"
+status = "completed"
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour\\untreated_monoculture_naive"
+description = "Untreated monoculture fit for population naive with global r and K."
+n_conditions = 1
+candidate_models = ["logistic_growth", "gompertz_growth"]
+
+    [stages.fixed_params]
+
+    [stages.inherited_params]
+[[stages]]
+selected_model = "theta_logistic_hill_kill"
+name = "treated_monoculture_naive_a549"
+status = "completed"
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour\\treated_monoculture_naive_a549"
+description = "Treated monoculture fit for population naive and cell line A549; IC50 remains fixed for this pair downstream."
+n_conditions = 2
+candidate_models = ["theta_logistic_hill_kill", "theta_logistic_hill_inhibition", "transit_chain_erlang"]
+
+    [stages.fixed_params]
+    r = 0.4601959146364066
+    K = 1441.475181587618
+
+    [stages.inherited_params.r]
+    source_stage = "untreated_monoculture_naive"
+    source_param = "r"
+
+    [stages.inherited_params.K]
+    source_stage = "untreated_monoculture_naive"
+    source_param = "K"
+[[stages]]
+selected_model = "gompertz_growth"
+name = "untreated_monoculture_resistant"
+status = "completed"
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour\\untreated_monoculture_resistant"
+description = "Untreated monoculture fit for population resistant with global r and K."
+n_conditions = 1
+candidate_models = ["gompertz_growth", "logistic_growth"]
+
+    [stages.fixed_params]
+
+    [stages.inherited_params]
+[[stages]]
+selected_model = "theta_logistic_hill_inhibition"
+name = "treated_monoculture_resistant_a549"
+status = "completed"
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour\\treated_monoculture_resistant_a549"
+description = "Treated monoculture fit for population resistant and cell line A549; IC50 remains fixed for this pair downstream."
+n_conditions = 2
+candidate_models = ["theta_logistic_hill_inhibition", "theta_logistic_hill_kill", "transit_chain_erlang"]
+
+    [stages.fixed_params]
+    K = 1118.8495167284564
+
+    [stages.inherited_params.r]
+    source_stage = "untreated_monoculture_resistant"
+    source_param = "r"
+
+    [stages.inherited_params.K]
+    source_stage = "untreated_monoculture_resistant"
+    source_param = "K"
+[[stages]]
+selected_model = "null_coculture"
+name = "untreated_coculture_a549"
+status = "completed"
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour\\untreated_coculture_a549"
+description = "Untreated coculture interaction model selection for cell line A549."
+n_conditions = 1
+candidate_models = ["null_coculture", "lotka_volterra_competition", "lotka_volterra_cooperation"]
+
+    [stages.fixed_params]
+    KR = 1118.8495167284564
+    rS = 0.4601959146364066
+    KS = 1441.475181587618
+
+    [stages.inherited_params.KS]
+    source_stage = "untreated_monoculture_naive"
+    source_param = "K"
+
+    [stages.inherited_params.rS]
+    source_stage = "untreated_monoculture_naive"
+    source_param = "r"
+
+    [stages.inherited_params.rR]
+    source_stage = "untreated_monoculture_resistant"
+    source_param = "r"
+
+    [stages.inherited_params.KR]
+    source_stage = "untreated_monoculture_resistant"
+    source_param = "K"
+[[stages]]
+selected_model = "lotka_volterra_hill_competition"
+name = "treated_coculture_a549"
+status = "completed"
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour\\treated_coculture_a549"
+description = "Treated coculture for cell line A549; IC50S/IC50R inherited from treated monocultures for the same line."
+n_conditions = 2
+candidate_models = ["lotka_volterra_hill_competition", "lotka_volterra_hill_cooperation", "sensitive_resistant"]
+
+    [stages.fixed_params]
+    KR = 1118.8495167284564
+    rS = 0.4601959146364066
+    ic50R = 5000.000000008753
+    ic50S = 4701.310422220994
+    KS = 1441.475181587618
+
+    [stages.inherited_params.KS]
+    source_stage = "untreated_monoculture_naive"
+    source_param = "K"
+
+    [stages.inherited_params.rS]
+    source_stage = "untreated_monoculture_naive"
+    source_param = "r"
+
+    [stages.inherited_params.ic50R]
+    source_stage = "treated_monoculture_resistant_a549"
+    source_param = "ic50"
+
+    [stages.inherited_params.ic50S]
+    source_stage = "treated_monoculture_naive_a549"
+    source_param = "ic50"
+
+    [stages.inherited_params.rR]
+    source_stage = "untreated_monoculture_resistant"
+    source_param = "r"
+
+    [stages.inherited_params.KR]
+    source_stage = "untreated_monoculture_resistant"
+    source_param = "K"
+
+[config]
+reltol = 1.0e-8
+maxiters = 160
+n_starts = 3
+model_names = ["adaptive_ic50", "bi_exponential_response", "damage_repair_arrest", "gompertz_growth", "gompertz_growth_with_death", "logistic_growth", "logistic_growth_with_death", "logistic_linear_kill", "lotka_volterra_competition", "lotka_volterra_cooperation", "lotka_volterra_hill_competition", "lotka_volterra_hill_cooperation", "null_coculture", "pkpd_inhibition", "sensitive_resistant", "theta_logistic_hill_inhibition", "theta_logistic_hill_kill", "transit_chain_erlang"]
+top_k = 2
+abstol = 1.0e-8
+seed = 42
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour"
+weighted = true
+version = "1.0.0"
+
+[parameter_bank.untreated_monoculture_naive]
+r = 0.4601959146364066
+K = 1441.475181587618
+
+[parameter_bank.treated_coculture_a549]
+
+[parameter_bank.untreated_monoculture_resistant]
+b = 5.000000499995912
+K = 1118.8495167284564
+a = 0.24151240910328922
+
+[parameter_bank.treated_monoculture_naive_a549]
+theta = 0.7684819086766005
+emax_kill = 10.269073321867168
+ic50 = 4701.310422220994
+hill = 0.44019597329759885
+r = 0.4601959146364066
+K = 1441.475181587618
+
+[parameter_bank.untreated_coculture_a549]
+
+[parameter_bank.treated_monoculture_resistant_a549]
+theta = 0.8779615510508468
+ic50 = 5000.000000008753
+hill = 4.050000000005348
+r = 0.3268308565974011
+K = 1118.8495167284564

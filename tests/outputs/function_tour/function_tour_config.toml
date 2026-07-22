@@ -1,0 +1,10 @@
+reltol = 1.0e-8
+maxiters = 160
+n_starts = 3
+model_names = ["adaptive_ic50", "bi_exponential_response", "damage_repair_arrest", "gompertz_growth", "gompertz_growth_with_death", "logistic_growth", "logistic_growth_with_death", "logistic_linear_kill", "lotka_volterra_competition", "lotka_volterra_cooperation", "lotka_volterra_hill_competition", "lotka_volterra_hill_cooperation", "null_coculture", "pkpd_inhibition", "sensitive_resistant", "theta_logistic_hill_inhibition", "theta_logistic_hill_kill", "transit_chain_erlang"]
+top_k = 2
+abstol = 1.0e-8
+seed = 42
+output_dir = "C:\\Users\\elbak\\OneDrive\\Desktop\\Research\\Research Package\\GrowthParameterEstimation.jl\\tests\\notebooks\\..\\outputs\\function_tour"
+weighted = true
+version = "1.0.0"

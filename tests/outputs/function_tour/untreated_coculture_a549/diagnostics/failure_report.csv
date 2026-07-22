@@ -1,0 +1,4 @@
+stage,model,condition,reason,detail,hint,timestamp
+solver,null_coculture,density=210.0 | replicate=1,unknown_failure,Simulation failed during best-fit evaluation,"Inspect condition-specific time range, bounds, and observation scaling.",2026-07-20T21:19:15.749
+solver,lotka_volterra_competition,density=210.0 | replicate=1,unknown_failure,Simulation failed during best-fit evaluation,"Inspect condition-specific time range, bounds, and observation scaling.",2026-07-20T21:19:16.079
+solver,lotka_volterra_cooperation,density=210.0 | replicate=1,unknown_failure,Simulation failed during best-fit evaluation,"Inspect condition-specific time range, bounds, and observation scaling.",2026-07-20T21:19:16.171

@@ -1,3 +1,3 @@
-include("src/data.jl")
+include("../../src/data.jl")
 using .DataLayer
 println("DataLayer imported successfully")

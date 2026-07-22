@@ -1,4 +1,4 @@
-# Analysis module - Contains all statistical analysis and validation functions
+﻿# Analysis module - Contains all statistical analysis and validation functions
 module Analysis
 
 using StatsBase
@@ -62,14 +62,14 @@ loo_results = leave_one_out_validation(t, y, [0.3, 50.0];
                                       model=Models.build_logistic())
 
 # Access results
-println("LOO RMSE: $(loo_results.rmse)")
-println("LOO R²: $(loo_results.r_squared)")
+println("LOO RMSE: \$(loo_results.rmse)")
+println("LOO R²: \$(loo_results.r_squared)")
 ```
 """
-leave_one_out_validation(
+function leave_one_out_validation(
     x::Vector{<:Real},
     y::Vector{<:Real},
-    p0::Vector{<:Real>;
+    p0::Vector{<:Real};
     model                = Models.build_logistic(),
     fixed_params         = nothing,
     solver               = Rodas5(),
@@ -216,8 +216,8 @@ cv_results = k_fold_cross_validation(t, y, [0.3, 50.0];
                                     k_folds=5)
 
 # Access results
-println("Overall CV RMSE: $(cv_results.overall_rmse)")
-println("Overall CV R²: $(cv_results.r_squared)")
+println("Overall CV RMSE: \$(cv_results.overall_rmse)")
+println("Overall CV R²: \$(cv_results.r_squared)")
 ```
 """
 function k_fold_cross_validation(

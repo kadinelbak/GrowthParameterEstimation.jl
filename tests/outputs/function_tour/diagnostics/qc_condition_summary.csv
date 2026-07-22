@@ -1,0 +1,10 @@
+condition,n_rows,n_replicates,min_time,max_time,monotone_time
+cell_line=A549 | population_type=mixed | culture_type=coculture | treatment_amount=0.0 | density=210.0 | replicate=1,9,1,0.0,8.0,true
+cell_line=A549 | population_type=mixed | culture_type=coculture | treatment_amount=0.25 | density=210.0 | replicate=1,9,1,0.0,8.0,true
+cell_line=A549 | population_type=mixed | culture_type=coculture | treatment_amount=0.75 | density=210.0 | replicate=1,9,1,0.0,8.0,true
+cell_line=A549 | population_type=naive | culture_type=monoculture | treatment_amount=0.0 | density=120.0 | replicate=1,9,1,0.0,8.0,true
+cell_line=A549 | population_type=naive | culture_type=monoculture | treatment_amount=0.25 | density=120.0 | replicate=1,9,1,0.0,8.0,true
+cell_line=A549 | population_type=naive | culture_type=monoculture | treatment_amount=0.75 | density=120.0 | replicate=1,9,1,0.0,8.0,true
+cell_line=A549 | population_type=resistant | culture_type=monoculture | treatment_amount=0.0 | density=90.0 | replicate=1,9,1,0.0,8.0,true
+cell_line=A549 | population_type=resistant | culture_type=monoculture | treatment_amount=0.25 | density=90.0 | replicate=1,9,1,0.0,8.0,true
+cell_line=A549 | population_type=resistant | culture_type=monoculture | treatment_amount=0.75 | density=90.0 | replicate=1,9,1,0.0,8.0,true

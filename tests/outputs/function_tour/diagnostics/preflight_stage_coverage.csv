@@ -1,0 +1,7 @@
+stage,matched_rows,matched_conditions,status,detail,recommendation
+untreated_monoculture_naive,9,1,ok,Matched 9 rows across 1 conditions.,Coverage is sufficient to attempt fitting.
+treated_monoculture_naive_a549,18,2,ok,Matched 18 rows across 2 conditions.,Coverage is sufficient to attempt fitting.
+untreated_monoculture_resistant,9,1,ok,Matched 9 rows across 1 conditions.,Coverage is sufficient to attempt fitting.
+treated_monoculture_resistant_a549,18,2,ok,Matched 18 rows across 2 conditions.,Coverage is sufficient to attempt fitting.
+untreated_coculture_a549,9,1,ok,Matched 9 rows across 1 conditions.,Coverage is sufficient to attempt fitting.
+treated_coculture_a549,18,2,ok,Matched 18 rows across 2 conditions.,Coverage is sufficient to attempt fitting.

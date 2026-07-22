@@ -1,4 +1,4 @@
-module Workflow
+﻿module Workflow
 
 using CSV
 using DataFrames
@@ -42,8 +42,8 @@ struct FitCondition
     name::String
     time::Vector{Float64}
     count::Vector{Float64}
-    error::Vector{Float64>
-    u0::Vector{Float64>
+    error::Vector{Float64}
+    u0::Vector{Float64}
     exposure::Exposure.AbstractExposure
     metadata::Dict{Symbol,Any}
 end
@@ -100,7 +100,7 @@ struct PipelineStage
     condition_cols::Vector{Symbol}
     model_names::Vector{String}
     shared_params::Vector{Symbol}
-    fixed_params::Dict{Symbol,Float64>
+    fixed_params::Dict{Symbol,Float64}
     inherited_params::Dict{Symbol,Tuple{String,Symbol}}
 end
 
@@ -219,7 +219,7 @@ function default_stages()
             "Competition model selection on untreated mixed-population conditions.",
             _stage_filter(culture_type="coculture", treated=false),
             [:cell_line, :density, :replicate],
-            ["null_coculture", "lotka_volterra_competition"],
+            ["null_coculture", "lotka_volterra_competition", "lotka_volterra_cooperation"],
             Symbol[],
             Dict{Symbol,Float64}(),
             Dict{Symbol,Tuple{String,Symbol}}(),
@@ -229,7 +229,7 @@ function default_stages()
             "Full treated coculture model ranking with interaction and drug-response terms.",
             _stage_filter(culture_type="coculture", treated=true),
             [:treatment_amount, :dose, :cell_line, :density, :replicate],
-            ["lotka_volterra_hill_competition", "sensitive_resistant"],
+            ["lotka_volterra_hill_competition", "lotka_volterra_hill_cooperation", "sensitive_resistant"],
             [:ic50S, :ic50R, :hill],
             Dict{Symbol,Float64}(),
             Dict{Symbol,Tuple{String,Symbol}}(),
@@ -276,8 +276,8 @@ function default_population_stages(populations::Vector{String} = ["naive", "resi
         "Untreated coculture interaction model selection with global growth/competition terms.",
         _stage_filter(culture_type="coculture", treated=false),
         [:cell_line, :density, :replicate],
-        ["null_coculture", "lotka_volterra_competition"],
-        [:rS, :KS, :rR, :KR, :alpha_SR, :alpha_RS],
+        ["null_coculture", "lotka_volterra_competition", "lotka_volterra_cooperation"],
+        [:rS, :KS, :rR, :KR, :alpha_SR, :alpha_RS, :beta_SR, :beta_RS],
         Dict{Symbol,Float64}(),
         Dict{Symbol,Tuple{String,Symbol}}(),
     ))
@@ -287,7 +287,7 @@ function default_population_stages(populations::Vector{String} = ["naive", "resi
         "Treated coculture fit where dose/treatment amount varies but IC50 values remain global by subtype.",
         _stage_filter(culture_type="coculture", treated=true),
         [:treatment_amount, :dose, :cell_line, :density, :replicate],
-        ["lotka_volterra_hill_competition", "sensitive_resistant"],
+        ["lotka_volterra_hill_competition", "lotka_volterra_hill_cooperation", "sensitive_resistant"],
         [:ic50S, :ic50R, :hill],
         Dict{Symbol,Float64}(),
         Dict{Symbol,Tuple{String,Symbol}}(),
@@ -350,8 +350,8 @@ function default_population_cellline_stages(
             "Untreated coculture interaction model selection for cell line " * cell_line * ".",
             _stage_filter(culture_type="coculture", treated=false, cell_lines=[cell_line]),
             [:density, :replicate],
-            ["null_coculture", "lotka_volterra_competition"],
-            [:rS, :KS, :rR, :KR, :alpha_SR, :alpha_RS],
+            ["null_coculture", "lotka_volterra_competition", "lotka_volterra_cooperation"],
+            [:rS, :KS, :rR, :KR, :alpha_SR, :alpha_RS, :beta_SR, :beta_RS],
             Dict{Symbol,Float64}(),
             Dict(
                 :rS => ("untreated_monoculture_naive", :r),
@@ -366,7 +366,7 @@ function default_population_cellline_stages(
             "Treated coculture for cell line " * cell_line * "; IC50S/IC50R inherited from treated monocultures for the same line.",
             _stage_filter(culture_type="coculture", treated=true, cell_lines=[cell_line]),
             [:treatment_amount, :dose, :density, :replicate],
-            ["lotka_volterra_hill_competition", "sensitive_resistant"],
+            ["lotka_volterra_hill_competition", "lotka_volterra_hill_cooperation", "sensitive_resistant"],
             [:ic50S, :ic50R, :hill],
             Dict{Symbol,Float64}(),
             Dict(
@@ -1047,12 +1047,24 @@ function build_conditions(
         dose_value = haskey(metadata, :dose) ? Float64(metadata[:dose]) : 0.0
         exposure = Exposure.ConstantExposure(dose_value)
 
+        u0 = if (:culture_type in names(g_sorted)) &&
+                lowercase(string(g_sorted[1, :culture_type])) == "coculture" &&
+                (:initial_sensitive in names(g_sorted)) &&
+                (:initial_resistant in names(g_sorted))
+            [
+                max(1e-12, Float64(g_sorted[1, :initial_sensitive])),
+                max(1e-12, Float64(g_sorted[1, :initial_resistant])),
+            ]
+        else
+            [max(1e-12, Float64(g_sorted.count[1]))]
+        end
+
         push!(conditions, FitCondition(
             cname,
             Float64.(g_sorted.time),
             Float64.(g_sorted.count),
             Float64.(g_sorted.error),
-            [max(1e-12, Float64(g_sorted.count[1]))],
+            u0,
             exposure,
             metadata,
         ))
@@ -1539,10 +1551,24 @@ result = fit(spec, conditions;
              tie_constraints=Dict()) # no tied parameters
 
 # Access results
-println("Best objective value: $(result.best.objective)")
-println("Number of successful conditions: $(sum([pc.success for pc in result.per_condition]))")
+println("Best objective value: \$(result.best.objective)")
+println("Number of successful conditions: \$(sum([pc.success for pc in result.per_condition]))")
 ```
 """
+function fit(
+    spec::Registry.ModelSpec,
+    conditions::Vector{FitCondition};
+    shared_params::Vector{Symbol} = copy(spec.param_names),
+    fixed_params::Dict{Symbol,Float64} = Dict{Symbol,Float64}(),
+    tie_constraints::Dict{Symbol,Symbol} = Dict{Symbol,Symbol}(),
+    n_starts::Int = 20,
+    maxiters::Int = 800,
+    weighted::Bool = true,
+    reltol::Float64 = 1e-8,
+    abstol::Float64 = 1e-8,
+    seed::Int = 42,
+    top_k::Int = 5,
+)
     rng = MersenneTwister(seed)
     n_conditions = length(conditions)
     n_obs = sum(length(c.time) for c in conditions)

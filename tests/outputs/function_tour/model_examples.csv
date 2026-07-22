@@ -1,0 +1,9 @@
+model,derivative_at_200
+logistic,75.0
+gompertz,71.6703787691222
+exponential,50.0
+death,69.0
+lag,0.0
+hill_inhibition,40.67895971978386
+hill_kill,46.399133099819885
+composed_death,71.0

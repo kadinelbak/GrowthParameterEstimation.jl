@@ -1,0 +1,17 @@
+stage,parameter,value
+untreated_monoculture_naive,K,1441.475181587618
+untreated_monoculture_naive,r,0.4601959146364066
+untreated_monoculture_resistant,a,0.24151240910328922
+untreated_monoculture_resistant,b,5.000000499995912
+untreated_monoculture_resistant,K,1118.8495167284564
+treated_monoculture_naive_a549,ic50,4701.310422220994
+treated_monoculture_naive_a549,hill,0.44019597329759885
+treated_monoculture_naive_a549,emax_kill,10.269073321867168
+treated_monoculture_naive_a549,K,1441.475181587618
+treated_monoculture_naive_a549,theta,0.7684819086766005
+treated_monoculture_naive_a549,r,0.4601959146364066
+treated_monoculture_resistant_a549,ic50,5000.000000008753
+treated_monoculture_resistant_a549,hill,4.050000000005348
+treated_monoculture_resistant_a549,K,1118.8495167284564
+treated_monoculture_resistant_a549,theta,0.8779615510508468
+treated_monoculture_resistant_a549,r,0.3268308565974011

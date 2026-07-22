@@ -1,4 +1,4 @@
-# Fitting module - Contains all ODE fitting and comparison functions
+﻿# Fitting module - Contains all ODE fitting and comparison functions
 module Fitting
 
 using StatsBase
@@ -220,9 +220,9 @@ p0 = [0.3, 50.0]  # [growth rate, carrying capacity]
 fit_result = run_single_fit(t, y, p0; model=Models.build_logistic())
 
 # Access results
-println("Optimized growth rate: $(fit_result.params[1])")
-println("Optimized carrying capacity: $(fit_result.params[2])")
-println("BIC: $(fit_result.bic)")
+println("Optimized growth rate: \$(fit_result.params[1])")
+println("Optimized carrying capacity: \$(fit_result.params[2])")
+println("BIC: \$(fit_result.bic)")
 ```
 """
 function run_single_fit(
@@ -312,7 +312,7 @@ function _exposure_fn(dose)
 end
 
 function _build_full_params(
-    p_free::AbstractVector{<:Real},
+    p_free::AbstractVector,
     n_total::Int,
     free_indices::Vector{Int},
     fixed_map::Dict{Int,Float64},
@@ -338,7 +338,15 @@ function _simulate_observed(
     abstol::Float64,
 )
     ode4! = function (du, u, p, t)
-        model_spec.ode!(du, u, p, t, exposure_fn)
+        try
+            model_spec.ode!(du, u, p, t, exposure_fn)
+        catch err
+            if err isa MethodError
+                model_spec.ode!(du, u, p, t)
+            else
+                rethrow(err)
+            end
+        end
         return nothing
     end
     prob = ODEProblem(ode4!, u0, (x[1], x[end]), p_full)
@@ -402,9 +410,9 @@ y = [100.0 / (1.0 + 99.0 * exp(-0.5 * ti)) for ti in t] + 0.5*randn(length(t))  
 result = fit_model(spec, t, y, dose=5.0)  # 5.0 units of drug exposure
 
 # Access results
-println("Optimized parameters: $(result.params)")
-println("BIC: $(result.bic)")
-println("SSR: $(result.ssr)")
+println("Optimized parameters: \$(result.params)")
+println("BIC: \$(result.bic)")
+println("SSR: \$(result.ssr)")
 ```
 """
 function fit_model(
@@ -748,9 +756,9 @@ comparison = compare_models(
 )
 
 # Access results
-println("Linear model BIC: $(comparison.model1.bic)")
-println("Exponential model BIC: $(comparison.model2.bic)")
-println("Best model: $(comparison.best_model.name)")
+println("Linear model BIC: \$(comparison.model1.bic)")
+println("Exponential model BIC: \$(comparison.model2.bic)")
+println("Best model: \$(comparison.best_model.name)")
 ```
 """
 function compare_models(
@@ -852,8 +860,8 @@ comparison = compare_datasets(
 )
 
 # Access results
-println("Control group growth rate: $(comparison.fit1.params[1])")
-println("Treatment group growth rate: $(comparison.fit2.params[1])")
+println("Control group growth rate: \$(comparison.fit1.params[1])")
+println("Treatment group growth rate: \$(comparison.fit2.params[1])")
 ```
 """
 function compare_datasets(
@@ -936,7 +944,7 @@ fits = compare_models_dict(t, y, specs)
 
 # Access results
 for (name, fit) in fits
-    println("$name: BIC = $(fit.bic), SSR = $(fit.ssr)")
+    println("\$name: BIC = \$(fit.bic), SSR = \$(fit.ssr)")
 end
 ```
 """
@@ -984,7 +992,7 @@ function compare_models_dict(
         end
     end
     df_preds = DataFrame(pred_rows)
-    preds_csv = replace(output_csv, r"\\.csv$" => "_predictions.csv")
+    preds_csv = replace(output_csv, r"\.csv$" => "_predictions.csv")
     CSV.write(preds_csv, df_preds)
     println("Predictions saved to $preds_csv")
 

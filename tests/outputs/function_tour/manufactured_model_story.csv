@@ -1,0 +1,10 @@
+culture_type,population_type,dose,model_generator,rows
+coculture,mixed,0.0,lotka_volterra_cooperation,9
+coculture,mixed,0.25,lotka_volterra_hill_cooperation,9
+coculture,mixed,0.75,lotka_volterra_hill_cooperation,9
+monoculture,naive,0.0,logistic_growth,9
+monoculture,naive,0.25,theta_logistic_hill_kill,9
+monoculture,naive,0.75,theta_logistic_hill_kill,9
+monoculture,resistant,0.0,gompertz_growth,9
+monoculture,resistant,0.25,theta_logistic_hill_kill,9
+monoculture,resistant,0.75,theta_logistic_hill_kill,9

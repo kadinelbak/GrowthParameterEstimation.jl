@@ -1,4 +1,4 @@
-# Models module - Contains all ODE model definitions
+﻿# Models module - Contains all ODE model definitions
 module Models
 
 export
@@ -186,33 +186,6 @@ model = GompertzWithDeathModel(0.5, 1.0, 100.0, 0.05)
 growth_rate = model(50.0, (), 0.0)  # returns approximately 14.83
 ```
 """
-"""
-    GompertzWithDeathModel(a::Real, b::Real, K::Real, death_rate::Real)
-
-A Gompertz growth model with death rate.
-
-This model extends the Gompertz growth model by adding a linear death term.
-The parameter `b` is retained for API compatibility but is not used in the simple form.
-
-# Arguments
-- `a::Real`: The growth rate parameter
-- `b::Real`: A parameter retained for API compatibility (not used in calculation)
-- `K::Real`: The carrying capacity (maximum population size)
-- `death_rate::Real`: The constant death rate
-
-# Examples
-```julia
-# Create a Gompertz growth model with death rate
-model = GompertzWithDeathModel(0.5, 1.0, 100.0, 0.05)
-
-# Evaluate the growth rate at population size 50.0
-# For u=50.0 and K=100.0, log(K/u) = log(2) ≈ 0.693
-# Gompertz component: 0.5 * 50.0 * log(100.0/50.0) ≈ 17.33
-# Death component: 0.05 * 50.0 = 2.5
-# Net growth rate: 17.33 - 2.5 = 14.83
-growth_rate = model(50.0, (), 0.0)  # returns approximately 14.83
-```
-"""
 struct GompertzWithDeathModel <: AbstractBaseModel
     a::Real
     b::Real
@@ -222,38 +195,6 @@ struct GompertzWithDeathModel <: AbstractBaseModel
 function (m::GompertzWithDeathModel)(u, p, t)
     u <= 0 || u ≥ m.K ? -m.death_rate * u : m.a * u * log(m.K / u) - m.death_rate * u
     end
-"""
-    ExponentialWithDelayModel(r::Real, K::Real, tlag::Real)
-
-An exponential growth model with delay.
-
-This model extends the exponential growth model by adding a time lag (tlag) before
-growth begins. For times less than tlag, the growth rate is zero. For times
-greater than or equal to tlag, growth proceeds exponentially at rate r.
-
-Note: There appears to be an error in the original implementation - the growth
-equation includes a carrying capacity term (1 - u/K) which is not typical for
-pure exponential growth. This may be intentional for specific use cases.
-
-# Arguments
-- `r::Real`: The growth rate constant (active after tlag)
-- `K::Real`: A carrying capacity parameter (unusual for exponential model)
-- `tlag::Real`: The time lag before growth begins
-
-# Examples
-```julia
-# Create an exponential growth model with delay
-model = ExponentialWithDelayModel(0.5, 100.0, 2.0)
-
-# Evaluate the growth rate at different times and population sizes
-# Before delay period (t=1.0 < tlag=2.0): growth rate is 0
-growth_rate1 = model(50.0, (), 1.0)  # returns 0.0
-
-# After delay period (t=3.0 >= tlag=2.0): 
-# Note: Includes carrying capacity term (1 - u/K)
-growth_rate2 = model(50.0, (), 3.0)  # returns 0.5 * 50.0 * (1 - 50.0/100.0) = 12.5
-```
-"""
 """
     ExponentialWithDelayModel(r::Real, K::Real, tlag::Real)
 
@@ -400,6 +341,15 @@ model = create_model(GompertzModel, params)
 ```
 """
 
+create_model(::Type{LogisticModel}, params) = LogisticModel(params[1], params[2])
+create_model(::Type{GompertzModel}, params) = GompertzModel(params[1], params[2], params[3])
+create_model(::Type{ExponentialModel}, params) = ExponentialModel(params[1])
+create_model(::Type{LogisticWithDeathModel}, params) = LogisticWithDeathModel(params[1], params[2], params[3])
+create_model(::Type{GompertzWithDeathModel}, params) = GompertzWithDeathModel(params[1], params[2], params[3], params[4])
+create_model(::Type{ExponentialWithDelayModel}, params) = ExponentialWithDelayModel(params[1], params[2], params[3])
+create_model(::Type{LogisticWithDelayModel}, params) = LogisticWithDelayModel(params[1], params[2], params[3])
+create_model(::Type{ExponentialWithDeathAndDelayModel}, params) = ExponentialWithDeathAndDelayModel(params[1], params[2], params[3], params[4])
+
 # ---------------------------------------------------------------------------
 # Modifier definitions
 # ---------------------------------------------------------------------------
@@ -499,8 +449,9 @@ function (m::HillInhibitionModifier)(base_du, u, p, t)
     ic50 = m.ic50
     hill = m.hill
     drug = max(get(p, :drug, 0.0), 0.0)
-    ic50_safe = max(ic50, eps(eltype(base_du)))
-    inhibition = emax * drug^hill / (ic50_safe^hill + drug^hill + eps(eltype(base_du)))
+    tiny = eps(typeof(float(base_du)))
+    ic50_safe = max(ic50, tiny)
+    inhibition = emax * drug^hill / (ic50_safe^hill + drug^hill + tiny)
     return base_du * max(0.0, 1.0 - inhibition)
 end
 
@@ -541,8 +492,9 @@ function (m::HillKillModifier)(base_du, u, p, t)
     ic50 = m.ic50
     hill = m.hill
     drug = max(get(p, :drug, 0.0), 0.0)
-    ic50_safe = max(ic50, eps(eltype(base_du)))
-    kill = emax_kill * drug^hill / (ic50_safe^hill + drug^hill + eps(eltype(base_du)))
+    tiny = eps(typeof(float(base_du)))
+    ic50_safe = max(ic50, tiny)
+    kill = emax_kill * drug^hill / (ic50_safe^hill + drug^hill + tiny)
     return base_du - kill * u
 end
 
@@ -591,9 +543,20 @@ apply_modifier(model::AbstractBaseModel, ::Type{T}, params) where T<:AbstractMod
 # ---------------------------------------------------------------------------
 # Convert a composable model to a DifferentialEquations.jl‑compatible in‑place ODE function
 # ---------------------------------------------------------------------------
+function to_ode!(model::CompositeModel)
+    return function (du, u, p, t)
+        n_base = length(fieldnames(typeof(model.base)))
+        base = create_model(typeof(model.base), view(p, 1:n_base))
+        modifier = from_params(typeof(model.modifier), view(p, (n_base + 1):length(p)))
+        du[1] = CompositeModel(base, modifier)(u[1], p, t)
+        return nothing
+    end
+end
+
 function to_ode!(model::AbstractBaseModel)
     return function (du, u, p, t)
-        du[1] = model(u[1], p, t)
+        parameterized = create_model(typeof(model), p)
+        du[1] = parameterized(u[1], p, t)
         return nothing
     end
 end
@@ -678,8 +641,8 @@ end
 
 Compose a base model with multiple modifiers.
 """
-function compose_models(base::AbstractBaseModel, 
-                       modifiers::Vector{Type{<:AbstractModifier}}; 
+function compose_models(base::AbstractBaseModel,
+                       modifiers::AbstractVector;
                        kwargs...)
     model = base
     for modifier_type in modifiers
@@ -690,10 +653,9 @@ function compose_models(base::AbstractBaseModel,
                 mod_params[key] = value
             end
         end
-        model = apply_modifier(model, modifier_type; mod_params...)
+        model = CompositeModel(model, from_params(modifier_type, mod_params))
     end
     return model
 end
 
 end # module Models
-
