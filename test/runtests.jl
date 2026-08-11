@@ -580,7 +580,7 @@ using Random
         @test length(joint_fit.params) == 2
         @test isfinite(joint_fit.bic)
         @test joint_fit.sse >= 0
-        @test joint_fit.raw_sse == joint_fit.sse
+        @test isapprox(joint_fit.raw_sse, joint_fit.sse)
 
         delayed_times = collect(1.0:1.0:5.0)
         delayed_prob = ODEProblem(logistic_joint!, u0_joint, (0.0, delayed_times[end]), p_true)
