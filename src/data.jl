@@ -6,6 +6,7 @@ using DataFrames
 using Dates
 
 export
+    REQUIRED_COLUMNS,
     normalize_schema,
     validate_timeseries,
     validate_required_metadata,
@@ -19,6 +20,7 @@ Metadata fields that are strictly required for processing.
 These must be present in the normalized schema for strict validation to pass.
 """
 const STRICT_REQUIRED_METADATA = [:time, :count, :error, :dose, :cell_line, :density, :replicate]
+const REQUIRED_COLUMNS = [:time, :count, :error, :dose, :treatment_amount, :cell_line, :density, :replicate]
 
 """
     normalize_schema(df::DataFrame) -> DataFrame
@@ -66,6 +68,9 @@ function normalize_schema(df::DataFrame)
         "concentration" => :dose,
         "Concentration" => :dose,
         "CONCENTRATION" => :dose,
+        "TreatmentAmount" => :treatment_amount,
+        "treatment_amount" => :treatment_amount,
+        "TREATMENT_AMOUNT" => :treatment_amount,
         "cell_line" => :cell_line,
         "CellLine" => :cell_line,
         "CELL_LINE" => :cell_line,
@@ -90,11 +95,17 @@ function normalize_schema(df::DataFrame)
         end
     end
     
+    if :dose in Symbol.(names(normalized)) && !(:treatment_amount in Symbol.(names(normalized)))
+        normalized[!, :treatment_amount] = copy(normalized[!, :dose])
+    elseif :treatment_amount in Symbol.(names(normalized)) && !(:dose in Symbol.(names(normalized)))
+        normalized[!, :dose] = copy(normalized[!, :treatment_amount])
+    end
+
     # Ensure required columns exist, add missing ones with defaults
-    required_cols = [:time, :count, :error, :dose, :cell_line, :density, :replicate]
+    required_cols = REQUIRED_COLUMNS
     for col in required_cols
         if !(col in Symbol.(names(normalized)))
-            if col == :time || col == :count || col == :error || col == :dose || col == :density
+            if col == :time || col == :count || col == :error || col == :dose || col == :treatment_amount || col == :density
                 normalized[!, col] = fill(0.0, nrow(normalized))
             elseif col == :cell_line
                 normalized[!, col] = fill("unknown", nrow(normalized))
@@ -109,6 +120,7 @@ function normalize_schema(df::DataFrame)
     normalized.count = Float64.(normalized.count)
     normalized.error = Float64.(normalized.error)
     normalized.dose = Float64.(normalized.dose)
+    normalized.treatment_amount = Float64.(normalized.treatment_amount)
     normalized.cell_line = String.(normalized.cell_line)
     normalized.density = Float64.(normalized.density)
     normalized.replicate = Int.(normalized.replicate)
@@ -135,11 +147,13 @@ Checks for monotonic time, non-negative counts, and positive errors.
 - `ErrorException` if validation fails
 """
 function validate_timeseries(df::DataFrame)
-    # Check for monotonic time within each condition
-    # For simplicity, we'll check overall monotonicity
-    # In a more sophisticated implementation, we'd group by condition first
-    if !all(diff(df.time) .>= 0)
-        throw(ErrorException("Time values are not monotonic increasing"))
+    # Check for monotonic time within each observed trajectory/condition.
+    grouping_cols = [col for col in [:cell_line, :density, :dose, :replicate] if col in Symbol.(names(df))]
+    groups = isempty(grouping_cols) ? [df] : groupby(df, grouping_cols)
+    for group in groups
+        if !all(diff(group.time) .>= 0)
+            throw(ErrorException("Time values are not monotonic increasing within a condition"))
+        end
     end
     
     # Check for non-negative counts

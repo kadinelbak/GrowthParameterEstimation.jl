@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.4.1 - 2026-08-11
+
+### Breaking changes
+
+- Breaking: this is a pre-1.0 minor release line, so `v0.4.x` is treated as a breaking update relative to `v0.3.x` for Julia package registration and downstream compatibility expectations.
+- Breaking: joint fitting now rejects failed, non-finite, negative-prediction, and failure-sentinel fits consistently during optimization and multistart ranking. Downstream validation scripts that asserted legacy finite-fit counts may need a scientific review of the new ranked model set.
+- Breaking: joint BIC summaries now count optimized joint parameters directly and exclude fixed initial-time seeding states and observations absent from `dataset_specs`, which can change model ranking summaries compared with earlier downstream helper implementations.
+
+### Added
+
+- Added generalized joint fitting support for fixed initial times, parameterized `u0_builder` initial states, observable callbacks, trajectory-specific residual scaling, raw/scaled SSE reporting, bounded Nelder-Mead screening, multistart fitting, and one- or two-sided bound profiling.
+- Added reusable joint BIC, pooling BIC, and parameter-stability summary helpers for downstream model reconciliation workflows.
+
+### Fixed
+
+- Corrected joint BIC parameter counting to use the optimized parameter vector length while excluding fixed initial-time seeding states and observations not present in `dataset_specs`.
+- Rejected failed, non-finite, negative-prediction, and failure-sentinel joint fits consistently during joint optimization and multistart ranking.
+
+## v0.4.0 - 2026-08-11
+
+### Notes
+
+- Superseded by `v0.4.1` before Julia General Registry registration to add registry-compatible standard-library compat bounds and explicit breaking-change release notes.
+
 ## v0.3.0 - 2026-04-09
 
 ### Breaking changes

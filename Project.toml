@@ -1,6 +1,6 @@
 name = "GrowthParameterEstimation"
 uuid = "f2d48b76-d258-4732-aa20-f5a609aab424"
-version = "0.3.0"
+version = "0.4.1"
 authors = ["Kadin"]
 
 [deps]
@@ -29,6 +29,7 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 BlackBoxOptim = "0.6"
 CSV = "0.10"
 DataFrames = "1"
+Dates = "1"
 DiffEqParamEstim = "2"
 DifferentialEquations = "7"
 Distributions = "0.25"
@@ -40,8 +41,11 @@ OptimizationBBO = "0.1"
 OptimizationOptimJL = "0.1"
 OrdinaryDiffEq = "6.70"
 Plots = "1"
+Random = "1"
 RecursiveArrayTools = "3"
+Statistics = "1"
 StatsBase = "0.33, 0.34"
+TOML = "1"
 julia = "1.10"
 
 [extras]

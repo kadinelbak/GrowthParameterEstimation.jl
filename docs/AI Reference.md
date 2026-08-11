@@ -249,26 +249,45 @@ where \(k\) is number of fitted parameters.
 s_j = \sqrt{\frac{1}{M-1}\sum_{m=1}^M (p_{m,j}-\bar p_j)^2}.
 \]
 
-### `run_joint_fit(model, dataset_specs, u0, p0; solver, bounds, show_stats, maxiters)`
+### `run_joint_fit(model, dataset_specs, u0, p0; solver, bounds, u0_builder, initial_time, optimizer, show_stats, maxiters)`
 **English:** Fits one shared parameter vector across multiple observed datasets/states in a multi-state ODE.
 
-Each dataset spec contains `(x, y, state_index)`.
+Each dataset spec contains `(x, y, state_index)` or `(x, y, observable)`.
+Optional `residual_scale` applies fixed trajectory-specific residual scaling.
+`initial_time` supports seeded initial states before the first observation, and
+`u0_builder` supports parameterized initial states.
 
 **Math:** Uses a joint objective:
 \[
 \min_p \sum_{d=1}^{D}\sum_{i=1}^{n_d}\left(y_{d,i}-\hat y_{d,i}(p)\right)^2,
 \]
 where \(\hat y_{d,i}(p)\) comes from the state component indexed by `state_index`.
+The reported `sse` is scaled SSE; `raw_sse` keeps the unscaled residual sum.
 
 Reports joint BIC:
 \[
 \mathrm{BIC}_{joint}=n_{tot}\log\left(\frac{\mathrm{SSE}_{joint}}{n_{tot}}\right)+k\log(n_{tot}).
 \]
 
+### `run_joint_multistart(model, dataset_specs, u0, starts; kwargs...)`
+**English:** Runs `run_joint_fit` from multiple starts and returns the finite fit
+with the lowest BIC plus a per-start summary table. Failed, non-finite, and
+failure-sentinel fits are excluded from best-fit selection.
+
+### `profile_joint_fit_bounds` / `profile_joint_fit_bounds_two_sided`
+**English:** Refit near-bound joint estimates under expanded candidate bounds and
+accept expansions only when BIC improves and the estimate moves away from the
+new bound. The two-sided variant also supports explicit lower-bound profiles.
+
 ### `compare_joint_models_dict(dataset_specs, u0, specs; default_solver, show_stats, output_csv)`
 **English:** Batch-fits several joint models and writes a BIC/SSE summary CSV.
 
 **Math:** Applies the same joint objective for each model and ranks by lower joint BIC.
+
+### `summarize_joint_bic`, `summarize_pooling_bic`, `summarize_joint_parameter_stability`
+**English:** Summarize BIC across environments, flag inadequate pooling when
+independent diagnostic fits materially outperform eligible shared/partial
+pooling, and classify cross-environment parameter stability.
 
 ---
 
