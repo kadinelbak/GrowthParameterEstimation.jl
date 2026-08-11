@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.4.0 - Unreleased
+
+### Added
+
+- Added generalized joint fitting support for fixed initial times, parameterized `u0_builder` initial states, observable callbacks, trajectory-specific residual scaling, raw/scaled SSE reporting, bounded Nelder-Mead screening, multistart fitting, and one- or two-sided bound profiling.
+- Added reusable joint BIC, pooling BIC, and parameter-stability summary helpers for downstream model reconciliation workflows.
+
+### Fixed
+
+- Corrected joint BIC parameter counting to use the optimized parameter vector length while excluding fixed initial-time seeding states and observations not present in `dataset_specs`.
+- Rejected failed, non-finite, negative-prediction, and failure-sentinel joint fits consistently during joint optimization and multistart ranking.
+
 ## v0.3.0 - 2026-04-09
 
 ### Breaking changes

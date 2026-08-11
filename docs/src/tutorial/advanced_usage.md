@@ -180,7 +180,16 @@ joint_result = run_joint_fit(
 println("Joint fitting results:")
 println("Parameters: $(joint_result.params)")
 println("BIC: $(joint_result.bic)")
+println("Raw SSE: $(joint_result.raw_sse)")
+println("Scaled SSE: $(joint_result.scaled_sse)")
 ```
+
+Use `residual_scale` in each dataset spec to compare trajectories on fixed
+scales, `initial_time` when the initial state is seeded before the first
+observation, and `u0_builder = p -> ...` when parameters determine the initial
+state. For difficult surfaces, run several starts with `run_joint_multistart`
+and profile near-bound estimates with `profile_joint_fit_bounds` or
+`profile_joint_fit_bounds_two_sided`.
 
 ## Resuming Long-Running Workflows
 

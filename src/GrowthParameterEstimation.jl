@@ -8,6 +8,7 @@ include("registry.jl")
 include("simulation.jl")
 include("observation.jl")
 include("fitting.jl")
+include("joint_summary.jl")
 include("analysis.jl")
 include("workflow.jl")
 # include("models_legacy.jl")  # Remove legacy ODE RHS functions for backward compatibility
@@ -19,6 +20,7 @@ using .Registry
 using .Simulation
 using .Observation
 using .Fitting
+using .JointSummary
 using .Analysis
 using .Workflow
 
@@ -49,7 +51,10 @@ export
     # Fitting functions
     setUpProblem, calculate_bic, pQuickStat, run_single_fit,
     compare_models, compare_datasets, compare_models_dict, fit_three_datasets, fit_model, fit_condition,
-    run_joint_fit, compare_joint_models_dict,
+    run_joint_fit, run_joint_multistart, profile_joint_fit_bounds,
+    profile_joint_fit_bounds_two_sided, compare_joint_models_dict,
+    summarize_joint_bic, summarize_joint_bic_by_group, summarize_joint_parameter_stability,
+    summarize_pooling_bic, symmetric_relative_pair,
 
     # Analysis functions
     leave_one_out_validation, k_fold_cross_validation, parameter_sensitivity_analysis,

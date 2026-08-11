@@ -102,7 +102,7 @@ The package exports many symbols, but most users should focus on the entry point
 | Enforce richer metadata for pipelines | `validate_required_metadata`, `validate_strict_schema` | Useful before staged or production workflows |
 | Fit one model to one dataset | `run_single_fit` | Smallest fitting API |
 | Compare candidate models | `compare_models`, `compare_models_dict`, `rank_models` | `rank_models` is the workflow-oriented option |
-| Fit across related datasets jointly | `run_joint_fit`, `compare_joint_models_dict` | For shared-parameter multi-state or multi-dataset fits |
+| Fit across related datasets jointly | `run_joint_fit`, `run_joint_multistart`, `profile_joint_fit_bounds`, `compare_joint_models_dict` | For shared-parameter multi-state or multi-dataset fits |
 | Run a standard pipeline | `default_config`, `build_conditions`, `run_pipeline` | Best default for end-to-end analysis |
 | Run a staged pipeline | `PipelineStage`, `default_stages`, `run_staged_pipeline` | Best for inherited-parameter multi-stage workflows |
 | Export workflow artifacts | `plot_topk`, `export_results`, `save_run_manifest`, `load_run_manifest` | Produces tables, diagnostics, figures, and resume state |
@@ -309,7 +309,21 @@ fit = run_joint_fit(logistic_joint!, datasets, [1.0, 2.0], [0.2, 20.0];
 
 @show fit.params
 @show fit.bic
+@show fit.raw_sse fit.scaled_sse
 ```
+
+Joint dataset specs may use `residual_scale` to scale each trajectory's
+residuals and may provide `observable = (u, p, t) -> ...` instead of
+`state_index`. Use `initial_time` when the initial state precedes the first
+observation, and `u0_builder = p -> ...` when fitted parameters determine the
+initial state. `run_joint_multistart` ranks finite fits across starts, while
+`profile_joint_fit_bounds` and `profile_joint_fit_bounds_two_sided` test whether
+near-bound estimates justify expanded optimization bounds.
+
+For pooled downstream analyses, `summarize_joint_bic`,
+`summarize_joint_bic_by_group`, `summarize_pooling_bic`, and
+`summarize_joint_parameter_stability` provide reusable BIC and parameter
+stability summaries without embedding project-specific biology.
 
 ### Compare two models
 ```julia
@@ -350,7 +364,7 @@ bic, ssr = calculate_bic(prob, x, y, Tsit5(), [0.1, 5.0])
 - `Models.to_ode!(Models.build_exponential_with_death_and_delay())(du,u,p,t)` # p = [r, K, death_rate, t_lag]
 
 ## Key exported helpers (in `GrowthParameterEstimation`)
-- Fitting: `run_single_fit`, `compare_models`, `compare_datasets`, `compare_models_dict`, `fit_three_datasets`, `run_joint_fit`, `compare_joint_models_dict`, `calculate_bic`.
+- Fitting: `run_single_fit`, `compare_models`, `compare_datasets`, `compare_models_dict`, `fit_three_datasets`, `run_joint_fit`, `run_joint_multistart`, `profile_joint_fit_bounds`, `profile_joint_fit_bounds_two_sided`, `compare_joint_models_dict`, `calculate_bic`.
 - Analysis: `leave_one_out_validation`, `k_fold_cross_validation`, `parameter_sensitivity_analysis`, `residual_analysis`, `enhanced_bic_analysis`.
 - Workflow/core pipeline: `run_pipeline`, `run_staged_pipeline`, `default_stages`, `default_population_stages`, `default_population_cellline_stages`, `summarize_datasets`.
 - Hardening: `validate_required_metadata`, `validate_strict_schema`, `generate_qc_report`, `save_qc_report`, `save_run_manifest`, `load_run_manifest`, `bootstrap_stage_uncertainty`.

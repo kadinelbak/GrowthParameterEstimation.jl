@@ -71,25 +71,25 @@ using Random
         GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_logistic())(du, [2.0], [0.2, 10.0], 0.0)
         @test isfinite(du[1])
 
-        logistic_growth_with_death!(du, [2.0], [0.2, 10.0, 0.01], 0.0)
+        GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.LogisticWithDeathModel(0.2, 10.0, 0.01))(du, [2.0], [0.2, 10.0, 0.01], 0.0)
         @test isfinite(du[1])
 
         GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_gompertz())(du, [2.0], [0.2, 1.0, 10.0], 0.0)
         @test isfinite(du[1])
 
-        gompertz_growth_with_death!(du, [2.0], [0.2, 1.0, 10.0, 0.01], 0.0)
+        GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.GompertzWithDeathModel(0.2, 1.0, 10.0, 0.01))(du, [2.0], [0.2, 1.0, 10.0, 0.01], 0.0)
         @test isfinite(du[1])
 
         GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.build_exponential())(du, [2.0], [0.2], 0.0)
         @test isfinite(du[1])
 
-        exponential_growth_with_delay!(du, [2.0], [0.2, 10.0, 1.0], 2.0)
+        GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.ExponentialWithDelayModel(0.2, 10.0, 1.0))(du, [2.0], [0.2, 10.0, 1.0], 2.0)
         @test isfinite(du[1])
 
-        logistic_growth_with_delay!(du, [2.0], [0.2, 10.0, 1.0], 2.0)
+        GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.LogisticWithDelayModel(0.2, 10.0, 1.0))(du, [2.0], [0.2, 10.0, 1.0], 2.0)
         @test isfinite(du[1])
 
-        exponential_growth_with_death_and_delay!(du, [2.0], [0.2, 10.0, 0.01, 1.0], 2.0)
+        GrowthParameterEstimation.Models.to_ode!(GrowthParameterEstimation.Models.ExponentialWithDeathAndDelayModel(0.2, 10.0, 0.01, 1.0))(du, [2.0], [0.2, 10.0, 0.01, 1.0], 2.0)
         @test isfinite(du[1])
     end
 
@@ -265,7 +265,7 @@ using Random
         @test validate_strict_schema(strict_df)
 
         strict_bad = select(strict_df, Not(:culture_type))
-        @test_throws ErrorException validate_strict_schema(strict_bad)
+        @test_throws ErrorException validate_strict_schema(strict_bad; required_metadata = vcat(GrowthParameterEstimation.DataLayer.STRICT_REQUIRED_METADATA, [:culture_type]))
 
         qc = generate_qc_report(strict_df)
         @test all(col -> col in Symbol.(names(qc.missingness)), [:column, :n_missing, :frac_missing])
@@ -580,11 +580,90 @@ using Random
         @test length(joint_fit.params) == 2
         @test isfinite(joint_fit.bic)
         @test joint_fit.sse >= 0
+        @test joint_fit.raw_sse == joint_fit.sse
+
+        delayed_times = collect(1.0:1.0:5.0)
+        delayed_prob = ODEProblem(logistic_joint!, u0_joint, (0.0, delayed_times[end]), p_true)
+        delayed_sol = solve(delayed_prob, Tsit5(); saveat = delayed_times)
+        delayed_data = [
+            (x = delayed_times, y = [u[1] for u in delayed_sol.u], state_index = 1),
+            (x = delayed_times, y = [u[2] for u in delayed_sol.u], state_index = 2),
+        ]
+        delayed_fit = run_joint_fit(
+            logistic_joint!, delayed_data, u0_joint, [0.2, 20.0];
+            bounds = [(0.01, 1.0), (5.0, 60.0)],
+            initial_time = 0.0,
+            show_stats = false,
+        )
+        @test delayed_fit.initial_time == 0.0
+        @test first(delayed_fit.save_times) == 1.0
+        @test all(length(prediction) == length(delayed_times) for prediction in delayed_fit.predictions)
+        @test_throws ArgumentError run_joint_fit(
+            logistic_joint!, delayed_data, u0_joint, [0.2, 20.0];
+            bounds = [(0.01, 1.0), (5.0, 60.0)],
+            initial_time = 2.0,
+            show_stats = false,
+        )
+
+        scaled_datasets = [merge(ds, (residual_scale = maximum(ds.y),)) for ds in datasets]
+        scaled_joint_fit = run_joint_fit(
+            logistic_joint!, scaled_datasets, u0_joint, [0.2, 20.0];
+            bounds = [(0.01, 1.0), (5.0, 60.0)],
+            show_stats = false,
+        )
+        @test isfinite(scaled_joint_fit.bic)
+        @test scaled_joint_fit.scaled_sse == scaled_joint_fit.sse
+        @test isfinite(scaled_joint_fit.raw_sse)
+        @test scaled_joint_fit.raw_sse >= scaled_joint_fit.scaled_sse
+
+        function split_joint!(du, u, p, t)
+            decay_live, decay_damaged, _ = p
+            du[1] = -decay_live * u[1]
+            du[2] = decay_live * u[1] - decay_damaged * u[2]
+        end
+        split_times = collect(0.0:1.0:4.0)
+        split_true = [0.4, 0.2, 0.75]
+        split_u0_builder(p) = [10.0 * p[3], 10.0 * (1 - p[3])]
+        split_prob = ODEProblem(split_joint!, split_u0_builder(split_true), (0.0, 4.0), split_true)
+        split_sol = solve(split_prob, Tsit5(); saveat = split_times)
+        split_y = [u[1] + 0.5 * u[2] for u in split_sol.u]
+        split_data = [(
+            x = split_times,
+            y = split_y,
+            observable = (u, p, t) -> u[1] + 0.5 * u[2],
+        )]
+        split_fit = run_joint_fit(
+            split_joint!, split_data, [7.0, 3.0], [0.3, 0.3, 0.6];
+            bounds = [(0.01, 1.0), (0.01, 1.0), (0.01, 0.99)],
+            u0_builder = split_u0_builder,
+            show_stats = false,
+        )
+        @test length(split_fit.params) == 3
+        @test isfinite(split_fit.bic)
+        @test all(isfinite, only(split_fit.predictions))
 
         specs = Dict(
             "LogisticJoint" => (model = logistic_joint!, p0 = [0.2, 20.0], bounds = [(0.01, 1.0), (5.0, 60.0)]),
         )
         joint_models = compare_joint_models_dict(datasets, u0_joint, specs; default_solver = Tsit5(), show_stats = false, output_csv = joinpath(tempdir(), "joint_compare_smoke.csv"))
         @test haskey(joint_models, "LogisticJoint")
+
+        multistart = run_joint_multistart(
+            logistic_joint!,
+            scaled_datasets,
+            u0_joint,
+            [[0.08, 12.0], [0.3, 30.0]];
+            bounds = [(0.01, 1.0), (5.0, 60.0)],
+            optimizer = :nelder_mead,
+            maxiters = 800,
+            show_stats = false,
+        )
+        @test isfinite(multistart.fit.bic)
+        @test nrow(multistart.summary) == 2
+        @test multistart.best_start_index in 1:2
+        @test all(multistart.summary.status .== "completed")
     end
 end
+
+include("joint_summary_test.jl")
+include("pooling_profile_test.jl")
