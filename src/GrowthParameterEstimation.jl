@@ -66,7 +66,8 @@ export
     ObservationMap, IdentifiabilityConfig,
     validate_observation_map, generate_multistarts,
     prediction_vector, prediction_jacobian, fisher_information,
-    profile_likelihood, bootstrap_joint_fit, synthetic_recovery_benchmark,
+    global_sensitivity_analysis, profile_likelihood, paired_profile_likelihood,
+    hierarchical_joint_fit, bootstrap_joint_fit, synthetic_recovery_benchmark,
     practical_identifiability_report, structural_identifiability,
     structural_identifiability_report,
 

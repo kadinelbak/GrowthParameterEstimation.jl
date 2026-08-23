@@ -130,7 +130,90 @@ an already fitted experiment. It resamples within each supplied series, so
 replicate-aware analyses should keep biological/assay replicate strata
 separate in `dataset_specs`.
 
-## 5. Structural analysis is intentionally explicit
+## 5. Screen global sensitivity across the allowed parameter ranges
+
+Local derivatives only describe the neighborhood of one fitted point. Use
+Latin-hypercube sampling and partial rank correlations (PRCCs) to see which
+parameters matter across the scientifically allowed ranges. This is especially
+useful before fitting a four-population model.
+
+```julia
+global = global_sensitivity_analysis(
+    four_state_model!, datasets, initial_state;
+    bounds = config.bounds,
+    parameter_names = config.parameter_names,
+    n_samples = 400,
+    scale = :log,
+)
+
+global.summary      # Mean and maximum absolute PRCC per parameter
+global.pointwise    # PRCC for every observed series and time point
+global.samples      # Complete sample and simulation-success audit
+```
+
+PRCC measures a monotone global relationship after accounting for the other
+sampled parameters. It is not a proof of identifiability. A low PRCC can still
+occur for an important non-monotone or interaction-driven parameter, so use it
+as a screening and experimental-design tool alongside profiles and recovery.
+
+## 6. Profile parameter pairs when tradeoffs are biologically plausible
+
+One-at-a-time profiles can conceal a diagonal tradeoff, such as drug damage
+versus macrophage killing. `paired_profile_likelihood` fixes both values on a
+grid and re-fits every other parameter at each grid point.
+
+```julia
+paired = paired_profile_likelihood(
+    four_state_model!, datasets, initial_state, report.fit.params;
+    bounds = config.bounds,
+    parameter_names = config.parameter_names,
+    pair = (:drug_damage, :macrophage_killing),
+    points_per_side = 10,
+)
+
+paired.surface          # Full weighted-SSE grid
+paired.accepted_region  # Two-parameter 95% region
+paired.region           # Bounded or bound-touching status
+```
+
+The default threshold is the two-parameter 95% chi-square cutoff, 5.991. A
+region touching the supplied bounds means the current experiment has not
+bracketed that combined parameter tradeoff.
+
+## 7. Fit all groups together with partial pooling
+
+Use `hierarchical_joint_fit` when multiple conditions share a mechanism but
+some parameters should be allowed to differ by group. This is not an average
+of independently fitted answers: every series contributes to one joint,
+penalized objective.
+
+```julia
+groups = [
+    (name = "sensitive", dataset_specs = sensitive_datasets, u0 = sensitive_u0),
+    (name = "resistant", dataset_specs = resistant_datasets, u0 = resistant_u0),
+    (name = "with_macrophages", dataset_specs = macrophage_datasets, u0 = macrophage_u0),
+]
+
+hierarchical = hierarchical_joint_fit(
+    four_state_model!, groups, initial_guess;
+    bounds = config.bounds,
+    parameter_names = config.parameter_names,
+    varying_parameters = [:growth, :drug_damage],
+    random_effect_sd = [0.35, 0.50],
+)
+
+hierarchical.central_params       # Shared central estimate
+hierarchical.group_parameters     # Central and group-specific estimates
+hierarchical.pooled_bic           # BIC based on all observations together
+```
+
+`random_effect_sd` is a fixed standard deviation for log-scale group
+deviations. Smaller values apply stronger pooling; select it from biological
+knowledge or compare a small, pre-specified range by recovery benchmarks. The
+routine currently requires strictly positive bounds for parameters that vary
+between groups because it uses multiplicative, log-scale effects.
+
+## 8. Structural analysis is intentionally explicit
 
 ```julia
 using StructuralIdentifiability

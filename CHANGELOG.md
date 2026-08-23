@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Added
+
+- Global Latin-hypercube/PRCC sensitivity analysis across explicit parameter
+  ranges, with per-series and per-time-point sensitivity summaries.
+- Two-parameter profile likelihood surfaces with a joint 95% confidence region
+  and bound-touching diagnostic.
+- Partially pooled hierarchical joint fitting across all named experimental
+  groups, with shared central parameters and log-scale group effects.
+
 ## v0.5.0 - 2026-08-22
 
 ### Added

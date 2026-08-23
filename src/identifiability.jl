@@ -12,6 +12,8 @@ module Identifiability
 using DataFrames
 using DifferentialEquations
 using LinearAlgebra
+using Optimization
+using OptimizationOptimJL
 using Random
 using StructuralIdentifiability
 using Statistics
@@ -21,7 +23,8 @@ using ..Fitting
 export ObservationMap, IdentifiabilityConfig,
     validate_observation_map, generate_multistarts,
     prediction_vector, prediction_jacobian, fisher_information,
-    profile_likelihood, bootstrap_joint_fit, synthetic_recovery_benchmark,
+    global_sensitivity_analysis, profile_likelihood, paired_profile_likelihood,
+    hierarchical_joint_fit, bootstrap_joint_fit, synthetic_recovery_benchmark,
     practical_identifiability_report, structural_identifiability,
     structural_identifiability_report
 
@@ -336,6 +339,166 @@ function fisher_information(
     )
 end
 
+function _rank_values(values::AbstractVector{<:Real})
+    order = sortperm(values)
+    ranks = zeros(Float64, length(values))
+    index = 1
+    while index <= length(values)
+        stop = index
+        while stop < length(values) && values[order[stop + 1]] == values[order[index]]
+            stop += 1
+        end
+        rank = (index + stop) / 2
+        for position in index:stop
+            ranks[order[position]] = rank
+        end
+        index = stop + 1
+    end
+    return ranks
+end
+
+function _latin_hypercube(bounds::Vector{<:Tuple}; n_samples::Int, scale::Symbol, rng::AbstractRNG)
+    n_samples > 1 || throw(ArgumentError("n_samples must exceed one"))
+    scale in (:linear, :log) || throw(ArgumentError("scale must be :linear or :log"))
+    samples = Matrix{Float64}(undef, n_samples, length(bounds))
+    for parameter_index in eachindex(bounds)
+        lower, upper = Float64.(bounds[parameter_index])
+        lower < upper || throw(ArgumentError("each bound must have lower < upper"))
+        scale == :log && lower <= 0 && throw(ArgumentError("log-scale Latin-hypercube sampling requires strictly positive bounds"))
+        bins = randperm(rng, n_samples)
+        for sample_index in 1:n_samples
+            fraction = (bins[sample_index] - rand(rng)) / n_samples
+            samples[sample_index, parameter_index] = scale == :log ?
+                exp(log(lower) + fraction * (log(upper) - log(lower))) :
+                lower + fraction * (upper - lower)
+        end
+    end
+    return samples
+end
+
+function _partial_rank_correlation(parameters::Matrix{Float64}, response::Vector{Float64}, parameter_index::Int)
+    n_samples, n_parameters = size(parameters)
+    n_samples > n_parameters + 2 || return NaN
+    ranked_response = _rank_values(response)
+    ranked_parameter = _rank_values(parameters[:, parameter_index])
+    control_indices = [index for index in 1:n_parameters if index != parameter_index]
+    controls = isempty(control_indices) ? ones(Float64, n_samples, 1) :
+        hcat(ones(Float64, n_samples), hcat([_rank_values(parameters[:, index]) for index in control_indices]...))
+    projection = pinv(controls) * ranked_parameter
+    parameter_residual = ranked_parameter - controls * projection
+    response_residual = ranked_response - controls * (pinv(controls) * ranked_response)
+    denominator = norm(parameter_residual) * norm(response_residual)
+    return denominator > eps(Float64) ? dot(parameter_residual, response_residual) / denominator : NaN
+end
+
+"""
+    global_sensitivity_analysis(model, dataset_specs, u0; bounds, parameter_names, ...)
+
+Explore sensitivity throughout explicit parameter bounds using Latin-hypercube
+samples and pointwise partial rank correlations (PRCCs). The result reports
+how each parameter affects every observed series/time point after accounting
+for the other sampled parameters. It is a range-based global sensitivity
+screen, not a posterior distribution or causal inference result.
+"""
+function global_sensitivity_analysis(
+    model::Function,
+    dataset_specs::Vector{<:NamedTuple},
+    u0::Vector{<:Real};
+    bounds::Vector{<:Tuple},
+    parameter_names::Vector{Symbol} = Symbol.("p" .* string.(collect(eachindex(bounds)))),
+    n_samples::Int = 200,
+    scale::Symbol = :log,
+    rng::AbstractRNG = Random.default_rng(),
+    solver = Tsit5(),
+    u0_builder = nothing,
+    initial_time = nothing,
+    reltol::Real = 1e-10,
+    abstol::Real = 1e-10,
+)
+    length(parameter_names) == length(bounds) || throw(ArgumentError("parameter_names must match bounds"))
+    samples = _latin_hypercube(bounds; n_samples = n_samples, scale = scale, rng = rng)
+    rows = NamedTuple[]
+    predictions = Vector{Vector{Float64}}()
+    successful_indices = Int[]
+    for sample_index in 1:n_samples
+        sample = vec(samples[sample_index, :])
+        prediction = try
+            prediction_vector(model, dataset_specs, u0, sample;
+                solver = solver, u0_builder = u0_builder, initial_time = initial_time,
+                reltol = reltol, abstol = abstol)
+        catch error
+            push!(rows, (sample = sample_index, status = "failed", message = sprint(showerror, error)))
+            continue
+        end
+        if any(value -> !isfinite(value), prediction)
+            push!(rows, (sample = sample_index, status = "invalid", message = "non-finite prediction"))
+            continue
+        end
+        push!(predictions, Float64.(prediction))
+        push!(successful_indices, sample_index)
+        push!(rows, (sample = sample_index, status = "completed", message = ""))
+    end
+
+    sample_table = DataFrame(rows)
+    for parameter_index in eachindex(parameter_names)
+        sample_table[!, parameter_names[parameter_index]] = samples[:, parameter_index]
+    end
+    successful = length(successful_indices)
+    observation_count = sum(length(ds.y) for ds in dataset_specs)
+    if successful == 0
+        return (
+            samples = sample_table,
+            pointwise = DataFrame(series = Int[], time = Float64[], parameter = String[], prcc = Float64[], n_successful = Int[]),
+            summary = DataFrame(parameter = String[], mean_abs_prcc = Float64[], max_abs_prcc = Float64[], signed_prcc_at_max = Float64[]),
+            success_rate = 0.0,
+            n_successful = 0,
+        )
+    end
+    response_matrix = reduce(vcat, permutedims.(predictions))
+    parameter_matrix = samples[successful_indices, :]
+    pointwise_rows = NamedTuple[]
+    observation_index = 1
+    for (series_index, dataset) in enumerate(dataset_specs)
+        for time in dataset.x
+            response = response_matrix[:, observation_index]
+            for parameter_index in eachindex(parameter_names)
+                push!(pointwise_rows, (
+                    series = series_index,
+                    time = Float64(time),
+                    parameter = String(parameter_names[parameter_index]),
+                    prcc = _partial_rank_correlation(parameter_matrix, response, parameter_index),
+                    n_successful = successful,
+                ))
+            end
+            observation_index += 1
+        end
+    end
+    observation_index - 1 == observation_count || throw(ArgumentError("prediction length does not match dataset observations"))
+    pointwise = DataFrame(pointwise_rows)
+    summary_rows = NamedTuple[]
+    for parameter_name in parameter_names
+        values = filter(isfinite, pointwise[pointwise.parameter .== String(parameter_name), :prcc])
+        if isempty(values)
+            push!(summary_rows, (parameter = String(parameter_name), mean_abs_prcc = NaN, max_abs_prcc = NaN, signed_prcc_at_max = NaN))
+            continue
+        end
+        maximum_index = argmax(abs.(values))
+        push!(summary_rows, (
+            parameter = String(parameter_name),
+            mean_abs_prcc = mean(abs.(values)),
+            max_abs_prcc = abs(values[maximum_index]),
+            signed_prcc_at_max = values[maximum_index],
+        ))
+    end
+    return (
+        samples = sample_table,
+        pointwise = pointwise,
+        summary = DataFrame(summary_rows),
+        success_rate = successful / n_samples,
+        n_successful = successful,
+    )
+end
+
 function _profile_grid(estimate::Float64, lower::Float64, upper::Float64, points_per_side::Int)
     points_per_side >= 1 || throw(ArgumentError("points_per_side must be positive"))
     left = if lower < estimate
@@ -463,6 +626,296 @@ function profile_likelihood(
         ))
     end
     return (fit = baseline, profile = DataFrame(rows), confidence_intervals = DataFrame(confidence_rows), threshold = Float64(threshold))
+end
+
+function _profiled_dataset_specs(
+    dataset_specs::Vector{<:NamedTuple},
+    fixed_indices::Vector{Int},
+    fixed_values::Vector{Float64},
+    parameter_count::Int,
+)
+    length(fixed_indices) == length(fixed_values) || throw(ArgumentError("fixed indices and values must have equal length"))
+    free_indices = [index for index in 1:parameter_count if !(index in fixed_indices)]
+    full_params = function (free)
+        length(free) == length(free_indices) || throw(ArgumentError("wrong number of free parameters"))
+        params = Vector{Float64}(undef, parameter_count)
+        params[fixed_indices] = fixed_values
+        params[free_indices] = free
+        return params
+    end
+    transformed = NamedTuple[]
+    for dataset in dataset_specs
+        if haskey(dataset, :observable)
+            observation = dataset.observable
+            wrapped = (u, free, t) -> _observable((observable = observation,), u, full_params(free), t)
+            push!(transformed, merge(dataset, (observable = wrapped,)))
+        else
+            push!(transformed, dataset)
+        end
+    end
+    return transformed, full_params, free_indices
+end
+
+"""
+    paired_profile_likelihood(model, dataset_specs, u0, p0; bounds, parameter_names, pair, ...)
+
+Jointly profile a pair of parameters on a two-dimensional grid. At every grid
+point, all remaining parameters are re-fit. The default threshold is the
+two-parameter 95% chi-square cutoff (5.991), so the accepted grid points form
+an approximate joint confidence region rather than two unrelated intervals.
+"""
+function paired_profile_likelihood(
+    model::Function,
+    dataset_specs::Vector{<:NamedTuple},
+    u0::Vector{<:Real},
+    p0::Vector{<:Real};
+    bounds::Vector{<:Tuple},
+    parameter_names::Vector{Symbol},
+    pair::Tuple{Symbol,Symbol},
+    values::AbstractDict = Dict{Symbol,Vector{Float64}}(),
+    points_per_side::Int = 6,
+    threshold::Real = 5.991464547107979,
+    solver = Tsit5(),
+    u0_builder = nothing,
+    initial_time = nothing,
+    optimizer::Symbol = :nelder_mead,
+    maxiters::Integer = 10_000,
+    show_stats::Bool = false,
+)
+    length(p0) == length(bounds) == length(parameter_names) || throw(ArgumentError("p0, bounds, and parameter_names must have equal length"))
+    pair[1] != pair[2] || throw(ArgumentError("paired profile requires two distinct parameters"))
+    first_index = findfirst(==(pair[1]), parameter_names)
+    second_index = findfirst(==(pair[2]), parameter_names)
+    (first_index === nothing || second_index === nothing) && throw(ArgumentError("pair must contain parameter names"))
+    baseline = Fitting.run_joint_fit(
+        model, dataset_specs, u0, Float64.(p0);
+        solver = solver, bounds = bounds, u0_builder = u0_builder,
+        initial_time = initial_time, optimizer = optimizer, maxiters = maxiters,
+        show_stats = show_stats,
+    )
+    first_grid = haskey(values, pair[1]) ? sort(unique(Float64.(values[pair[1]]))) :
+        _profile_grid(Float64(baseline.params[first_index]), Float64(bounds[first_index][1]), Float64(bounds[first_index][2]), points_per_side)
+    second_grid = haskey(values, pair[2]) ? sort(unique(Float64.(values[pair[2]]))) :
+        _profile_grid(Float64(baseline.params[second_index]), Float64(bounds[second_index][1]), Float64(bounds[second_index][2]), points_per_side)
+    first_grid = filter(value -> bounds[first_index][1] <= value <= bounds[first_index][2], first_grid)
+    second_grid = filter(value -> bounds[second_index][1] <= value <= bounds[second_index][2], second_grid)
+    (isempty(first_grid) || isempty(second_grid)) && throw(ArgumentError("paired profile grid has no values inside bounds"))
+    fixed_indices = [first_index, second_index]
+    rows = NamedTuple[]
+    for first_value in first_grid, second_value in second_grid
+        fixed_values = [first_value, second_value]
+        profiled_specs, expand_params, free_indices = _profiled_dataset_specs(dataset_specs, fixed_indices, fixed_values, length(p0))
+        if isempty(free_indices)
+            full_prediction = try
+                prediction_vector(model, dataset_specs, u0, fixed_values;
+                    solver = solver, u0_builder = u0_builder, initial_time = initial_time, weighted = true)
+            catch
+                Float64[]
+            end
+            observed = _observation_vector(dataset_specs; weighted = true)
+            sse = length(full_prediction) == length(observed) ? sum((full_prediction .- observed) .^ 2) : Inf
+            params = expand_params(Float64[])
+        else
+            free_start = [baseline.params[index] for index in free_indices]
+            free_bounds = [bounds[index] for index in free_indices]
+            free_model! = (du, u, free, t) -> model(du, u, expand_params(free), t)
+            free_u0_builder = u0_builder === nothing ? nothing : free -> u0_builder(expand_params(free))
+            fitted = try
+                Fitting.run_joint_fit(
+                    free_model!, profiled_specs, u0, free_start;
+                    solver = solver, bounds = free_bounds, u0_builder = free_u0_builder,
+                    initial_time = initial_time, optimizer = optimizer, maxiters = maxiters,
+                    show_stats = false,
+                )
+            catch
+                nothing
+            end
+            sse = fitted === nothing ? Inf : Float64(fitted.sse)
+            params = fitted === nothing ? fill(NaN, length(p0)) : expand_params(fitted.params)
+        end
+        delta_sse = sse - Float64(baseline.sse)
+        push!(rows, (
+            parameter_1 = String(pair[1]),
+            parameter_2 = String(pair[2]),
+            value_1 = first_value,
+            value_2 = second_value,
+            sse = sse,
+            delta_sse = delta_sse,
+            accepted = isfinite(delta_sse) && delta_sse <= threshold,
+            params = string(params),
+        ))
+    end
+    surface = DataFrame(rows)
+    accepted = filter(:accepted => identity, surface)
+    first_touches = isempty(accepted) || any(accepted.value_1 .== minimum(first_grid)) || any(accepted.value_1 .== maximum(first_grid))
+    second_touches = isempty(accepted) || any(accepted.value_2 .== minimum(second_grid)) || any(accepted.value_2 .== maximum(second_grid))
+    region = (
+        parameter_1 = String(pair[1]),
+        parameter_2 = String(pair[2]),
+        threshold = Float64(threshold),
+        n_accepted = nrow(accepted),
+        parameter_1_touches_bound = first_touches,
+        parameter_2_touches_bound = second_touches,
+        confidence_status = isempty(accepted) ? "empty_region" :
+            first_touches || second_touches ? "bound_touching" : "bounded",
+    )
+    return (fit = baseline, surface = surface, accepted_region = accepted, region = region)
+end
+
+function _bounded_parameters(latent::Vector{Float64}, bounds::Vector{<:Tuple})
+    return [
+        Float64(bounds[index][1]) + (Float64(bounds[index][2]) - Float64(bounds[index][1])) /
+            (1 + exp(-clamp(latent[index], -30.0, 30.0)))
+        for index in eachindex(bounds)
+    ]
+end
+
+function _latent_parameters(parameters::Vector{<:Real}, bounds::Vector{<:Tuple})
+    fractions = [
+        clamp((Float64(parameters[index]) - Float64(bounds[index][1])) /
+            (Float64(bounds[index][2]) - Float64(bounds[index][1])), 1e-6, 1 - 1e-6)
+        for index in eachindex(bounds)
+    ]
+    return log.(fractions ./ (1 .- fractions))
+end
+
+function _validated_hierarchical_groups(groups::Vector{<:NamedTuple})
+    length(groups) >= 2 || throw(ArgumentError("hierarchical_joint_fit requires at least two groups"))
+    names = String[]
+    for group in groups
+        haskey(group, :name) || throw(ArgumentError("each group requires name"))
+        haskey(group, :dataset_specs) || throw(ArgumentError("each group requires dataset_specs"))
+        haskey(group, :u0) || throw(ArgumentError("each group requires u0"))
+        isempty(group.dataset_specs) && throw(ArgumentError("each group requires at least one dataset"))
+        push!(names, String(group.name))
+    end
+    length(unique(names)) == length(names) || throw(ArgumentError("group names must be unique"))
+    return names
+end
+
+"""
+    hierarchical_joint_fit(model, groups, p0; bounds, parameter_names, varying_parameters, ...)
+
+Fit all named groups together with partially pooled group-specific deviations.
+Every group supplies `(name, dataset_specs, u0)`. Parameters listed in
+`varying_parameters` receive mean-centered log-scale deviations, while all
+other parameters are shared. `random_effect_sd` is the fixed prior SD of each
+log-scale deviation; smaller values apply stronger pooling. This is a
+penalized hierarchical likelihood, not an MCMC posterior sampler.
+"""
+function hierarchical_joint_fit(
+    model::Function,
+    groups::Vector{<:NamedTuple},
+    p0::Vector{<:Real};
+    bounds::Vector{<:Tuple},
+    parameter_names::Vector{Symbol},
+    varying_parameters::Vector{Symbol},
+    random_effect_sd::Union{Real,Vector{<:Real}} = 0.5,
+    solver = Tsit5(),
+    maxiters::Integer = 20_000,
+    reltol::Real = 1e-10,
+    abstol::Real = 1e-10,
+)
+    length(p0) == length(bounds) == length(parameter_names) || throw(ArgumentError("p0, bounds, and parameter_names must have equal length"))
+    group_names = _validated_hierarchical_groups(groups)
+    isempty(varying_parameters) && throw(ArgumentError("varying_parameters cannot be empty; use run_joint_fit for a fully shared fit"))
+    varying_indices = [findfirst(==(name), parameter_names) for name in varying_parameters]
+    any(isnothing, varying_indices) && throw(ArgumentError("every varying parameter must be in parameter_names"))
+    varying_indices = Int.(varying_indices)
+    length(unique(varying_indices)) == length(varying_indices) || throw(ArgumentError("varying_parameters must be unique"))
+    all(Float64(bounds[index][1]) > 0 for index in varying_indices) ||
+        throw(ArgumentError("hierarchical varying parameters require strictly positive lower bounds for log-scale effects"))
+    effect_sds = random_effect_sd isa Real ? fill(Float64(random_effect_sd), length(varying_indices)) : Float64.(collect(random_effect_sd))
+    length(effect_sds) == length(varying_indices) || throw(ArgumentError("random_effect_sd must be scalar or match varying_parameters"))
+    all(>(0), effect_sds) || throw(ArgumentError("random_effect_sd must be positive"))
+    group_count = length(groups)
+    varying_count = length(varying_indices)
+    initial_latent = vcat(_latent_parameters(p0, bounds), zeros(Float64, group_count * varying_count))
+
+    function expanded_parameters(latent)
+        central = _bounded_parameters(Float64.(latent[1:length(p0)]), bounds)
+        raw_effects = reshape(Float64.(latent[length(p0) + 1:end]), varying_count, group_count)'
+        centered_effects = clamp.(raw_effects .- mean(raw_effects; dims = 1), -8.0, 8.0)
+        group_parameters = Vector{Vector{Float64}}(undef, group_count)
+        for group_index in 1:group_count
+            params = copy(central)
+            for (effect_index, parameter_index) in enumerate(varying_indices)
+                lower, upper = Float64.(bounds[parameter_index])
+                params[parameter_index] = clamp(central[parameter_index] * exp(centered_effects[group_index, effect_index]), lower, upper)
+            end
+            group_parameters[group_index] = params
+        end
+        return central, centered_effects, group_parameters
+    end
+
+    function objective(latent)
+        _, effects, group_parameters = expanded_parameters(latent)
+        data_sse = 0.0
+        for (group_index, group) in enumerate(groups)
+            prediction = try
+                prediction_vector(model, group.dataset_specs, Float64.(group.u0), group_parameters[group_index];
+                    solver = solver, reltol = reltol, abstol = abstol, weighted = true)
+            catch
+                return 1e12
+            end
+            observed = _observation_vector(group.dataset_specs; weighted = true)
+            length(prediction) == length(observed) || return 1e12
+            any(value -> !isfinite(value), prediction) && return 1e12
+            data_sse += sum((prediction .- observed) .^ 2)
+        end
+        penalty = sum((effects[:, index] ./ effect_sds[index]) .^ 2 for index in eachindex(effect_sds))
+        return isfinite(data_sse + penalty) ? data_sse + penalty : 1e12
+    end
+
+    loss = Optimization.OptimizationFunction((latent, _) -> objective(latent))
+    problem = Optimization.OptimizationProblem(loss, initial_latent)
+    result = Optimization.solve(problem, OptimizationOptimJL.NelderMead(); maxiters = maxiters)
+    central, effects, group_parameters = expanded_parameters(result.u)
+    data_sse = 0.0
+    group_rows = NamedTuple[]
+    predictions = Vector{Vector{Float64}}()
+    for (group_index, group) in enumerate(groups)
+        predicted = prediction_vector(model, group.dataset_specs, Float64.(group.u0), group_parameters[group_index];
+            solver = solver, reltol = reltol, abstol = abstol)
+        observed = _observation_vector(group.dataset_specs; weighted = false)
+        weighted_prediction = prediction_vector(model, group.dataset_specs, Float64.(group.u0), group_parameters[group_index];
+            solver = solver, reltol = reltol, abstol = abstol, weighted = true)
+        weighted_observed = _observation_vector(group.dataset_specs; weighted = true)
+        raw_sse = sum((predicted .- observed) .^ 2)
+        weighted_sse = sum((weighted_prediction .- weighted_observed) .^ 2)
+        data_sse += weighted_sse
+        push!(predictions, predicted)
+        for parameter_index in eachindex(parameter_names)
+            effect_index = findfirst(==(parameter_index), varying_indices)
+            deviation = effect_index === nothing ? 0.0 : effects[group_index, effect_index]
+            push!(group_rows, (
+                group = group_names[group_index],
+                parameter = String(parameter_names[parameter_index]),
+                central_estimate = central[parameter_index],
+                group_estimate = group_parameters[group_index][parameter_index],
+                log_deviation = deviation,
+                varying = effect_index !== nothing,
+                raw_sse = raw_sse,
+                weighted_sse = weighted_sse,
+            ))
+        end
+    end
+    effective_parameter_count = length(p0) + (group_count - 1) * varying_count
+    observation_count = sum(sum(length(dataset.y) for dataset in group.dataset_specs) for group in groups)
+    pooled_bic = observation_count * log(max(data_sse, 1e-12) / observation_count) + effective_parameter_count * log(observation_count)
+    return (
+        central_params = central,
+        group_params = group_parameters,
+        group_parameters = DataFrame(group_rows),
+        predictions = predictions,
+        data_sse = data_sse,
+        penalized_sse = objective(result.u),
+        pooled_bic = pooled_bic,
+        effective_parameter_count = effective_parameter_count,
+        observation_count = observation_count,
+        random_effect_sd = effect_sds,
+        optimizer_result = result,
+    )
 end
 
 function _cluster_multistarts(summary::DataFrame, bounds::Vector{<:Tuple}; bic_tolerance::Real, cluster_tolerance::Real)

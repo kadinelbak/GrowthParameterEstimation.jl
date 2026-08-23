@@ -105,11 +105,13 @@ The package exports many symbols, but most users should focus on the entry point
 | Fit one model to one dataset | `run_single_fit` | Smallest fitting API |
 | Compare candidate models | `compare_models`, `compare_models_dict`, `rank_models` | `rank_models` is the workflow-oriented option |
 | Fit across related datasets jointly | `run_joint_fit`, `run_joint_multistart`, `profile_joint_fit_bounds`, `compare_joint_models_dict` | For shared-parameter multi-state or multi-dataset fits |
+| Pool related groups in one fit | `hierarchical_joint_fit` | Shared central parameters with partially pooled group-specific effects |
 | Run a standard pipeline | `default_config`, `build_conditions`, `run_pipeline` | Best default for end-to-end analysis |
 | Run a staged pipeline | `PipelineStage`, `default_stages`, `run_staged_pipeline` | Best for inherited-parameter multi-stage workflows |
 | Export workflow artifacts | `plot_topk`, `export_results`, `save_run_manifest`, `load_run_manifest` | Produces tables, diagnostics, figures, and resume state |
 | Simulate a registered model | `get_model`, `list_models`, `simulate`, `run_sweep` | Use after choosing a model specification |
 | Diagnostics and validation | `generate_qc_report`, `save_qc_report`, `bootstrap_stage_uncertainty`, `leave_one_out_validation`, `residual_analysis` | For QA, uncertainty, and post-fit analysis |
+| Identifiability and sensitivity | `global_sensitivity_analysis`, `paired_profile_likelihood`, `practical_identifiability_report`, `structural_identifiability` | Range-based sensitivity, parameter tradeoffs, numerical gates, and symbolic checks |
 
 ### Advanced or implementation-level surfaces
 

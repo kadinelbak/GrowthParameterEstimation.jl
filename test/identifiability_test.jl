@@ -49,6 +49,16 @@ using StructuralIdentifiability
     @test isfinite(fisher.condition_number)
     @test nrow(fisher.table) == 2
 
+    global_sensitivity = global_sensitivity_analysis(
+        shared_logistic!, datasets, u0;
+        bounds = bounds, parameter_names = [:r, :K], n_samples = 8,
+        rng = MersenneTwister(15), solver = Tsit5(),
+    )
+    @test nrow(global_sensitivity.samples) == 8
+    @test nrow(global_sensitivity.pointwise) == 2 * length(times) * 2
+    @test nrow(global_sensitivity.summary) == 2
+    @test global_sensitivity.success_rate > 0.0
+
     profiles = profile_likelihood(
         shared_logistic!, datasets, u0, [0.25, 20.0];
         bounds = bounds, parameter_names = [:r, :K],
@@ -58,6 +68,29 @@ using StructuralIdentifiability
     @test nrow(profiles.profile) == 6
     @test nrow(profiles.confidence_intervals) == 2
     @test all(isfinite, profiles.profile.sse)
+
+    paired = paired_profile_likelihood(
+        shared_logistic!, datasets, u0, [0.25, 20.0];
+        bounds = bounds, parameter_names = [:r, :K], pair = (:r, :K),
+        values = Dict(:r => [0.25, 0.35], :K => [20.0, 25.0]),
+        solver = Tsit5(), optimizer = :nelder_mead, maxiters = 400,
+    )
+    @test nrow(paired.surface) == 4
+    @test paired.region.parameter_1 == "r"
+
+    hierarchical = hierarchical_joint_fit(
+        shared_logistic!,
+        [
+            (name = "sensitive", dataset_specs = [datasets[1]], u0 = [u0[1]]),
+            (name = "resistant", dataset_specs = [datasets[2]], u0 = [u0[2]]),
+        ],
+        [0.25, 20.0];
+        bounds = bounds, parameter_names = [:r, :K], varying_parameters = [:r],
+        random_effect_sd = 0.5, solver = Tsit5(), maxiters = 400,
+    )
+    @test length(hierarchical.group_params) == 2
+    @test nrow(hierarchical.group_parameters) == 4
+    @test isfinite(hierarchical.pooled_bic)
 
     boot = bootstrap_joint_fit(
         shared_logistic!, datasets, u0, [0.25, 20.0];
