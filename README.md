@@ -2,7 +2,7 @@
 
 Tools for fitting growth ODE models to time‑series data, with utilities for model comparison, diagnostics, workflow ranking, and joint fitting across multiple related datasets.
 
-Current release target: `v0.3.0`.
+Current release target: `v0.5.0`.
 
 Changelog: see `CHANGELOG.md` for release notes, including the breaking changes in `v0.3.0`.
 
@@ -17,6 +17,8 @@ Changelog: see `CHANGELOG.md` for release notes, including the breaking changes 
 - Simulation sweep engine for scenario grids.
 - Joint fitting APIs for shared-parameter multi-state/multi-dataset models.
 - Analysis helpers (LOO CV, k-fold CV, sensitivity, residual diagnostics, enhanced BIC analysis).
+- Practical and structural identifiability analysis (Fisher information, profile
+  likelihoods, bootstrap recovery, and symbolic global/local checks).
 
 ## Installation
 ```julia

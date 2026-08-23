@@ -10,6 +10,7 @@ include("observation.jl")
 include("fitting.jl")
 include("joint_summary.jl")
 include("analysis.jl")
+include("identifiability.jl")
 include("workflow.jl")
 # include("models_legacy.jl")  # Remove legacy ODE RHS functions for backward compatibility
 
@@ -22,6 +23,7 @@ using .Observation
 using .Fitting
 using .JointSummary
 using .Analysis
+using .Identifiability
 using .Workflow
 
 export
@@ -59,6 +61,14 @@ export
     # Analysis functions
     leave_one_out_validation, k_fold_cross_validation, parameter_sensitivity_analysis,
     residual_analysis, enhanced_bic_analysis,
+
+    # Identifiability APIs
+    ObservationMap, IdentifiabilityConfig,
+    validate_observation_map, generate_multistarts,
+    prediction_vector, prediction_jacobian, fisher_information,
+    profile_likelihood, bootstrap_joint_fit, synthetic_recovery_benchmark,
+    practical_identifiability_report, structural_identifiability,
+    structural_identifiability_report,
 
     # End-to-end workflow APIs
     FitCondition, PipelineConfig, PipelineStage,

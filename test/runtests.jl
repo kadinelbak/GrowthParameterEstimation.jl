@@ -667,3 +667,4 @@ end
 
 include("joint_summary_test.jl")
 include("pooling_profile_test.jl")
+include("identifiability_test.jl")

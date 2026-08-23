@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.5.0 - 2026-08-22
+
+### Added
+
+- Public practical-identifiability tools for multi-start generation, prediction
+  Jacobians, Fisher information, profile likelihoods, bootstrap refitting, and
+  synthetic parameter-recovery benchmarks.
+- Structural global and local identifiability checks backed by
+  `StructuralIdentifiability.jl`, with explicit observation-map validation.
+- Documentation and tests for the identifiability workflow, including a
+  multi-population shared-logistic example.
+
+### Changed
+
+- Added `StructuralIdentifiability.jl` as a direct package dependency.
+- Declared support for Julia 1.12 alongside the existing Julia 1.10 support.
+
+### Verification
+
+- Source parsing and repository checks completed successfully. The full Julia
+  test suite could not be run on this machine because Windows Application
+  Control blocks Julia's precompiled package DLLs; this is an environment
+  restriction, not a reported test failure.
+
 ## v0.4.1 - 2026-08-11
 
 ### Breaking changes
