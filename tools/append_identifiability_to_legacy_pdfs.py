@@ -151,6 +151,37 @@ class Addendum:
         c.drawCentredString(0, 0, "normalized parameter 2")
         c.restoreState()
 
+    def paired_surface(self, x, y, width, height):
+        c = self.canvas
+        c.setFillColor(colors.HexColor("#FAFCFC"))
+        c.roundRect(x, y - height, width, height, 3, fill=1, stroke=0)
+        c.setFillColor(INK)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(x + 35, y - 16, "Illustrative paired-profile surface")
+        left, bottom = x + 42, y - height + 35
+        plot_w, plot_h = width - 65, height - 70
+        c.setStrokeColor(MUTED)
+        c.line(left, bottom, left + plot_w, bottom)
+        c.line(left, bottom, left, bottom + plot_h)
+        for row in range(5):
+            for col in range(5):
+                distance = ((col - 2.0) / 2.2) ** 2 + ((row - 2.1) / 1.5) ** 2
+                color = PALE if distance < 0.8 else colors.HexColor("#F5D8CC") if distance < 1.7 else colors.HexColor("#F9EEEE")
+                c.setFillColor(color)
+                c.rect(left + col * plot_w / 5 + 3, bottom + row * plot_h / 5 + 3, plot_w / 5 - 6, plot_h / 5 - 6, fill=1, stroke=0)
+        c.setStrokeColor(TEAL)
+        c.setLineWidth(1.5)
+        c.ellipse(left + plot_w * .25, bottom + plot_h * .25, left + plot_w * .75, bottom + plot_h * .75, fill=0, stroke=1)
+        c.setLineWidth(1)
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica", 8)
+        c.drawCentredString(left + plot_w / 2, bottom - 14, "parameter 1")
+        c.saveState()
+        c.translate(left - 18, bottom + plot_h / 2)
+        c.rotate(90)
+        c.drawCentredString(0, 0, "parameter 2")
+        c.restoreState()
+
     def save(self):
         self.canvas.save()
 
@@ -183,6 +214,24 @@ def function_tour_addendum(path):
     y = deck.start("8.2 STRUCTURAL IDENTIFIABILITY", "For a global or local claim, define exactly what was measured", "Structural analysis uses StructuralIdentifiability.jl with the same state-to-assay mapping and known inputs as the numerical fit. It never infers a proof from an optimizer result.")
     deck.code("map = ObservationMap(\n    \"drug_macrophage_four_state\",\n    [:S, :D1, :D2, :M],\n    [:viable_cells, :recoverable_damage, :terminal_damage, :macrophages])\nvalidate_observation_map(map, dataset_specs)\nresult = structural_identifiability(symbolic_ode; mode=:global)", 40, y, 370)
     deck.bullets(["In a four-population model, directly measuring viable, damaged, terminal-damage, and macrophage states is much more informative than measuring total viability alone.", "Drug concentration is a known input in the symbolic ODE; it is not an unobserved estimated state.", "Use synthetic_recovery_benchmark at the actual sampling times before drawing conclusions from sparse real data."], 445, y, 300)
+
+    y = deck.start("8.3 GLOBAL SENSITIVITY", "Screen the full biological parameter range, not only the best-fit neighborhood", "global_sensitivity_analysis uses Latin-hypercube samples and partial rank correlations (PRCCs) across every measured series and time point.")
+    deck.code("global = global_sensitivity_analysis(\n    model, dataset_specs, u0;\n    bounds=bounds, parameter_names=parameter_names,\n    n_samples=400, scale=:log)\nglobal.summary   # mean and maximum absolute PRCC\nglobal.pointwise # PRCC by series and time", 40, y, 360)
+    deck.bullets(["A large absolute PRCC means a parameter strongly changes an observed output across its allowed range after accounting for other sampled parameters.", "A low PRCC does not prove irrelevance: non-monotone effects and parameter interactions can still matter.", "Use this analysis to decide which parameters, time points, doses, or direct measurements are most worth improving."], 440, y, 305)
+
+    y = deck.start("8.4 PAIRED PROFILE LIKELIHOODS", "Expose tradeoffs that one-parameter confidence intervals can hide", "paired_profile_likelihood fixes two parameters together on a grid and re-fits every other parameter at every grid point.")
+    deck.paired_surface(40, y, 335, 245)
+    deck.code("paired = paired_profile_likelihood(\n    model, dataset_specs, u0, p0;\n    bounds=bounds, parameter_names=parameter_names,\n    pair=(:drug_damage, :macrophage_killing),\n    points_per_side=10)\npaired.accepted_region", 410, y, 340)
+    deck.bullets(["The default threshold is 5.991, the two-parameter 95% chi-square cutoff.", "A diagonal accepted region means the two biological effects can trade off while preserving the fit.", "A region touching a bound means the experiment has not contained the combined uncertainty."], 40, 175, 690)
+
+    y = deck.start("8.5 HIERARCHICAL JOINT FITTING", "Analyze sensitive, resistant, and treatment groups in one pooled objective", "hierarchical_joint_fit estimates central shared parameters and partially pooled group-specific effects. It is not an average of separately fitted parameter vectors.")
+    deck.table(["Component", "Meaning", "Why it helps"], [
+        ("central parameters", "one shared biological baseline", "all groups inform shared growth or capacity"),
+        ("varying parameters", "group deviations on log scale", "allows resistant or treated groups to differ"),
+        ("random_effect_sd", "fixed pooling strength", "prevents small groups from producing extreme unsupported estimates"),
+    ], 40, y, [180, 240, 260], 48)
+    deck.code("hierarchical = hierarchical_joint_fit(\n    model, groups, p0; bounds=bounds,\n    parameter_names=parameter_names,\n    varying_parameters=[:growth, :drug_damage],\n    random_effect_sd=[0.35, 0.50])", 40, 140, 420)
+    deck.bullets(["Each group supplies name, dataset_specs, and u0. All observations contribute to the same data SSE and pooled BIC.", "Use group_parameters to report central estimates, each group estimate, and its log-scale deviation."], 500, 140, 245)
     deck.save()
 
 
@@ -210,6 +259,24 @@ def fitting_addendum(path):
         ("Could the planned experiment recover truth?", "synthetic_recovery_benchmark", "bias, RMSE, and recovery success rate"),
     ], 40, y, [250, 215, 215], 48)
     deck.bullets(["For macrophage or multiple-damage-compartment models, design experiments that independently observe affected populations, perturb known inputs, and contain enough time points to distinguish transitions.", "Report bootstrap 95% intervals, profile bounds, multi-start clusters, and symbolic classification together in the final biological analysis."], 40, 125, 680)
+
+    y = deck.start("10. GLOBAL SENSITIVITY", "Use PRCC to screen the entire allowed range of every parameter", "This function is a global complement to local Fisher sensitivity. It samples the biological bounds rather than perturbing one parameter only around a fitted estimate.")
+    deck.code("global = global_sensitivity_analysis(\n    model::Function, dataset_specs, u0;\n    bounds::Vector{Tuple}, parameter_names::Vector{Symbol},\n    n_samples::Int=400, scale=:log)\n\nglobal.summary\nglobal.pointwise", 40, y, 350)
+    deck.bullets(["The returned sample audit records successful, invalid, and failed simulations.", "summary ranks parameters by mean and maximum absolute PRCC across all observed outputs.", "pointwise PRCC identifies when a parameter matters most and which measured population is most informative."], 440, y, 305)
+
+    y = deck.start("11. PAIRED PROFILE LIKELIHOODS", "Profile the parameter pair that biology says may be confounded", "For example, drug damage and macrophage killing can both reduce viable cells. A paired profile tests whether the observations actually separate them.")
+    deck.paired_surface(40, y, 335, 245)
+    deck.code("paired = paired_profile_likelihood(\n    model, dataset_specs, u0, p0;\n    bounds=bounds, parameter_names=parameter_names,\n    pair=(:drug_damage, :macrophage_killing),\n    points_per_side=10)\npaired.region", 410, y, 340)
+    deck.bullets(["All nuisance parameters are re-fit at every grid point.", "accepted_region is the joint 95% region; a bound_touching status signals unresolved joint uncertainty."], 40, 175, 690)
+
+    y = deck.start("12. HIERARCHICAL JOINT FITTING", "Pool every group while allowing specific biological effects to differ", "Use this when the experiment contains related conditions such as sensitive and resistant strains, doses, or macrophage conditions that should inform one another.")
+    deck.table(["Input", "Type", "Use"], [
+        ("groups", "Vector of named groups", "each group has name, dataset_specs, and u0"),
+        ("varying_parameters", "Vector{Symbol}", "only these get group-specific log-scale effects"),
+        ("random_effect_sd", "Real or Vector{Real}", "fixed partial-pooling strength"),
+        ("output", "group_parameters", "central, group-specific, and log-deviation estimates"),
+    ], 40, y, [190, 200, 290], 46)
+    deck.bullets(["All observations are fit together. Smaller groups borrow strength from the shared central parameter estimate.", "The output includes pooled BIC, group-wise residual contributions, and predictions for every group.", "This is a penalized hierarchical likelihood. It is not yet a full Bayesian posterior with estimated population variances."], 40, 180, 680)
     deck.save()
 
 
@@ -222,8 +289,8 @@ def main():
     fitting_appendix = TMP / "fitting_varieties_identifiability_appendix.pdf"
     function_tour_addendum(tour_appendix)
     fitting_addendum(fitting_appendix)
-    merge(tour_source, tour_appendix, OUTPUT / "Function_Tour_FINAL_21PAGE_Identifiability_Addendum_v0.5.0.pdf")
-    merge(fitting_source, fitting_appendix, OUTPUT / "Fitting_Varieties_11PAGE_Identifiability_Addendum_v0.5.0.pdf")
+    merge(tour_source, tour_appendix, OUTPUT / "Function_Tour_FINAL_24PAGE_GlobalPairedHierarchical_Addendum_2026-08-23.pdf")
+    merge(fitting_source, fitting_appendix, OUTPUT / "Fitting_Varieties_14PAGE_GlobalPairedHierarchical_Addendum_2026-08-23.pdf")
 
 
 if __name__ == "__main__":
