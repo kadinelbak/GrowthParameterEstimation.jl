@@ -31,6 +31,8 @@ All notable changes to this project will be documented in this file.
 - Corrected the hierarchical identifiability regression test so grouped datasets
   are evaluated with the full two-state model state expected by their
   `state_index` values.
+- Fixed hierarchical joint-fit random-effect penalty accumulation so scalar SSE
+  objectives remain scalar for multiple groups.
 
 ## v0.5.1 - 2026-08-28
 

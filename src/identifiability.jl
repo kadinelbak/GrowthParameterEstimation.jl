@@ -863,7 +863,7 @@ function hierarchical_joint_fit(
             any(value -> !isfinite(value), prediction) && return 1e12
             data_sse += sum((prediction .- observed) .^ 2)
         end
-        penalty = sum((effects[:, index] ./ effect_sds[index]) .^ 2 for index in eachindex(effect_sds))
+        penalty = sum(sum((effects[:, index] ./ effect_sds[index]) .^ 2) for index in eachindex(effect_sds))
         return isfinite(data_sse + penalty) ? data_sse + penalty : 1e12
     end
 
