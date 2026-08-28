@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-## v0.5.1 - 2026-08-28
+## v0.5.2 - 2026-08-28
 
 ### Added
 
@@ -25,6 +25,19 @@ All notable changes to this project will be documented in this file.
   1.x releases, and added Julia 1.11 to the CI matrix.
 - Removed the checked-in root `Manifest.toml` so package CI and downstream users
   resolve dependencies from `Project.toml` instead of an old Julia 1.10 manifest.
+
+### Fixed
+
+- Corrected the hierarchical identifiability regression test so grouped datasets
+  are evaluated with the full two-state model state expected by their
+  `state_index` values.
+
+## v0.5.1 - 2026-08-28
+
+### Notes
+
+- Superseded by `v0.5.2` after Julia General Registry registration to fix the
+  package CI test matrix while preserving the v0.5 feature set.
 
 ## v0.5.0 - 2026-08-22
 

@@ -81,8 +81,8 @@ using StructuralIdentifiability
     hierarchical = hierarchical_joint_fit(
         shared_logistic!,
         [
-            (name = "sensitive", dataset_specs = [datasets[1]], u0 = [u0[1]]),
-            (name = "resistant", dataset_specs = [datasets[2]], u0 = [u0[2]]),
+            (name = "sensitive", dataset_specs = [datasets[1]], u0 = u0),
+            (name = "resistant", dataset_specs = [datasets[2]], u0 = u0),
         ],
         [0.25, 20.0];
         bounds = bounds, parameter_names = [:r, :K], varying_parameters = [:r],
