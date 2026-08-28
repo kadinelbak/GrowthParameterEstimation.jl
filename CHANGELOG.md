@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-## v0.5.2 - 2026-08-28
+## v0.5.3 - 2026-08-28
 
 ### Added
 
@@ -33,6 +33,13 @@ All notable changes to this project will be documented in this file.
   `state_index` values.
 - Fixed hierarchical joint-fit random-effect penalty accumulation so scalar SSE
   objectives remain scalar for multiple groups.
+
+## v0.5.2 - 2026-08-28
+
+### Notes
+
+- Superseded by `v0.5.3` after Julia General Registry registration to include
+  the hierarchical joint-fit source fix required by the package CI matrix.
 
 ## v0.5.1 - 2026-08-28
 

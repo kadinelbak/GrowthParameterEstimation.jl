@@ -2,7 +2,7 @@
 
 Tools for fitting growth ODE models to time‑series data, with utilities for model comparison, diagnostics, workflow ranking, and joint fitting across multiple related datasets.
 
-Current release target: `v0.5.2`.
+Current release target: `v0.5.3`.
 
 Changelog: see `CHANGELOG.md` for release notes, including the breaking changes in `v0.3.0`.
 
