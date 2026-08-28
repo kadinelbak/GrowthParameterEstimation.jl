@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Advanced Usage · GrowthParameterEstimation.jl</title><meta name="title" content="Advanced Usage · GrowthParameterEstimation.jl"/><meta property="og:title" content="Advanced Usage · GrowthParameterEstimation.jl"/><meta property="twitter:title" content="Advanced Usage · GrowthParameterEstimation.jl"/><meta name="description" content="Documentation for GrowthParameterEstimation.jl."/><meta property="og:description" content="Documentation for GrowthParameterEstimation.jl."/><meta property="twitter:description" content="Documentation for GrowthParameterEstimation.jl."/><meta property="og:url" content="https://kadinelbak.github.io/GrowthParameterEstimation.jl/tutorial/advanced_usage/"/><meta property="twitter:url" content="https://kadinelbak.github.io/GrowthParameterEstimation.jl/tutorial/advanced_usage/"/><link rel="canonical" href="https://kadinelbak.github.io/GrowthParameterEstimation.jl/tutorial/advanced_usage/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">GrowthParameterEstimation.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../identifiability/">Identifiability</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Advanced Usage</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Advanced Usage</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/kadinelbak/GrowthParameterEstimation.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/kadinelbak/GrowthParameterEstimation.jl/blob/main/docs/src/tutorial/advanced_usage.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Advanced-Usage"><a class="docs-heading-anchor" href="#Advanced-Usage">Advanced Usage</a><a id="Advanced-Usage-1"></a><a class="docs-heading-anchor-permalink" href="#Advanced-Usage" title="Permalink"></a></h1><p>This tutorial covers advanced features and workflows in GrowthParameterEstimation.jl.</p><h2 id="Staged-Fitting-Workflows"><a class="docs-heading-anchor" href="#Staged-Fitting-Workflows">Staged Fitting Workflows</a><a id="Staged-Fitting-Workflows-1"></a><a class="docs-heading-anchor-permalink" href="#Staged-Fitting-Workflows" title="Permalink"></a></h2><p>The package includes a sophisticated workflow system for staged model fitting:</p><pre><code class="language-julia hljs">using GrowthParameterEstimation.Workflow
+
+# Create a custom workflow configuration
+config = PipelineConfig(
+    &quot;1.0.0&quot;,
+    [&quot;logistic_growth&quot;, &quot;gompertz_growth&quot;],  # models to consider
+    10,                                       # n_starts
+    3,                                        # top_k
+    500,                                      # maxiters
+    1e-8,                                     # reltol
+    1e-8,                                     # abstol
+    true,                                     # weighted
+    42,                                       # seed
+    &quot;advanced_results&quot;                        # output_dir
+)
+
+# Define custom pipeline stages
+stages = [
+    PipelineStage(
+        &quot;initial_fit&quot;,
+        &quot;Initial model fitting to identify best candidates&quot;,
+        (row) -&gt; true,  # accept all rows
+        [:cell_line, :treatment],             # condition columns
+        [&quot;logistic_growth&quot;, &quot;gompertz_growth&quot;], # models to test
+        [:r],                                 # shared parameters (growth rate)
+        Dict{Symbol,Float64}(),               # no fixed parameters
+        Dict{Symbol,Tuple{String,Symbol}}()   # no inherited parameters
+    ),
+    PipelineStage(
+        &quot;refined_fit&quot;,
+        &quot;Refined fitting with parameter inheritance&quot;,
+        (row) -&gt; true,
+        [:cell_line, :treatment],
+        [&quot;logistic_growth&quot;, &quot;gompertz_growth&quot;],
+        [:r, :K],                             # share both parameters now
+        Dict{Symbol,Float64}(),
+        Dict(:K =&gt; (&quot;initial_fit&quot;, :K))       # inherit carrying capacity from initial fit
+    )
+]
+
+# Run the staged pipeline
+results = run_staged_pipeline(
+    experimental_data,
+    stages=stages,
+    config=config
+)</code></pre><h2 id="Parameter-Uncertainty-Quantification"><a class="docs-heading-anchor" href="#Parameter-Uncertainty-Quantification">Parameter Uncertainty Quantification</a><a id="Parameter-Uncertainty-Quantification-1"></a><a class="docs-heading-anchor-permalink" href="#Parameter-Uncertainty-Quantification" title="Permalink"></a></h2><p>Estimate parameter uncertainty using bootstrap resampling:</p><pre><code class="language-julia hljs">using GrowthParameterEstimation.Workflow
+
+# Fit a model to get baseline parameters
+spec = Registry.get_model(&quot;logistic_growth&quot;)
+conditions = build_conditions(experimental_data)
+
+# Perform bootstrap uncertainty estimation
+uncertainty = bootstrap_stage_uncertainty(
+    spec,
+    stage_df;                     # data for this condition/stage
+    condition_cols=[:dose, :cell_line],
+    shared_params=[:r],           # parameters to estimate uncertainty for
+    fixed_params=Dict{Symbol,Float64}(),
+    tie_constraints=Dict{Symbol,Symbol}(),
+    n_bootstrap=100,              # number of bootstrap samples
+    n_starts=10,
+    maxiters=300,
+    weighted=true,
+    reltol=1e-8,
+    abstol=1e-8,
+    seed=2026
+)
+
+# Examine uncertainty results
+for (param, stats) in uncertainty
+    println(&quot;$param: mean=$(stats[&quot;mean&quot;]), std=$(stats[&quot;std&quot;])&quot;)
+    println(&quot;  95% CI: [$(stats[&quot;ci_lower&quot;]), $(stats[&quot;ci_upper&quot;])]&quot;)
+end</code></pre><h2 id="Model-Population-Templates"><a class="docs-heading-anchor" href="#Model-Population-Templates">Model Population Templates</a><a id="Model-Population-Templates-1"></a><a class="docs-heading-anchor-permalink" href="#Model-Population-Templates" title="Permalink"></a></h2><p>Use predefined templates for common experimental designs:</p><pre><code class="language-julia hljs">using GrowthParameterEstimation.Workflow
+
+# Create stages for naive and resistant cell populations
+population_stages = default_population_stages([&quot;naive&quot;, &quot;resistant&quot;])
+
+# Create stages with cell-line specificity
+# (would need actual data frame here)
+# cellline_stages = default_population_cellline_stages(df, 
+#                                                     populations=[&quot;naive&quot;, &quot;resistant&quot;])</code></pre><h2 id="Custom-Model-Registration"><a class="docs-heading-anchor" href="#Custom-Model-Registration">Custom Model Registration</a><a id="Custom-Model-Registration-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-Model-Registration" title="Permalink"></a></h2><p>Register custom models with the model registry:</p><pre><code class="language-julia hljs">using GrowthParameterEstimation.Registry
+
+# Define a custom ODE model
+function my_custom_model!(du, u, p, t, exposure)
+    # du[1] = ... your model equations here
+    # p[1], p[2] etc. are your parameters
+    # exposure is the exposure function affecting dynamics
+end
+
+# Create a model specification
+my_spec = ModelSpec(
+    name=&quot;my_custom_model&quot;,
+    ode! = my_custom_model!,
+    observation = (state, p, t) -&gt; state[1],  # observe first state
+    default_solver = Tsit5(),
+    param_names = [&quot;param1&quot;, &quot;param2&quot;, &quot;param3&quot;],
+    bounds = [(0.0, 5.0), (0.0, 10.0), (0.1, 2.0)],
+    p0_factory = (r0, K0, dose) -&gt; [0.5, 50.0, 1.0],  # function to generate initial guesses
+    n_states = 1
+)
+
+# Register the model
+register_model!(my_spec)
+
+# Now you can use it like any other model
+result = fit_model(
+    Registry.get_model(&quot;my_custom_model&quot;),
+    time_data,
+    observation_data,
+    dose=2.5
+)</code></pre><h2 id="Joint-Fitting-Across-Multiple-Datasets"><a class="docs-heading-anchor" href="#Joint-Fitting-Across-Multiple-Datasets">Joint Fitting Across Multiple Datasets</a><a id="Joint-Fitting-Across-Multiple-Datasets-1"></a><a class="docs-heading-anchor-permalink" href="#Joint-Fitting-Across-Multiple-Datasets" title="Permalink"></a></h2><p>Fit a single parameter vector to multiple datasets simultaneously:</p><pre><code class="language-julia hljs">using GrowthParameterEstimation.Fitting
+
+# Define datasets (could be different observables or conditions)
+dataset_specs = [
+    (x = time_points1, y = obs_data1, state_index = 1),  # first state observable
+    (x = time_points2, y = obs_data2, state_index = 2)   # second state observable
+]
+
+# Initial conditions and parameter guess
+u0 = [1.0, 0.0]  # [state1, state2]
+p0 = [0.5, 0.1, 20.0]  # [rate1, rate2, coupling]
+
+# Define a coupled ODE model
+function coupled_model!(du, u, p, t)
+    du[1] = p[1] * u[1] - p[3] * u[1] * u[2]  # state1 dynamics
+    du[2] = p[2] * u[2] + p[3] * u[1] * u[2]  # state2 dynamics
+end
+
+# Perform joint fitting
+joint_result = run_joint_fit(
+    coupled_model!,
+    dataset_specs,
+    u0,
+    p0;
+    solver=Tsit5(),
+    maxiters=5000
+)
+
+println(&quot;Joint fitting results:&quot;)
+println(&quot;Parameters: $(joint_result.params)&quot;)
+println(&quot;BIC: $(joint_result.bic)&quot;)
+println(&quot;Raw SSE: $(joint_result.raw_sse)&quot;)
+println(&quot;Scaled SSE: $(joint_result.scaled_sse)&quot;)</code></pre><p>Use <code>residual_scale</code> in each dataset spec to compare trajectories on fixed scales, <code>initial_time</code> when the initial state is seeded before the first observation, and <code>u0_builder = p -&gt; ...</code> when parameters determine the initial state. For difficult surfaces, run several starts with <code>run_joint_multistart</code> and profile near-bound estimates with <code>profile_joint_fit_bounds</code> or <code>profile_joint_fit_bounds_two_sided</code>.</p><h2 id="Resuming-Long-Running-Workflows"><a class="docs-heading-anchor" href="#Resuming-Long-Running-Workflows">Resuming Long-Running Workflows</a><a id="Resuming-Long-Running-Workflows-1"></a><a class="docs-heading-anchor-permalink" href="#Resuming-Long-Running-Workflows" title="Permalink"></a></h2><p>Save and resume long-running pipeline executions:</p><pre><code class="language-julia hljs">using GrowthParameterEstimation.Workflow
+
+# Run pipeline and save manifest
+results = run_staged_pipeline(data, stages=stages, config=config)
+manifest_path = save_run_manifest(&quot;pipeline_manifest.toml&quot;; 
+                               config=config,
+                               stage_results=results.stages,
+                               parameter_bank=results.parameter_bank)
+
+# Later, resume from where you left off
+# (assuming you want to resume after stage 2)
+resume_results = run_staged_pipeline(
+    data,
+    stages=stages,
+    config=config,
+    resume_from_stage=&quot;stage_3_name&quot;,  # or use resume_manifest_path
+    resume_manifest_path=&quot;pipeline_manifest.toml&quot;
+)</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 28 August 2026 22:34">Friday 28 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
