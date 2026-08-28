@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## v0.5.1 - 2026-08-28
+
 ### Added
 
 - Global Latin-hypercube/PRCC sensitivity analysis across explicit parameter
@@ -12,6 +14,13 @@ All notable changes to this project will be documented in this file.
   and bound-touching diagnostic.
 - Partially pooled hierarchical joint fitting across all named experimental
   groups, with shared central parameters and log-scale group effects.
+
+### Changed
+
+- Updated CI and documentation metadata to target the `main` branch and supported
+  Julia versions.
+- Updated the documentation environment compatibility to accept the current
+  `0.5` release line.
 
 ## v0.5.0 - 2026-08-22
 

@@ -10,7 +10,7 @@ makedocs(;
     checkdocs = :none, # allow building while we flesh out full API docs
     format=Documenter.HTML(;
         canonical="https://kadinelbak.github.io/GrowthParameterEstimation.jl",
-        edit_link="master",
+        edit_link="main",
         assets=String[],
     ),
     pages=[
@@ -21,5 +21,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/kadinelbak/GrowthParameterEstimation.jl",
-    devbranch="master",
+    devbranch="main",
 )

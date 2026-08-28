@@ -17,7 +17,7 @@ To install the latest development version from GitHub:
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/your-username/GrowthParameterEstimation.jl")
+Pkg.add(url="https://github.com/kadinelbak/GrowthParameterEstimation.jl")
 ```
 
 ## Verifying Installation
