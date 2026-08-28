@@ -21,6 +21,8 @@ All notable changes to this project will be documented in this file.
   Julia versions.
 - Updated the documentation environment compatibility to accept the current
   `0.5` release line.
+- Broadened the Julia compatibility declaration to support Julia 1.10 and newer
+  1.x releases, and added Julia 1.11 to the CI matrix.
 - Removed the checked-in root `Manifest.toml` so package CI and downstream users
   resolve dependencies from `Project.toml` instead of an old Julia 1.10 manifest.
 
