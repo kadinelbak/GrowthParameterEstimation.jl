@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-## v0.5.3 - 2026-08-28
+## v0.5.4 - 2026-08-28
 
 ### Added
 
@@ -33,6 +33,17 @@ All notable changes to this project will be documented in this file.
   `state_index` values.
 - Fixed hierarchical joint-fit random-effect penalty accumulation so scalar SSE
   objectives remain scalar for multiple groups.
+- Renamed the identifiability regression test's local observation-map variable
+  so it no longer shadows Julia's `map` function during symbolic macro
+  expansion.
+
+## v0.5.3 - 2026-08-28
+
+### Notes
+
+- Superseded by `v0.5.4` after Julia General Registry registration to include
+  the identifiability test macro-shadowing fix required by the package CI
+  matrix.
 
 ## v0.5.2 - 2026-08-28
 

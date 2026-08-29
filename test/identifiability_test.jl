@@ -17,14 +17,14 @@ using StructuralIdentifiability
         (x = times, y = [state[2] for state in solution.u], state_index = 2, residual_scale = 0.25),
     ]
     bounds = [(0.05, 1.0), (5.0, 60.0)]
-    map = ObservationMap(
+    observation_map = ObservationMap(
         "two_state_logistic",
         [:sensitive, :resistant],
         [:sensitive_count, :resistant_count];
         description = "Each assay directly measures one population.",
     )
 
-    mapping = validate_observation_map(map, datasets)
+    mapping = validate_observation_map(observation_map, datasets)
     @test nrow(mapping) == 2
     @test all(mapping.measurement .== "state")
 
@@ -110,10 +110,10 @@ using StructuralIdentifiability
     @test nrow(recovery.replicates) == 3
     @test nrow(recovery.summary) == 2
 
-    structural = structural_identifiability_report(map, [:r, :K]; known_inputs = [:drug_concentration])
+    structural = structural_identifiability_report(observation_map, [:r, :K]; known_inputs = [:drug_concentration])
     @test structural.status == "requires_symbolic_backend"
     completed_structural = structural_identifiability_report(
-        map,
+        observation_map,
         [:r, :K];
         backend = (observation_map, parameter_names, known_inputs) -> (
             status = "globally_identifiable",
