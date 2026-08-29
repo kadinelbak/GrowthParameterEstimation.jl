@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Basic Examples · GrowthParameterEstimation.jl</title><meta name="title" content="Basic Examples · GrowthParameterEstimation.jl"/><meta property="og:title" content="Basic Examples · GrowthParameterEstimation.jl"/><meta property="twitter:title" content="Basic Examples · GrowthParameterEstimation.jl"/><meta name="description" content="Documentation for GrowthParameterEstimation.jl."/><meta property="og:description" content="Documentation for GrowthParameterEstimation.jl."/><meta property="twitter:description" content="Documentation for GrowthParameterEstimation.jl."/><meta property="og:url" content="https://kadinelbak.github.io/GrowthParameterEstimation.jl/tutorial/basic_examples/"/><meta property="twitter:url" content="https://kadinelbak.github.io/GrowthParameterEstimation.jl/tutorial/basic_examples/"/><link rel="canonical" href="https://kadinelbak.github.io/GrowthParameterEstimation.jl/tutorial/basic_examples/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">GrowthParameterEstimation.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../identifiability/">Identifiability</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Basic Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Basic Examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/kadinelbak/GrowthParameterEstimation.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/kadinelbak/GrowthParameterEstimation.jl/blob/main/docs/src/tutorial/basic_examples.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Basic-Examples"><a class="docs-heading-anchor" href="#Basic-Examples">Basic Examples</a><a id="Basic-Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-Examples" title="Permalink"></a></h1><p>This tutorial covers common usage patterns for GrowthParameterEstimation.jl.</p><h2 id="Working-with-Different-Models"><a class="docs-heading-anchor" href="#Working-with-Different-Models">Working with Different Models</a><a id="Working-with-Different-Models-1"></a><a class="docs-heading-anchor-permalink" href="#Working-with-Different-Models" title="Permalink"></a></h2><p>The package provides several built-in growth models through the Models module:</p><pre><code class="language-julia hljs">using GrowthParameterEstimation
+
+# Logistic growth
+logistic_model = Models.build_logistic()
+
+# Gompertz growth  
+gompertz_model = Models.build_gompertz()
+
+# Exponential growth
+exponential_model = Models.build_exponential()
+
+# Exponential growth with delay
+exp_delay_model = Models.build_exponential_with_delay()</code></pre><h2 id="Fitting-with-Drug-Exposure"><a class="docs-heading-anchor" href="#Fitting-with-Drug-Exposure">Fitting with Drug Exposure</a><a id="Fitting-with-Drug-Exposure-1"></a><a class="docs-heading-anchor-permalink" href="#Fitting-with-Drug-Exposure" title="Permalink"></a></h2><p>You can fit models that include drug exposure effects:</p><pre><code class="language-julia hljs"># Time points and synthetic data
+t = 0.0:0.5:15.0
+y = [50.0 / (1.0 + 49.0 * exp(-0.4 * ti)) for ti in t] + 0.3*randn(length(t))
+
+# Fit with constant exposure
+result = fit_model(
+    Registry.get_model(&quot;logistic_growth&quot;),
+    t, y,
+    dose=5.0  # 5 units of drug exposure
+)
+
+println(&quot;Growth rate with drug exposure: $(result.params[1])&quot;)
+println(&quot;Carrying capacity with drug exposure: $(result.params[2])&quot;)</code></pre><h2 id="Parameter-Sweeps"><a class="docs-heading-anchor" href="#Parameter-Sweeps">Parameter Sweeps</a><a id="Parameter-Sweeps-1"></a><a class="docs-heading-anchor-permalink" href="#Parameter-Sweeps" title="Permalink"></a></h2><p>Run parameter sweeps to explore model behavior:</p><pre><code class="language-julia hljs">using GrowthParameterEstimation.Simulation
+
+# Define a parameter sweep
+grid = SweepGrid(
+    [1.0, 5.0, 10.0],        # seed totals
+    [0.0, 0.1, 0.5],         # resistant fractions  
+    [0.0, 2.5, 10.0],        # drug doses
+    0.0:0.5:20.0             # time points
+)
+
+# Get model specification
+spec = Registry.get_model(&quot;logistic_growth&quot;)
+
+# Run the sweep
+sweep_result = run_sweep(spec, [0.4, 80.0], grid)  # [growth rate, carrying capacity]
+
+# Access results
+summary_df = sweep_result.summary
+first_result = sweep_result.simulations[(seed_total=1.0, resistant_fraction=0.0, dose=0.0)]
+
+println(&quot;Summary of sweep results:&quot;)
+show(first(summary_df, 5))  # Show first 5 rows</code></pre><h2 id="Model-Selection"><a class="docs-heading-anchor" href="#Model-Selection">Model Selection</a><a id="Model-Selection-1"></a><a class="docs-heading-anchor-permalink" href="#Model-Selection" title="Permalink"></a></h2><p>Perform automated model selection using information criteria:</p><pre><code class="language-julia hljs"># Generate data from a Gompertz process
+t = 0.0:0.5:12.0
+y_true = [80.0 * exp(-exp(1.0 - 0.3 * ti)) for ti in t]
+y = y_true + 0.8*randn(length(t))  # Add noise
+
+# Compare multiple models
+results = enhanced_bic_analysis(
+    t, y;
+    models = [
+        Models.build_exponential(),
+        Models.build_logistic(), 
+        Models.build_gompertz()
+    ],
+    model_names = [&quot;Exponential&quot;, &quot;Logistic&quot;, &quot;Gompertz&quot;]
+)
+
+# See model rankings
+println(&quot;Model rankings by BIC:&quot;)
+for (i, model) in enumerate(results.bic_ranking)
+    println(&quot;$i. $(model.model_name): BIC = $(round(model.bic, digits=2))&quot;)
+end</code></pre><h2 id="Cross-Validation"><a class="docs-heading-anchor" href="#Cross-Validation">Cross-Validation</a><a id="Cross-Validation-1"></a><a class="docs-heading-anchor-permalink" href="#Cross-Validation" title="Permalink"></a></h2><p>Evaluate model performance using cross-validation:</p><pre><code class="language-julia hljs"># Perform leave-one-out cross-validation
+loo_results = leave_one_out_validation(
+    t, y, [0.2, 40.0];
+    model=Models.build_logistic()
+)
+
+println(&quot;LOO RMSE: $(loo_results.rmse)&quot;)
+println(&quot;LOO R²: $(loo_results.r_squared)&quot;)
+
+# Perform k-fold cross-validation  
+cv_results = k_fold_cross_validation(
+    t, y, [0.2, 40.0];
+    model=Models.build_logistic(),
+    k_folds=5
+)
+
+println(&quot;5-fold CV RMSE: $(cv_results.overall_rmse)&quot;)
+println(&quot;5-fold CV R²: $(cv_results.r_squared)&quot;)</code></pre></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 29 August 2026 03:20">Saturday 29 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Identifiability · GrowthParameterEstimation.jl</title><meta name="title" content="Identifiability · GrowthParameterEstimation.jl"/><meta property="og:title" content="Identifiability · GrowthParameterEstimation.jl"/><meta property="twitter:title" content="Identifiability · GrowthParameterEstimation.jl"/><meta name="description" content="Documentation for GrowthParameterEstimation.jl."/><meta property="og:description" content="Documentation for GrowthParameterEstimation.jl."/><meta property="twitter:description" content="Documentation for GrowthParameterEstimation.jl."/><meta property="og:url" content="https://kadinelbak.github.io/GrowthParameterEstimation.jl/identifiability/"/><meta property="twitter:url" content="https://kadinelbak.github.io/GrowthParameterEstimation.jl/identifiability/"/><link rel="canonical" href="https://kadinelbak.github.io/GrowthParameterEstimation.jl/identifiability/"/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">GrowthParameterEstimation.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>Identifiability</a><ul class="internal"><li><a class="tocitem" href="#1.-State-the-observation-map"><span>1. State the observation map</span></a></li><li><a class="tocitem" href="#2.-Run-the-practical-identifiability-report"><span>2. Run the practical-identifiability report</span></a></li><li><a class="tocitem" href="#3.-Interpret-the-diagnostics"><span>3. Interpret the diagnostics</span></a></li><li><a class="tocitem" href="#4.-Test-recovery-before-real-data-interpretation"><span>4. Test recovery before real-data interpretation</span></a></li><li><a class="tocitem" href="#5.-Screen-global-sensitivity-across-the-allowed-parameter-ranges"><span>5. Screen global sensitivity across the allowed parameter ranges</span></a></li><li><a class="tocitem" href="#6.-Profile-parameter-pairs-when-tradeoffs-are-biologically-plausible"><span>6. Profile parameter pairs when tradeoffs are biologically plausible</span></a></li><li><a class="tocitem" href="#7.-Fit-all-groups-together-with-partial-pooling"><span>7. Fit all groups together with partial pooling</span></a></li><li><a class="tocitem" href="#8.-Structural-analysis-is-intentionally-explicit"><span>8. Structural analysis is intentionally explicit</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Identifiability</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Identifiability</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/kadinelbak/GrowthParameterEstimation.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/kadinelbak/GrowthParameterEstimation.jl/blob/main/docs/src/identifiability.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Identifiability-analysis"><a class="docs-heading-anchor" href="#Identifiability-analysis">Identifiability analysis</a><a id="Identifiability-analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Identifiability-analysis" title="Permalink"></a></h1><p>Parameter estimation and identifiability are different questions. A low residual error only shows that one parameter vector fits the observed data; it does not establish that the parameters are uniquely supported by the data.</p><p><code>GrowthParameterEstimation.jl</code> provides practical, numerical diagnostics for arbitrary <code>run_joint_fit</code> models. Structural global/local identifiability is kept separate because it needs a symbolic differential-algebra analysis of the ODEs and the exact observation process.</p><h2 id="1.-State-the-observation-map"><a class="docs-heading-anchor" href="#1.-State-the-observation-map">1. State the observation map</a><a id="1.-State-the-observation-map-1"></a><a class="docs-heading-anchor-permalink" href="#1.-State-the-observation-map" title="Permalink"></a></h2><p>Document every state and every quantity that the assay actually measures. For a four-population model, one useful starting point is <code>S</code> (viable sensitive cells), <code>D1</code> (recoverably damaged cells), <code>D2</code> (terminal damage/dead cells), and <code>M</code> (macrophages). Directly measuring <code>S</code>, <code>D1</code>, <code>D2</code>, and <code>M</code> gives a substantially different identifiability result from measuring only total viability.</p><pre><code class="language-julia hljs"># This is an illustrative model. Drug concentration is an externally known
+# input, while the seven entries of p are estimated from the joint data.
+drug_concentration(t) = t &lt;= 2.0 ? 1.0 : 0.2
+
+function four_state_model!(du, u, p, t)
+    S, D1, D2, M = u
+    growth, capacity, drug_damage, repair, terminal_damage, macrophage_clearance, macrophage_killing = p
+    damage = drug_damage * drug_concentration(t) * S
+
+    du[1] = growth * S * (1 - (S + D1) / capacity) - damage - macrophage_killing * M * S
+    du[2] = damage - repair * D1 - terminal_damage * D1
+    du[3] = terminal_damage * D1 - macrophage_clearance * M * D2
+    du[4] = 0.0  # Replace with macrophage recruitment/dynamics when those terms are supported by data.
+end
+
+map = ObservationMap(
+    &quot;drug_macrophage_four_state&quot;,
+    [:S, :D1, :D2, :M],
+    [:viable_cells, :recoverable_damage, :terminal_damage, :macrophages];
+    description = &quot;Each assay maps directly to one modeled state.&quot;,
+)
+
+datasets = [
+    (x = time, y = S_counts, state_index = 1, residual_scale = S_sd),
+    (x = time, y = D1_counts, state_index = 2, residual_scale = D1_sd),
+    (x = time, y = D2_counts, state_index = 3, residual_scale = D2_sd),
+    (x = time, y = M_counts, state_index = 4, residual_scale = M_sd),
+]
+
+initial_state = [S_counts[1], D1_counts[1], D2_counts[1], M_counts[1]]
+
+validate_observation_map(map, datasets)</code></pre><p>Use one <code>dataset_specs</code> entry for each independently measured series. Set <code>residual_scale</code> to a defensible measurement SD (or a scale derived from replicates). It supplies the weighting used by <code>run_joint_fit</code>, Fisher information, profiles, and simulated recovery tests.</p><h2 id="2.-Run-the-practical-identifiability-report"><a class="docs-heading-anchor" href="#2.-Run-the-practical-identifiability-report">2. Run the practical-identifiability report</a><a id="2.-Run-the-practical-identifiability-report-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Run-the-practical-identifiability-report" title="Permalink"></a></h2><pre><code class="language-julia hljs">config = IdentifiabilityConfig(
+    [:growth, :capacity, :drug_damage, :repair, :terminal_damage,
+     :macrophage_clearance, :macrophage_killing],
+    [(0.01, 2.0), (1e3, 1e7), (1e-5, 5.0),
+     (1e-5, 5.0), (1e-5, 5.0), (1e-5, 5.0), (1e-7, 5.0)];
+    n_starts = 40,
+    start_scale = :log,
+    profile_points_per_side = 12,
+    bootstrap_replicates = 200,
+    bootstrap_method = :parametric,
+)
+
+initial_guess = [0.3, 1e5, 0.1, 0.1, 0.05, 1e-4, 1e-7]
+
+report = practical_identifiability_report(
+    four_state_model!, datasets, initial_state, initial_guess;
+    config = config,
+    optimizer = :nelder_mead,
+    maxiters = 20_000,
+)</code></pre><p>The result contains a best joint fit, multistart audit table, clusters of near-equivalent solutions, Fisher-information result, and profile likelihoods. When <code>bootstrap_replicates &gt; 0</code>, it also includes a series-stratified bootstrap summary in <code>report.bootstrap</code>; preserve biological/assay replicate strata as separate dataset series when building that analysis. Treat <code>report.status == &quot;passes_numerical_gates&quot;</code> as a numerical screening result, not a proof that the biology is identifiable.</p><h2 id="3.-Interpret-the-diagnostics"><a class="docs-heading-anchor" href="#3.-Interpret-the-diagnostics">3. Interpret the diagnostics</a><a id="3.-Interpret-the-diagnostics-1"></a><a class="docs-heading-anchor-permalink" href="#3.-Interpret-the-diagnostics" title="Permalink"></a></h2><ul><li><code>fisher.numerical_rank &lt; number_of_parameters</code>: at least one local parameter direction is not estimable at the fitted solution.</li><li>Very large <code>fisher.condition_number</code>: parameters are nearly confounded even when the numerical rank is full.</li><li>More than one solution cluster within the BIC tolerance: different parameter vectors fit about equally well.</li><li>A profile confidence status other than <code>&quot;bounded&quot;</code>: the selected parameter has not been bracketed by the current data and parameter bounds.</li><li>Low bootstrap success rate or a broad/multimodal bootstrap distribution: the fitted parameter is not stable to plausible sampling variation.</li></ul><p>For difficult systems, report these diagnostics alongside each biological conclusion rather than quoting a single best-fit parameter vector.</p><h2 id="4.-Test-recovery-before-real-data-interpretation"><a class="docs-heading-anchor" href="#4.-Test-recovery-before-real-data-interpretation">4. Test recovery before real-data interpretation</a><a id="4.-Test-recovery-before-real-data-interpretation-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Test-recovery-before-real-data-interpretation" title="Permalink"></a></h2><pre><code class="language-julia hljs">starts = generate_multistarts(config.bounds; n_starts = 40, scale = :log)
+recovery = synthetic_recovery_benchmark(
+    four_state_model!, datasets, initial_state, known_parameters;
+    bounds = config.bounds,
+    starts = starts,
+    n_simulations = 200,
+)</code></pre><p>This generates data at the real measurement schedule, adds Gaussian error using each series&#39; <code>residual_scale</code>, and refits every simulated experiment. Use it to compare alternative time grids, replicate counts, macrophage perturbations, and direct damaged-cell measurements before committing to an experimental design.</p><p><code>bootstrap_joint_fit</code> provides residual and parametric bootstrap refits for an already fitted experiment. It resamples within each supplied series, so replicate-aware analyses should keep biological/assay replicate strata separate in <code>dataset_specs</code>.</p><h2 id="5.-Screen-global-sensitivity-across-the-allowed-parameter-ranges"><a class="docs-heading-anchor" href="#5.-Screen-global-sensitivity-across-the-allowed-parameter-ranges">5. Screen global sensitivity across the allowed parameter ranges</a><a id="5.-Screen-global-sensitivity-across-the-allowed-parameter-ranges-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Screen-global-sensitivity-across-the-allowed-parameter-ranges" title="Permalink"></a></h2><p>Local derivatives only describe the neighborhood of one fitted point. Use Latin-hypercube sampling and partial rank correlations (PRCCs) to see which parameters matter across the scientifically allowed ranges. This is especially useful before fitting a four-population model.</p><pre><code class="language-julia hljs">global = global_sensitivity_analysis(
+    four_state_model!, datasets, initial_state;
+    bounds = config.bounds,
+    parameter_names = config.parameter_names,
+    n_samples = 400,
+    scale = :log,
+)
+
+global.summary      # Mean and maximum absolute PRCC per parameter
+global.pointwise    # PRCC for every observed series and time point
+global.samples      # Complete sample and simulation-success audit</code></pre><p>PRCC measures a monotone global relationship after accounting for the other sampled parameters. It is not a proof of identifiability. A low PRCC can still occur for an important non-monotone or interaction-driven parameter, so use it as a screening and experimental-design tool alongside profiles and recovery.</p><h2 id="6.-Profile-parameter-pairs-when-tradeoffs-are-biologically-plausible"><a class="docs-heading-anchor" href="#6.-Profile-parameter-pairs-when-tradeoffs-are-biologically-plausible">6. Profile parameter pairs when tradeoffs are biologically plausible</a><a id="6.-Profile-parameter-pairs-when-tradeoffs-are-biologically-plausible-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Profile-parameter-pairs-when-tradeoffs-are-biologically-plausible" title="Permalink"></a></h2><p>One-at-a-time profiles can conceal a diagonal tradeoff, such as drug damage versus macrophage killing. <code>paired_profile_likelihood</code> fixes both values on a grid and re-fits every other parameter at each grid point.</p><pre><code class="language-julia hljs">paired = paired_profile_likelihood(
+    four_state_model!, datasets, initial_state, report.fit.params;
+    bounds = config.bounds,
+    parameter_names = config.parameter_names,
+    pair = (:drug_damage, :macrophage_killing),
+    points_per_side = 10,
+)
+
+paired.surface          # Full weighted-SSE grid
+paired.accepted_region  # Two-parameter 95% region
+paired.region           # Bounded or bound-touching status</code></pre><p>The default threshold is the two-parameter 95% chi-square cutoff, 5.991. A region touching the supplied bounds means the current experiment has not bracketed that combined parameter tradeoff.</p><h2 id="7.-Fit-all-groups-together-with-partial-pooling"><a class="docs-heading-anchor" href="#7.-Fit-all-groups-together-with-partial-pooling">7. Fit all groups together with partial pooling</a><a id="7.-Fit-all-groups-together-with-partial-pooling-1"></a><a class="docs-heading-anchor-permalink" href="#7.-Fit-all-groups-together-with-partial-pooling" title="Permalink"></a></h2><p>Use <code>hierarchical_joint_fit</code> when multiple conditions share a mechanism but some parameters should be allowed to differ by group. This is not an average of independently fitted answers: every series contributes to one joint, penalized objective.</p><pre><code class="language-julia hljs">groups = [
+    (name = &quot;sensitive&quot;, dataset_specs = sensitive_datasets, u0 = sensitive_u0),
+    (name = &quot;resistant&quot;, dataset_specs = resistant_datasets, u0 = resistant_u0),
+    (name = &quot;with_macrophages&quot;, dataset_specs = macrophage_datasets, u0 = macrophage_u0),
+]
+
+hierarchical = hierarchical_joint_fit(
+    four_state_model!, groups, initial_guess;
+    bounds = config.bounds,
+    parameter_names = config.parameter_names,
+    varying_parameters = [:growth, :drug_damage],
+    random_effect_sd = [0.35, 0.50],
+)
+
+hierarchical.central_params       # Shared central estimate
+hierarchical.group_parameters     # Central and group-specific estimates
+hierarchical.pooled_bic           # BIC based on all observations together</code></pre><p><code>random_effect_sd</code> is a fixed standard deviation for log-scale group deviations. Smaller values apply stronger pooling; select it from biological knowledge or compare a small, pre-specified range by recovery benchmarks. The routine currently requires strictly positive bounds for parameters that vary between groups because it uses multiplicative, log-scale effects.</p><h2 id="8.-Structural-analysis-is-intentionally-explicit"><a class="docs-heading-anchor" href="#8.-Structural-analysis-is-intentionally-explicit">8. Structural analysis is intentionally explicit</a><a id="8.-Structural-analysis-is-intentionally-explicit-1"></a><a class="docs-heading-anchor-permalink" href="#8.-Structural-analysis-is-intentionally-explicit" title="Permalink"></a></h2><pre><code class="language-julia hljs">using StructuralIdentifiability
+
+# Repeat the model in symbolic form. Its output equations must match the
+# ObservationMap and datasets used for numerical fitting.
+symbolic_model = @ODEmodel(
+    S&#39;(t) = growth * S(t) * (1 - (S(t) + D1(t)) / capacity) -
+            drug_damage * drug(t) * S(t) - macrophage_killing * M(t) * S(t),
+    D1&#39;(t) = drug_damage * drug(t) * S(t) - repair * D1(t) - terminal_damage * D1(t),
+    D2&#39;(t) = terminal_damage * D1(t) - macrophage_clearance * M(t) * D2(t),
+    M&#39;(t) = 0,
+    yS(t) = S(t),
+    yD1(t) = D1(t),
+    yD2(t) = D2(t),
+    yM(t) = M(t),
+)
+
+structural = structural_identifiability(
+    symbolic_model;
+    mode = :global,
+    prob_threshold = 0.99,
+)</code></pre><p>The table labels each term as <code>&quot;globally&quot;</code>, <code>&quot;locally&quot;</code>, or <code>&quot;nonidentifiable&quot;</code>. For a faster screening run, use <code>mode = :local</code>; use <code>experiment_type = :ME</code> only when analyzing independent initial conditions across multiple experiments. The symbolic model must include known inputs such as <code>drug(t)</code> and the same outputs, initial-condition assumptions, and observation map used for fitting. A numerical optimizer, FIM, bootstrap, or profile cannot prove structural identifiability by itself.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 29 August 2026 03:20">Saturday 29 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
