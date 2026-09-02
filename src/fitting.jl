@@ -9,6 +9,7 @@ using LsqFit
 using RecursiveArrayTools
 using DiffEqParamEstim
 using Optimization
+using OptimizationBBO
 using ForwardDiff
 using OptimizationOptimJL
 using Random
@@ -18,7 +19,8 @@ using ..Registry
 
 export setUpProblem, calculate_bic, pQuickStat, run_single_fit,
     compare_models, compare_datasets, compare_models_dict, fit_three_datasets,
-    run_joint_fit, run_joint_multistart, profile_joint_fit_bounds,
+    run_joint_fit, run_joint_multistart, generate_multistarts, bootstrap_joint_fit,
+    evaluate_joint_fit, blocked_joint_validation, profile_joint_fit_bounds,
     profile_joint_fit_bounds_two_sided, compare_joint_models_dict,
     fit_model, fit_condition, predict_model
 
@@ -297,10 +299,14 @@ function run_single_fit(
 end
 
 function _resolve_optimizer(optimizer_method::Symbol)
-    if optimizer_method == :nelder_mead || optimizer_method == :de_rand_1_bin || optimizer_method == :bfgs
-        return OptimizationOptimJL.Fminbox(OptimizationOptimJL.NelderMead())
+    if optimizer_method == :nelder_mead
+        return (algorithm = OptimizationOptimJL.Fminbox(OptimizationOptimJL.NelderMead()), ad = nothing)
+    elseif optimizer_method == :de_rand_1_bin
+        return (algorithm = OptimizationBBO.BBO_adaptive_de_rand_1_bin_radiuslimited(), ad = nothing)
+    elseif optimizer_method == :bfgs
+        return (algorithm = OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS()), ad = Optimization.AutoFiniteDiff())
     end
-    return OptimizationOptimJL.Fminbox(OptimizationOptimJL.NelderMead())
+    throw(ArgumentError("optimizer_method must be :de_rand_1_bin, :nelder_mead, or :bfgs"))
 end
 
 function _default_u0(y0::Float64, n_states::Int)
@@ -523,6 +529,28 @@ function fit_model(
         end
 
         verbose && println("fit_model random-search trials: ", n_trials)
+
+        resolved = _resolve_optimizer(optimizer_method)
+        objective_function = (candidate, _) -> first(ssr_from_free(candidate))
+        objective = resolved.ad === nothing ?
+            Optimization.OptimizationFunction(objective_function) :
+            Optimization.OptimizationFunction(objective_function, resolved.ad)
+        problem = Optimization.OptimizationProblem(objective, best_free; lb = lb, ub = ub)
+        optimized = Optimization.solve(
+            problem,
+            resolved.algorithm;
+            maxiters = maxiters,
+            maxtime = max_time,
+        )
+        optimized_free = collect(optimized.u)
+        optimized_ssr, optimized_retcode = ssr_from_free(optimized_free)
+        if isfinite(optimized_ssr) && optimized_ssr <= best_ssr
+            best_free = optimized_free
+            best_ssr = optimized_ssr
+            best_retcode = optimized_retcode
+        end
+
+        verbose && println("fit_model optimizer: ", optimizer_method, ", retcode: ", optimized.retcode)
     end
 
     best_params = _build_full_params(best_free, n_total, free_indices, fixed_map)
@@ -1148,6 +1176,7 @@ function run_joint_fit(
     initial_time      = nothing,
     show_stats::Bool  = false,
     maxiters::Integer = 10_000,
+    maxtime::Union{Nothing,Real} = nothing,
     reltol::Real      = 1e-10,
     abstol::Real      = 1e-10,
     optimizer::Symbol = :bfgs,
@@ -1239,7 +1268,9 @@ function run_joint_fit(
     p_opt = if optimizer == :bfgs
         loss = Optimization.OptimizationFunction((x, _) -> objective(x), Optimization.AutoForwardDiff())
         optprob = Optimization.OptimizationProblem(loss, Float64.(p0); lb = lb, ub = ub)
-        result = Optimization.solve(optprob, OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS()); maxiters = maxiters)
+        result = maxtime === nothing ?
+            Optimization.solve(optprob, OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS()); maxiters = maxiters) :
+            Optimization.solve(optprob, OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS()); maxiters = maxiters, maxtime = Float64(maxtime))
         collect(result.u)
     elseif optimizer == :nelder_mead
         bounded(z) = lb .+ (ub .- lb) ./ (1 .+ exp.(-clamp.(z, -30.0, 30.0)))
@@ -1247,7 +1278,9 @@ function run_joint_fit(
         z0 = log.(fractions ./ (1 .- fractions))
         loss = Optimization.OptimizationFunction((z, _) -> objective(bounded(z)))
         optprob = Optimization.OptimizationProblem(loss, z0)
-        result = Optimization.solve(optprob, OptimizationOptimJL.NelderMead(); maxiters = maxiters)
+        result = maxtime === nothing ?
+            Optimization.solve(optprob, OptimizationOptimJL.NelderMead(); maxiters = maxiters) :
+            Optimization.solve(optprob, OptimizationOptimJL.NelderMead(); maxiters = maxiters, maxtime = Float64(maxtime))
         collect(bounded(result.u))
     else
         throw(ArgumentError("optimizer must be :bfgs or :nelder_mead"))
@@ -1288,6 +1321,39 @@ function run_joint_fit(
 end
 
 """
+    generate_multistarts(p0, bounds; n_starts=20, seed=42)
+
+Generate reproducible bounded initial parameter vectors. The supplied `p0` is
+always the first start. Parameters spanning more than two positive orders of
+magnitude are sampled log-uniformly; all others are sampled uniformly.
+"""
+function generate_multistarts(
+    p0::AbstractVector{<:Real},
+    bounds::Vector{<:Tuple};
+    n_starts::Int = 20,
+    seed::Int = 42,
+)
+    n_starts >= 1 || throw(ArgumentError("n_starts must be positive"))
+    length(p0) == length(bounds) || throw(ArgumentError("p0 and bounds must have equal length"))
+    normalized_bounds = [(Float64(lo), Float64(hi)) for (lo, hi) in bounds]
+    all(lo < hi for (lo, hi) in normalized_bounds) || throw(ArgumentError("every parameter bound must satisfy lower < upper"))
+    starts = Vector{Vector{Float64}}()
+    push!(starts, clamp.(Float64.(p0), first.(normalized_bounds), last.(normalized_bounds)))
+    rng = MersenneTwister(seed)
+    for _ in 2:n_starts
+        push!(starts, [
+            if lo > 0 && hi / lo > 100
+                exp(log(lo) + rand(rng) * (log(hi) - log(lo)))
+            else
+                lo + rand(rng) * (hi - lo)
+            end
+            for (lo, hi) in normalized_bounds
+        ])
+    end
+    return starts
+end
+
+"""
     run_joint_multistart(model, dataset_specs, u0, starts; kwargs...)
 
 Run `run_joint_fit` from several initial parameter vectors and retain the
@@ -1299,6 +1365,7 @@ function run_joint_multistart(
     dataset_specs::Vector{<:NamedTuple},
     u0::Vector{<:Real},
     starts::Vector{<:AbstractVector};
+    refine_optimizer::Union{Nothing,Symbol} = nothing,
     kwargs...,
 )
     isempty(starts) && throw(ArgumentError("starts cannot be empty"))
@@ -1343,11 +1410,276 @@ function run_joint_multistart(
     best_start_index = successful_indices[
         argmin([Float64(fits[index].bic) for index in successful_indices])
     ]
+    best_fit = fits[best_start_index]
+    if refine_optimizer !== nothing
+        refined_kwargs = merge((; kwargs...), (optimizer = refine_optimizer,))
+        refined = try
+            run_joint_fit(
+                model, dataset_specs, u0, Float64.(best_fit.params);
+                refined_kwargs...,
+            )
+        catch error
+            push!(rows, (
+                start_index = 0,
+                status = "refinement_failed",
+                bic = NaN,
+                scaled_sse = NaN,
+                raw_sse = NaN,
+                params = "",
+                message = sprint(showerror, error),
+            ))
+            nothing
+        end
+        if refined !== nothing
+            valid = isfinite(refined.bic) && isfinite(refined.scaled_sse) &&
+                isfinite(refined.raw_sse) && refined.scaled_sse < 9.99e11
+            push!(rows, (
+                start_index = 0,
+                status = valid ? "refined_$(refine_optimizer)" : "refinement_invalid",
+                bic = valid ? Float64(refined.bic) : NaN,
+                scaled_sse = valid ? Float64(refined.scaled_sse) : NaN,
+                raw_sse = valid ? Float64(refined.raw_sse) : NaN,
+                params = valid ? string(Float64.(refined.params)) : "",
+                message = valid ? "" : "Non-finite or failure-sentinel refinement.",
+            ))
+            valid && Float64(refined.bic) < Float64(best_fit.bic) && (best_fit = refined)
+        end
+    end
     return (
-        fit = fits[best_start_index],
+        fit = best_fit,
         fits = fits,
         summary = DataFrame(rows),
         best_start_index = best_start_index,
+    )
+end
+
+"Evaluate fixed joint-model parameters on arbitrary held-out trajectories."
+function evaluate_joint_fit(
+    model::Function,
+    dataset_specs::Vector{<:NamedTuple},
+    u0::Vector{<:Real},
+    params::Vector{<:Real};
+    u0_builder = nothing,
+    solver = Tsit5(),
+    reltol::Real = 1e-7,
+    abstol::Real = 1e-7,
+    initial_time = nothing,
+)
+    isempty(dataset_specs) && throw(ArgumentError("dataset_specs cannot be empty"))
+    save_times = sort(unique(vcat([Float64.(dataset.x) for dataset in dataset_specs]...)))
+    fit_initial_time = initial_time === nothing ? save_times[1] : Float64(initial_time)
+    initial_state = u0_builder === nothing ? Float64.(u0) : Float64.(u0_builder(params))
+    problem = ODEProblem(model, initial_state, (fit_initial_time, save_times[end]), Float64.(params))
+    solution = solve(problem, solver; saveat = save_times, reltol = reltol, abstol = abstol)
+    solution.retcode == ReturnCode.Success || error("Held-out prediction solve failed: $(solution.retcode)")
+    predictions = Vector{Vector{Float64}}()
+    scaled_sse = 0.0
+    raw_sse = 0.0
+    n_points = 0
+    for dataset in dataset_specs
+        state_index = haskey(dataset, :state_index) ? Int(dataset.state_index) : 0
+        observable = haskey(dataset, :observable) ? dataset.observable : nothing
+        scale = haskey(dataset, :residual_scale) ? max(Float64(dataset.residual_scale), eps(Float64)) : 1.0
+        values = Float64[]
+        for (time, observed) in zip(dataset.x, dataset.y)
+            index = findfirst(value -> isapprox(value, Float64(time); atol = 1e-10, rtol = 1e-10), save_times)
+            index === nothing && error("Held-out time was not saved")
+            state = solution.u[index]
+            predicted = if observable === nothing
+                Float64(state[state_index])
+            elseif applicable(observable, state, params, time)
+                Float64(observable(state, params, time))
+            elseif applicable(observable, state, params)
+                Float64(observable(state, params))
+            else
+                Float64(observable(state))
+            end
+            push!(values, predicted)
+            residual = Float64(observed) - predicted
+            raw_sse += residual^2
+            scaled_sse += (residual / scale)^2
+            n_points += 1
+        end
+        push!(predictions, values)
+    end
+    return (
+        predictions = predictions,
+        raw_sse = raw_sse,
+        scaled_sse = scaled_sse,
+        n_points = n_points,
+        rmse = sqrt(raw_sse / n_points),
+        nrmse = sqrt(scaled_sse / n_points),
+    )
+end
+
+"Refit while holding out each complete experimental block in turn."
+function blocked_joint_validation(
+    model::Function,
+    dataset_specs::Vector{<:NamedTuple},
+    u0::Vector{<:Real},
+    p0::Vector{<:Real},
+    blocks::AbstractVector;
+    bounds::Vector{<:Tuple},
+    starts_per_fold::Int = 3,
+    seed::Int = 42,
+    u0_builder = nothing,
+    solver = Tsit5(),
+    optimizer::Symbol = :nelder_mead,
+    maxiters::Int = 300,
+    reltol::Real = 1e-7,
+    abstol::Real = 1e-7,
+    initial_time = nothing,
+)
+    length(blocks) == length(dataset_specs) || throw(ArgumentError("one block label is required per trajectory"))
+    rows = NamedTuple[]
+    rng = MersenneTwister(seed)
+    for block in unique(blocks)
+        held_indices = findall(==(block), blocks)
+        train_indices = setdiff(eachindex(dataset_specs), held_indices)
+        if isempty(train_indices) || isempty(held_indices)
+            continue
+        end
+        fit = try
+            starts = generate_multistarts(p0, bounds; n_starts = starts_per_fold, seed = rand(rng, 1:typemax(Int32)))
+            run_joint_multistart(
+                model, dataset_specs[train_indices], u0, starts;
+                bounds = bounds,
+                u0_builder = u0_builder,
+                solver = solver,
+                optimizer = optimizer,
+                maxiters = maxiters,
+                reltol = reltol,
+                abstol = abstol,
+                initial_time = initial_time,
+            ).fit
+        catch error
+            push!(rows, (block = string(block), status = "failed", n_train_trajectories = length(train_indices), n_test_trajectories = length(held_indices), n_test_points = 0, rmse = NaN, nrmse = NaN, message = sprint(showerror, error)))
+            continue
+        end
+        score = try
+            evaluate_joint_fit(
+                model, dataset_specs[held_indices], u0, fit.params;
+                u0_builder = u0_builder,
+                solver = solver,
+                reltol = reltol,
+                abstol = abstol,
+                initial_time = initial_time,
+            )
+        catch error
+            push!(rows, (block = string(block), status = "failed", n_train_trajectories = length(train_indices), n_test_trajectories = length(held_indices), n_test_points = 0, rmse = NaN, nrmse = NaN, message = sprint(showerror, error)))
+            continue
+        end
+        push!(rows, (block = string(block), status = "completed", n_train_trajectories = length(train_indices), n_test_trajectories = length(held_indices), n_test_points = score.n_points, rmse = score.rmse, nrmse = score.nrmse, message = ""))
+    end
+    return DataFrame(rows)
+end
+
+"""
+    bootstrap_joint_fit(model, dataset_specs, u0, fitted;
+        bounds, n_bootstrap=200, starts_per_bootstrap=2, seed=42, kwargs...)
+
+Residual-bootstrap an entire joint fit. Residuals are sampled independently
+within each trajectory, every synthetic dataset is refitted, and 95% parameter
+and prediction intervals are returned. This quantifies fit uncertainty and is
+distinct from resampling endpoint wells without refitting the model.
+"""
+function bootstrap_joint_fit(
+    model::Function,
+    dataset_specs::Vector{<:NamedTuple},
+    u0::Vector{<:Real},
+    fitted;
+    bounds::Vector{<:Tuple},
+    n_bootstrap::Int = 200,
+    starts_per_bootstrap::Int = 2,
+    seed::Int = 42,
+    u0_builder = nothing,
+    solver = Tsit5(),
+    optimizer::Symbol = :nelder_mead,
+    maxiters::Int = 300,
+    reltol::Real = 1e-7,
+    abstol::Real = 1e-7,
+    initial_time = nothing,
+)
+    n_bootstrap >= 1 || throw(ArgumentError("n_bootstrap must be positive"))
+    starts_per_bootstrap >= 1 || throw(ArgumentError("starts_per_bootstrap must be positive"))
+    length(dataset_specs) == length(fitted.predictions) ||
+        throw(ArgumentError("fitted predictions must align with dataset_specs"))
+    rng = MersenneTwister(seed)
+    parameter_rows = NamedTuple[]
+    prediction_draws = [Vector{Vector{Float64}}() for _ in dataset_specs]
+    failures = NamedTuple[]
+    for replicate in 1:n_bootstrap
+        synthetic = NamedTuple[]
+        for (dataset, prediction) in zip(dataset_specs, fitted.predictions)
+            observed = Float64.(dataset.y)
+            predicted = Float64.(prediction)
+            residuals = observed .- predicted
+            sampled = residuals[rand(rng, eachindex(residuals), length(residuals))]
+            push!(synthetic, merge(dataset, (y = max.(predicted .+ sampled, 0.0),)))
+        end
+        starts = generate_multistarts(
+            fitted.params,
+            bounds;
+            n_starts = starts_per_bootstrap,
+            seed = rand(rng, 1:typemax(Int32)),
+        )
+        result = try
+            run_joint_multistart(
+                model, synthetic, u0, starts;
+                bounds = bounds,
+                u0_builder = u0_builder,
+                solver = solver,
+                optimizer = optimizer,
+                maxiters = maxiters,
+                reltol = reltol,
+                abstol = abstol,
+                initial_time = initial_time,
+            ).fit
+        catch error
+            push!(failures, (replicate = replicate, message = sprint(showerror, error)))
+            continue
+        end
+        for (parameter_index, value) in enumerate(result.params)
+            push!(parameter_rows, (replicate = replicate, parameter_index = parameter_index, value = Float64(value)))
+        end
+        for index in eachindex(prediction_draws)
+            push!(prediction_draws[index], Float64.(result.predictions[index]))
+        end
+    end
+    isempty(parameter_rows) && error("No whole-fit bootstrap replicate completed")
+    parameter_samples = DataFrame(parameter_rows)
+    parameter_summary = combine(
+        groupby(parameter_samples, :parameter_index),
+        :value => (x -> quantile(x, 0.025)) => :ci95_lower,
+        :value => median => :median,
+        :value => (x -> quantile(x, 0.975)) => :ci95_upper,
+        nrow => :successful_replicates,
+    )
+    prediction_rows = NamedTuple[]
+    for (dataset_index, draws) in enumerate(prediction_draws)
+        isempty(draws) && continue
+        matrix = reduce(hcat, draws)
+        for observation_index in axes(matrix, 1)
+            values = vec(matrix[observation_index, :])
+            push!(prediction_rows, (
+                dataset_index = dataset_index,
+                observation_index = observation_index,
+                time = Float64(dataset_specs[dataset_index].x[observation_index]),
+                ci95_lower = quantile(values, 0.025),
+                median = median(values),
+                ci95_upper = quantile(values, 0.975),
+                successful_replicates = length(values),
+            ))
+        end
+    end
+    return (
+        parameter_samples = parameter_samples,
+        parameter_summary = parameter_summary,
+        prediction_summary = DataFrame(prediction_rows),
+        failures = isempty(failures) ? DataFrame(replicate = Int[], message = String[]) : DataFrame(failures),
+        requested_replicates = n_bootstrap,
+        successful_replicates = length(unique(parameter_samples.replicate)),
+        method = "within-trajectory residual bootstrap with complete joint refitting",
     )
 end
 

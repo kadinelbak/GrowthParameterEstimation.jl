@@ -444,6 +444,26 @@ using Random
         @test isfinite(fitted.bic)
         @test fitted.ssr >= 0
 
+        @test_throws ArgumentError fit_model(
+            get_model("test_hill_death"), x, y, 0.5;
+            optimizer_method = :not_an_optimizer,
+            maxiters = 5,
+            max_time = 0.1,
+        )
+
+        optimizer_types = [
+            typeof(GrowthParameterEstimation.Fitting._resolve_optimizer(method).algorithm)
+            for method in (:de_rand_1_bin, :nelder_mead, :bfgs)
+        ]
+        @test length(unique(optimizer_types)) == 3
+
+        starts = generate_multistarts([0.5, 10.0], [(0.01, 1.0), (1.0, 1000.0)]; n_starts=20, seed=17)
+        @test length(starts) == 20
+        @test starts[1] == [0.5, 10.0]
+        @test starts == generate_multistarts([0.5, 10.0], [(0.01, 1.0), (1.0, 1000.0)]; n_starts=20, seed=17)
+        @test all(0.01 <= start[1] <= 1.0 && 1.0 <= start[2] <= 1000.0 for start in starts)
+        @test_throws ArgumentError generate_multistarts([0.5], [(1.0, 0.0)]; n_starts=2)
+
         anchored = fit_model(
             get_model("test_hill_death"),
             x,
@@ -662,6 +682,43 @@ using Random
         @test nrow(multistart.summary) == 2
         @test multistart.best_start_index in 1:2
         @test all(multistart.summary.status .== "completed")
+
+        refined_multistart = run_joint_multistart(
+            logistic_joint!, datasets, u0_joint, [[0.2, 20.0]];
+            bounds = [(0.01, 1.0), (5.0, 60.0)],
+            optimizer = :nelder_mead,
+            refine_optimizer = :bfgs,
+            maxiters = 20,
+            show_stats = false,
+        )
+        @test nrow(refined_multistart.summary) == 2
+        @test startswith(String(last(refined_multistart.summary.status)), "refined_") ||
+            String(last(refined_multistart.summary.status)) == "refinement_failed"
+
+        evaluated = evaluate_joint_fit(logistic_joint!, datasets, u0_joint, joint_fit.params)
+        @test evaluated.n_points == 12
+        @test isfinite(evaluated.nrmse)
+
+        blocked = blocked_joint_validation(
+            logistic_joint!, datasets, u0_joint, joint_fit.params, ["state1", "state2"];
+            bounds = [(0.01, 1.0), (5.0, 60.0)],
+            starts_per_fold = 1,
+            maxiters = 20,
+        )
+        @test nrow(blocked) == 2
+        @test all(blocked.status .== "completed")
+        @test all(isfinite, blocked.nrmse)
+
+        bootstrap = bootstrap_joint_fit(
+            logistic_joint!, datasets, u0_joint, joint_fit;
+            bounds = [(0.01, 1.0), (5.0, 60.0)],
+            n_bootstrap = 3,
+            starts_per_bootstrap = 1,
+            maxiters = 20,
+        )
+        @test bootstrap.successful_replicates >= 1
+        @test nrow(bootstrap.parameter_summary) == 2
+        @test nrow(bootstrap.prediction_summary) == 12
     end
 end
 

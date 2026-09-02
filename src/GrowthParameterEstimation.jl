@@ -51,7 +51,8 @@ export
     # Fitting functions
     setUpProblem, calculate_bic, pQuickStat, run_single_fit,
     compare_models, compare_datasets, compare_models_dict, fit_three_datasets, fit_model, fit_condition,
-    run_joint_fit, run_joint_multistart, profile_joint_fit_bounds,
+    run_joint_fit, run_joint_multistart, generate_multistarts, bootstrap_joint_fit,
+    evaluate_joint_fit, blocked_joint_validation, profile_joint_fit_bounds,
     profile_joint_fit_bounds_two_sided, compare_joint_models_dict,
     summarize_joint_bic, summarize_joint_bic_by_group, summarize_joint_parameter_stability,
     summarize_pooling_bic, symmetric_relative_pair,
