@@ -16,6 +16,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Identifiability" => "identifiability.md",
+        "Control handoff" => "control.md",
     ],
 )
 

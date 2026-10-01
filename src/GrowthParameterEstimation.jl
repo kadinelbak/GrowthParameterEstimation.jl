@@ -12,6 +12,7 @@ include("joint_summary.jl")
 include("analysis.jl")
 include("identifiability.jl")
 include("workflow.jl")
+include("control.jl")
 # include("models_legacy.jl")  # Remove legacy ODE RHS functions for backward compatibility
 
 using .DataLayer
@@ -25,6 +26,7 @@ using .JointSummary
 using .Analysis
 using .Identifiability
 using .Workflow
+using .Control
 
 export
     # Data layer
@@ -78,7 +80,12 @@ export
     validate_strict_schema, generate_qc_report, save_qc_report,
     preflight_data_quality, save_preflight_report,
     save_run_manifest, load_run_manifest, bootstrap_stage_uncertainty,
-    build_conditions, fit, rank_models, plot_topk, export_results, run_pipeline, run_staged_pipeline
+    build_conditions, fit, rank_models, plot_topk, export_results, run_pipeline, run_staged_pipeline,
+
+    # Control handoff APIs
+    ControlModel, controlled_model, control_rhs, control_rhs!, mpc_functions,
+    discrete_dynamics, InputSchedule, simulate_schedule, schedule_ensemble,
+    parameter_sets, control_model_summary, save_control_model
 
 function __init__()
     Registry.register_builtin_models!()
