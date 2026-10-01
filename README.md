@@ -2,7 +2,7 @@
 
 Tools for fitting growth ODE models to time‑series data, with utilities for model comparison, diagnostics, workflow ranking, and joint fitting across multiple related datasets.
 
-Current release target: `v0.5.4`.
+Current release target: `v0.5.5`.
 
 Changelog: see `CHANGELOG.md` for release notes, including the breaking changes in `v0.3.0`.
 
@@ -19,6 +19,9 @@ Changelog: see `CHANGELOG.md` for release notes, including the breaking changes 
 - Analysis helpers (LOO CV, k-fold CV, sensitivity, residual diagnostics, enhanced BIC analysis).
 - Practical and structural identifiability analysis (Fisher information, profile
   likelihoods, bootstrap recovery, and symbolic global/local checks).
+- Control handoff (`controlled_model`): exposes a fitted model as `f(x, u, p)`,
+  a discrete step map, and MPC-convention functions, with bootstrap parameter
+  sets attached, for use with external optimal-control and MPC packages.
 
 ## Installation
 ```julia
@@ -112,6 +115,7 @@ The package exports many symbols, but most users should focus on the entry point
 | Simulate a registered model | `get_model`, `list_models`, `simulate`, `run_sweep` | Use after choosing a model specification |
 | Diagnostics and validation | `generate_qc_report`, `save_qc_report`, `bootstrap_stage_uncertainty`, `leave_one_out_validation`, `residual_analysis` | For QA, uncertainty, and post-fit analysis |
 | Identifiability and sensitivity | `global_sensitivity_analysis`, `paired_profile_likelihood`, `practical_identifiability_report`, `structural_identifiability` | Range-based sensitivity, parameter tradeoffs, numerical gates, and symbolic checks |
+| Hand a fitted model to control tools | `controlled_model`, `control_rhs`, `discrete_dynamics`, `mpc_functions`, `InputSchedule`, `schedule_ensemble` | `f(x, u, p)` form plus bootstrap sets for external optimal-control/MPC packages; see `docs/src/control.md` |
 
 ### Advanced or implementation-level surfaces
 
@@ -373,6 +377,7 @@ bic, ssr = calculate_bic(prob, x, y, Tsit5(), [0.1, 5.0])
 - Workflow/core pipeline: `run_pipeline`, `run_staged_pipeline`, `default_stages`, `default_population_stages`, `default_population_cellline_stages`, `summarize_datasets`.
 - Hardening: `validate_required_metadata`, `validate_strict_schema`, `generate_qc_report`, `save_qc_report`, `save_run_manifest`, `load_run_manifest`, `bootstrap_stage_uncertainty`.
 - Simulation: `simulate`, `run_sweep`.
+- Control handoff: `controlled_model`, `control_rhs`, `control_rhs!`, `mpc_functions`, `discrete_dynamics`, `InputSchedule`, `simulate_schedule`, `schedule_ensemble`, `parameter_sets`, `control_model_summary`, `save_control_model`.
 
 `run_single_fit` returns a NamedTuple:
 ```julia
