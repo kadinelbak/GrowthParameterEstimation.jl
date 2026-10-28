@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata in this file."
+type: software
+title: "GrowthParameterEstimation.jl"
+abstract: >-
+  A Julia package for fitting growth ODE models to time-series data, with
+  utilities for model comparison, staged and joint fitting across related
+  datasets, uncertainty quantification, and practical and structural
+  identifiability analysis.
+authors:
+  - given-names: Kadin
+    family-names: El bakkouri
+    email: elbakkouri.kadin@gmail.com
+    # orcid: "https://orcid.org/0000-0000-0000-0000"  # TODO: add ORCID
+version: 0.5.5
+date-released: "2026-10-28"
+license: MIT
+repository-code: "https://github.com/kadinelbak/GrowthParameterEstimation.jl"
+keywords:
+  - julia
+  - growth models
+  - parameter estimation
+  - ordinary differential equations
+  - model selection
+  - identifiability
+  - cancer
