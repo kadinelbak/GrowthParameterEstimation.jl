@@ -2,7 +2,7 @@
 
 Tools for fitting growth ODE models to time‑series data, with utilities for model comparison, diagnostics, workflow ranking, and joint fitting across multiple related datasets.
 
-Current release target: `v0.5.4`.
+Current release target: `v0.5.5`.
 
 Changelog: see `CHANGELOG.md` for release notes, including the breaking changes in `v0.3.0`.
 
@@ -427,6 +427,10 @@ Then open `http://127.0.0.1:8050`.
 - `OrdinaryDiffEq.jl`
 - `Optimization.jl`, `OptimizationOptimJL.jl`
 - `DataFrames.jl`, `CSV.jl`, `StatsBase.jl`
+
+## Citation
+If you use this package in your work, please cite it using the metadata in
+`CITATION.cff` (GitHub's "Cite this repository" button exports BibTeX and APA).
 
 ## License
 MIT (see `LICENSE`).

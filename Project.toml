@@ -1,7 +1,7 @@
 name = "GrowthParameterEstimation"
 uuid = "f2d48b76-d258-4732-aa20-f5a609aab424"
-version = "0.5.4"
-authors = ["Kadin"]
+version = "0.5.5"
+authors = ["Kadin El bakkouri <elbakkouri.kadin@gmail.com>"]
 
 [deps]
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"

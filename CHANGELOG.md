@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## v0.5.5 - 2026-10-29
+
+### Added
+
+- `CITATION.cff` with software citation metadata.
+
+### Changed
+
+- Full author name in `LICENSE` and `Project.toml`.
+
 ## v0.5.4 - 2026-08-28
 
 ### Added
