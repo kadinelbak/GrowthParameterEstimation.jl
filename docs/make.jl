@@ -16,6 +16,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Identifiability" => "identifiability.md",
+        "Research use" => "research_use.md",
     ],
 )
 
