@@ -19,3 +19,11 @@ log/
 results/
 .continue/
 __dash_*
+
+# Generated outputs (regenerate locally; do not commit)
+output/
+tests/outputs/
+lcov.info
+
+# Editor settings
+.vscode/
