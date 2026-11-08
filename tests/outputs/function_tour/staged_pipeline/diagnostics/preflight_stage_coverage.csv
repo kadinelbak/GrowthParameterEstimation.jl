@@ -1,5 +1,0 @@
-stage,matched_rows,matched_conditions,status,detail,recommendation
-untreated_monoculture,54,6,ok,Matched 54 rows across 6 conditions.,Coverage is sufficient to attempt fitting.
-treated_monoculture,54,6,ok,Matched 54 rows across 6 conditions.,Coverage is sufficient to attempt fitting.
-untreated_coculture,27,3,ok,Matched 27 rows across 3 conditions.,Coverage is sufficient to attempt fitting.
-treated_coculture,27,3,ok,Matched 27 rows across 3 conditions.,Coverage is sufficient to attempt fitting.

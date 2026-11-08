@@ -1,10 +1,14 @@
 # GrowthParameterEstimation.jl
 
+[![CI](https://github.com/kadinelbak/GrowthParameterEstimation.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/kadinelbak/GrowthParameterEstimation.jl/actions/workflows/CI.yml)
+[![Docs (dev)](https://img.shields.io/badge/docs-dev-blue.svg)](https://kadinelbak.github.io/GrowthParameterEstimation.jl/dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Tools for fitting growth ODE models to time‑series data, with utilities for model comparison, diagnostics, workflow ranking, and joint fitting across multiple related datasets.
 
-Current release target: `v0.5.5`.
+Current release: `v0.5.5`. Release notes, including breaking changes, are in [`CHANGELOG.md`](CHANGELOG.md).
 
-Changelog: see `CHANGELOG.md` for release notes, including the breaking changes in `v0.3.0`.
+Documentation: <https://kadinelbak.github.io/GrowthParameterEstimation.jl/dev/> (tutorials, identifiability guide and API reference).
 
 ## Features
 - Built-in growth ODEs (logistic, Gompertz, exponential variants with death/delay options).
@@ -396,42 +400,34 @@ Equivalent command from repo root:
 julia --project=. test/runtests.jl
 ```
 
-## Interactive GUI (Web App)
-
-If you want an interactive environment outside notebooks, use the standalone Dash app in [examples/gui/README.md](examples/gui/README.md).
-
-It supports an end-to-end visual workflow:
-
-- Step 1: data preflight diagnostics with actionable issues and recommendations.
-- Step 2: condition construction summary.
-- Step 3: model ranking plus observed-vs-predicted plotting.
-- Step 4: full pipeline execution summary.
-- Step 5: staged pipeline execution summary.
-
-Quick start from repo root:
-
-```julia
-julia --project=examples/gui -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
-julia --project=examples/gui examples/gui/pipeline_gui_app.jl
-```
-
-Then open `http://127.0.0.1:8050`.
-
 ## Practice notebook
 
-- One maintained practice notebook is provided at `tests/function_tour.ipynb`.
+- One maintained practice notebook is provided at `tests/notebooks/function_tour.ipynb`.
 - It includes API walkthrough plus a synthetic joint-fitting example.
 
 ## Pipeline templates
 
 - End-to-end one-shot template script: `examples/pipeline_one_shot_template.jl`.
-- Step-by-step staged template notebook: `tests/pipeline_step_by_step_template.ipynb`.
+- Step-by-step staged template notebook: `tests/notebooks/pipeline_step_by_step_template.ipynb`.
 
 ## Dependencies (main)
 - `DifferentialEquations.jl`
 - `OrdinaryDiffEq.jl`
 - `Optimization.jl`, `OptimizationOptimJL.jl`
 - `DataFrames.jl`, `CSV.jl`, `StatsBase.jl`
+
+## Getting help and contributing
+
+- Questions, bug reports and feature requests: open an issue on the
+  [issue tracker](https://github.com/kadinelbak/GrowthParameterEstimation.jl/issues)
+  (templates are provided for bugs and feature requests).
+- Contributions are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup,
+  testing and pull-request guidelines.
+- Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Citation
+If you use this package in your work, please cite it using the metadata in
+`CITATION.cff` (GitHub's "Cite this repository" button exports BibTeX and APA).
 
 ## License
 MIT (see `LICENSE`).

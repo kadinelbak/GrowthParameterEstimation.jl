@@ -5,7 +5,8 @@ DocMeta.setdocmeta!(GrowthParameterEstimation, :DocTestSetup, :(using GrowthPara
 
 makedocs(;
     modules=[GrowthParameterEstimation],
-    authors="Kadin",
+    warnonly = [:missing_docs, :cross_references],
+    authors="Kadin El bakkouri",
     sitename="GrowthParameterEstimation.jl",
     checkdocs = :none, # allow building while we flesh out full API docs
     format=Documenter.HTML(;
@@ -15,8 +16,15 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Installation" => "installation.md",
+        "Tutorials" => [
+            "Getting Started" => "tutorial/getting_started.md",
+            "Basic Examples" => "tutorial/basic_examples.md",
+            "Advanced Usage" => "tutorial/advanced_usage.md",
+        ],
         "Identifiability" => "identifiability.md",
         "Control handoff" => "control.md",
+        "API Reference" => "api.md",
     ],
 )
 

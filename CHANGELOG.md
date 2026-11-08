@@ -4,10 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-## v0.5.5 - 2026-10-01
-
 ### Added
 
+- `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) and GitHub issue templates.
+- Documentation: dedicated API Reference page covering every submodule, and tutorials in the site navigation.
 - Control handoff API (`controlled_model`) that packages a fitted model for
   external optimal-control and model-predictive-control tools without solving
   control problems in this package. A `ControlModel` replaces the exposure
@@ -22,9 +22,25 @@ All notable changes to this project will be documented in this file.
 - `control_model_summary` / `save_control_model` for plain-data (JSON) export.
 - Documentation page `Control handoff` and tests in `test/control_test.jl`.
 
-### Notes
+### Changed
 
-- Non-breaking patch release relative to v0.5.4; no existing API changed.
+- Documentation home page no longer pins an old release number.
+- CompatHelper workflow updated to the current upstream template, runs weekly and also checks `docs/`.
+
+### Removed
+
+- Committed temporary files, generated outputs (`output/`, `tests/outputs/`), one-off fix scripts in `tools/` and the stray root `ci.yml`. Generated outputs are now git-ignored.
+- Internal planning notes moved from `docs/` to `context/notes/`.
+
+## v0.5.5 - 2026-10-29
+
+### Added
+
+- `CITATION.cff` with software citation metadata.
+
+### Changed
+
+- Full author name in `LICENSE` and `Project.toml`.
 
 ## v0.5.4 - 2026-08-28
 
