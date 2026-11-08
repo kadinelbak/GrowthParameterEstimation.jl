@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Added
+
+- `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) and GitHub issue templates.
+- Documentation: dedicated API Reference page covering every submodule, and tutorials in the site navigation.
+
+### Changed
+
+- Documentation home page no longer pins an old release number.
+- CompatHelper workflow updated to the current upstream template, runs weekly and also checks `docs/`.
+
+### Removed
+
+- Committed temporary files, generated outputs (`output/`, `tests/outputs/`), one-off fix scripts in `tools/` and the stray root `ci.yml`. Generated outputs are now git-ignored.
+- Internal planning notes moved from `docs/` to `context/notes/`.
+
 ## v0.5.5 - 2026-10-29
 
 ### Added
