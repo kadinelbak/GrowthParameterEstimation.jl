@@ -23,6 +23,7 @@ makedocs(;
             "Advanced Usage" => "tutorial/advanced_usage.md",
         ],
         "Identifiability" => "identifiability.md",
+        "Control handoff" => "control.md",
         "Research use" => "research_use.md",
         "API Reference" => "api.md",
     ],

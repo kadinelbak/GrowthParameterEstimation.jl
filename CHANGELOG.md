@@ -8,6 +8,19 @@ All notable changes to this project will be documented in this file.
 
 - `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) and GitHub issue templates.
 - Documentation: dedicated API Reference page covering every submodule, and tutorials in the site navigation.
+- Control handoff API (`controlled_model`) that packages a fitted model for
+  external optimal-control and model-predictive-control tools without solving
+  control problems in this package. A `ControlModel` replaces the exposure
+  function with a control input `u` and carries the point estimate plus
+  bootstrap parameter sets (vectors or a `bootstrap_joint_fit` result).
+- `control_rhs` / `control_rhs!` for ForwardDiff-compatible continuous dynamics
+  `f(x, u, p, t)`, `mpc_functions` for the `(ẋ, x, u, d, p)` / `(y, x, d, p)`
+  convention of nonlinear MPC packages, and `discrete_dynamics` for a
+  zero-order-hold RK4 step map with differentiable `∂F/∂x` and `∂F/∂u`.
+- `InputSchedule`, `simulate_schedule` and `schedule_ensemble` for replaying a
+  piecewise-constant schedule on the point estimate and every bootstrap set.
+- `control_model_summary` / `save_control_model` for plain-data (JSON) export.
+- Documentation page `Control handoff` and tests in `test/control_test.jl`.
 
 ### Changed
 
