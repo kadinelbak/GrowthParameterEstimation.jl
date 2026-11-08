@@ -416,6 +416,21 @@ julia --project=. test/runtests.jl
 - `Optimization.jl`, `OptimizationOptimJL.jl`
 - `DataFrames.jl`, `CSV.jl`, `StatsBase.jl`
 
+## Research use
+The package is the fitting engine of two ovarian-cancer modelling projects:
+
+- **A2780 / A2780cis cisplatin resistance and dose scheduling**: staged joint
+  fits of compartment models to monoculture and coculture cell counts, feeding
+  an optimal-control study of cisplatin schedules. Results site:
+  <https://kadinelbak.github.io/CancerGrowthDynamics/>.
+- **OVCAR3 olaparib resistance and glutamine starvation**: multistart model
+  comparison, bootstrap, profile-likelihood, Fisher-information and
+  synthetic-recovery analyses of a sensitive-to-resistant transition.
+
+Both project repositories are currently private. See
+[`docs/src/research_use.md`](docs/src/research_use.md) for which functions each
+project uses, the pinned versions, and the outputs that depend on them.
+
 ## Getting help and contributing
 
 - Questions, bug reports and feature requests: open an issue on the
