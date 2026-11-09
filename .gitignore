@@ -27,3 +27,8 @@ lcov.info
 
 # Editor settings
 .vscode/
+
+# Showcase: third-party data is downloaded at run time, never committed
+/showcase/data/raw/
+/showcase/data/tidy/
+!/showcase/results/
