@@ -1,0 +1,3 @@
+Subcutaneous Lewis lung carcinoma tumours in 20 mice, measured with calipers and reported as volume (mm³), 6 to 12 measurements per mouse between days 4 and 22. Benzekry and colleagues used these curves to compare classic growth laws and found the Gompertz and power-law models gave the most parsimonious description that was also identifiable.
+
+**How this setup differs from the paper.** Here every curve starts from its own first measurement and no injection volume is assumed, the error model is the showcase's proportional one, and selection uses the 2-BIC rule. These choices can change which model wins, so the ranking below is a re-analysis with the package, not a reproduction of the paper's numbers.

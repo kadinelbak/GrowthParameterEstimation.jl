@@ -26,4 +26,10 @@ python3 -m pip install -r showcase/data/requirements.txt
 python3 showcase/data/prepare.py          # download, verify, tidy, write INVENTORY.md
 ```
 
-Fitting scripts and the documentation build are added in later milestones (see the project plan).
+```bash
+julia --project=showcase -e 'using Pkg; Pkg.instantiate()'
+julia --project=showcase -t auto showcase/run_pipeline.jl     # fit, profile, forecast, figures
+julia --project=showcase showcase/docs/make.jl               # build the site from committed results
+```
+
+`run_pipeline.jl` + `pipeline.toml` is the single open pipeline: point a `[[dataset]]` block at any CSV (curve id, time, value) to run the same recipe on your own data.

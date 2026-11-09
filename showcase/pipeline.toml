@@ -1,0 +1,38 @@
+# Configuration for showcase/run_pipeline.jl.
+# [defaults] apply to every dataset; any key can be overridden inside a [[dataset]] block.
+# To run your own data, copy this file, point `csv` at your table and set the column names.
+
+[defaults]
+models = [
+    "exponential_growth",
+    "logistic_growth",
+    "classic_gompertz_growth",
+    "theta_logistic_growth",
+    "bertalanffy_growth",
+    "general_bertalanffy_growth",
+    "power_law_growth",
+    "exponential_linear_growth",
+]
+n_starts = 8
+min_points = 5
+profiles = true          # profile-likelihood intervals for the pick on every curve
+forecast = true          # refit on the first 70% of each curve, predict the rest
+forecast_frac = 0.7
+max_curves_plotted = 12
+
+[[dataset]]
+id = "benzekry2014_llc"
+xlabel = "days"
+ylabel = "tumour volume (mm³)"
+curve_label = "mouse "
+max_curves_plotted = 20
+
+# Example for your own data (columns: well, hours, cells):
+# [[dataset]]
+# id = "my_experiment"
+# csv = "/path/to/my_counts.csv"
+# subject_col = "well"
+# time_col = "hours"
+# value_col = "cells"
+# xlabel = "hours"
+# ylabel = "cells"

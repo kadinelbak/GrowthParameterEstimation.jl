@@ -32,3 +32,7 @@ lcov.info
 /showcase/data/raw/
 /showcase/data/tidy/
 !/showcase/results/
+/showcase/docs/build/
+/showcase/docs/src/datasets/
+/showcase/docs/src/assets/
+/showcase/Manifest.toml

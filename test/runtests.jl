@@ -130,6 +130,11 @@ using Random
         exact = K ./ (1 .+ ((K / N0)^θ - 1) .* exp.(-r * θ .* t)) .^ (1 / θ)
         @test relerr(run("theta_logistic_growth", [r, K, θ], N0), exact) < 1e-5
 
+        # Two-parameter Gompertz: N = K exp(log(N0/K) e^{-r t})
+        r, K, N0 = 0.4, 100.0, 5.0
+        exact = K .* exp.(log(N0 / K) .* exp.(-r .* t))
+        @test relerr(run("classic_gompertz_growth", [r, K], N0), exact) < 1e-5
+
         # Bertalanffy: V = (a/b - (a/b - V0^{1/3}) e^{-b t / 3})^3
         a, b, V0 = 2.0, 0.4, 1.0
         exact = (a / b .- (a / b - V0^(1 / 3)) .* exp.(-b .* t ./ 3)) .^ 3
@@ -160,6 +165,18 @@ using Random
         du = [0.0]
         get_model("weak_allee_growth").ode!(du, [5.0], [0.5, 100.0, 10.0], 0.0)
         @test isapprox(du[1], 0.5 * 5.0 * (1 - 0.05) * 5.0 / 15.0; rtol = 1e-10)
+    end
+
+    @testset "Transformed optimizer matches Fminbox" begin
+        tt = collect(0.0:1.0:10.0)
+        truth = simulate(get_model("logistic_growth"), tt, [0.6, 80.0]; u0 = [4.0]).observed
+        cond = FitCondition("synthetic", tt, truth, fill(1.0, length(tt)), [4.0], ConstantExposure(0.0), Dict{Symbol,Any}())
+        spec = get_model("logistic_growth")
+        a = GrowthParameterEstimation.fit(spec, [cond]; n_starts = 3, top_k = 1, optimizer = :fminbox)
+        b = GrowthParameterEstimation.fit(spec, [cond]; n_starts = 3, top_k = 1, optimizer = :transformed)
+        @test isapprox(b.best.params, [0.6, 80.0]; rtol = 1e-3)
+        @test isapprox(a.best.params, b.best.params; rtol = 1e-3)
+        @test_throws ArgumentError GrowthParameterEstimation.fit(spec, [cond]; n_starts = 1, optimizer = :bogus)
     end
 
     @testset "Pipeline Fit + Ranking" begin

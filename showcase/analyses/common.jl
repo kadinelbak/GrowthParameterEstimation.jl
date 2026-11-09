@@ -20,7 +20,7 @@ const RESULTS = joinpath(SHOWCASE, "results")
 const GROWTH_PANEL = [
     "exponential_growth",
     "logistic_growth",
-    "gompertz_growth",
+    "classic_gompertz_growth",
     "theta_logistic_growth",
     "bertalanffy_growth",
     "general_bertalanffy_growth",
@@ -31,6 +31,8 @@ const GROWTH_PANEL = [
 const RULE_BIC = 2.0
 const CHI2_95 = 3.841458820694124
 const CV = 0.1
+# Bounded BFGS through an unconstrained transform: same optima as Fminbox here, far faster.
+const OPTIMIZER = :transformed
 
 """Load one tidy dataset written by data/prepare.py."""
 load_tidy(id::AbstractString) = CSV.read(joinpath(TIDY, "$(id).csv"), DataFrame)
@@ -58,24 +60,30 @@ end
 
 aicc(aic, k, n) = n - k - 1 > 0 ? aic + 2k * (k + 1) / (n - k - 1) : Inf
 
-"""Fit every model in `models` to every curve; return one row per (curve, model)."""
+"""Fit every model in `models` to every curve; return one row per (curve, model).
+Curves are spread over threads (`julia -t auto`)."""
 function fit_panel(conds::Vector{FitCondition}, models::Vector{String}; n_starts::Int = 8, maxiters::Int = 600)
-    rows = NamedTuple[]
-    for c in conds, m in models
-        spec = get_model(m)
-        n = length(c.time)
-        try
-            r = fit(spec, [c]; n_starts = n_starts, maxiters = maxiters, top_k = 1)
-            k = r.n_params
-            push!(rows, (subject = c.name, condition = string(c.metadata[:condition]), model = m, n = n, k = k,
-                         wsse = r.best.objective, aic = r.best.aic, aicc = aicc(r.best.aic, k, n), bic = r.best.bic,
-                         params = join(string.(round.(r.best.params; sigdigits = 6)), ";")))
-        catch err
-            push!(rows, (subject = c.name, condition = string(c.metadata[:condition]), model = m, n = n,
-                         k = length(spec.param_names), wsse = Inf, aic = Inf, aicc = Inf, bic = Inf, params = ""))
+    per_curve = Vector{Vector{NamedTuple}}(undef, length(conds))
+    Threads.@threads for i in eachindex(conds)
+        c = conds[i]
+        rows = NamedTuple[]
+        for m in models
+            spec = get_model(m)
+            n = length(c.time)
+            try
+                r = fit(spec, [c]; n_starts = n_starts, maxiters = maxiters, top_k = 1, optimizer = OPTIMIZER)
+                k = r.n_params
+                push!(rows, (subject = c.name, condition = string(c.metadata[:condition]), model = m, n = n, k = k,
+                             wsse = r.best.objective, aic = r.best.aic, aicc = aicc(r.best.aic, k, n), bic = r.best.bic,
+                             params = join(string.(round.(r.best.params; sigdigits = 6)), ";")))
+            catch err
+                push!(rows, (subject = c.name, condition = string(c.metadata[:condition]), model = m, n = n,
+                             k = length(spec.param_names), wsse = Inf, aic = Inf, aicc = Inf, bic = Inf, params = ""))
+            end
         end
+        per_curve[i] = rows
     end
-    return DataFrame(rows)
+    return DataFrame(reduce(vcat, per_curve))
 end
 
 """Apply the selection rule within each group of rows (a curve, or a whole dataset)."""
@@ -112,50 +120,75 @@ end
 
 """Profile-likelihood 95% interval for each parameter of `model` on one curve.
 
-Each grid value is held fixed with `fit(...; fixed_params)` while the others are refitted;
-the interval is where n*log(WSSE) rises by less than the chi-square(1) 95% cutoff.
+Each parameter is held fixed with `fit(...; fixed_params)` while the others are refitted.
+From the estimate the search steps outward (on a log scale for positive parameters, with
+growing steps) until n*log(WSSE/n) rises by the chi-square(1) 95% cutoff or the bound is
+reached, then bisects the crossing. An interval that reaches a bound is open.
 """
-function profile_intervals(c::FitCondition, model::String; points::Int = 12, n_starts::Int = 4)
+function profile_intervals(c::FitCondition, model::String; n_starts::Int = 3, bisections::Int = 6)
     spec = get_model(model)
-    best = fit(spec, [c]; n_starts = 8, top_k = 1)
+    best = fit(spec, [c]; n_starts = 8, top_k = 1, optimizer = OPTIMIZER)
     phat = best.best.params
     n = length(c.time)
-    base = n * log(best.best.objective / n)
+    base = n * log(max(best.best.objective, 1e-12) / n)
+    single = length(spec.param_names) == 1
+    function prof(name, v)
+        if single
+            sim = simulate(spec, c.time, [v]; u0 = c.u0)
+            w = sim.success ? sum(((c.count .- sim.observed) ./ c.error) .^ 2) : Inf
+            return n * log(max(w, 1e-12) / n) - base
+        end
+        r = try
+            fit(spec, [c]; fixed_params = Dict(name => v), n_starts = n_starts, top_k = 1, optimizer = OPTIMIZER)
+        catch
+            nothing
+        end
+        return r === nothing ? Inf : n * log(max(r.best.objective, 1e-12) / n) - base
+    end
     rows = NamedTuple[]
     for (j, name) in enumerate(spec.param_names)
         lo, hi = spec.bounds[j]
-        grid = phat[j] > 0 && lo > 0 ? exp.(range(log(lo), log(hi), length = 2points + 1)) :
-                                        collect(range(lo, hi, length = 2points + 1))
-        grid = sort(unique(vcat(grid, phat[j])))
-        prof = Float64[]
-        for v in grid
-            if length(spec.param_names) == 1
-                sim = simulate(spec, c.time, [v]; u0 = c.u0)
-                w = sim.success ? sum(((c.count .- sim.observed) ./ c.error) .^ 2) : Inf
-                push!(prof, n * log(max(w, 1e-12) / n))
-            else
-                r = try
-                    fit(spec, [c]; fixed_params = Dict(name => v), n_starts = n_starts, top_k = 1)
-                catch
-                    nothing
+        logscale = lo > 0 && phat[j] > 0
+        to(x) = logscale ? log(x) : x
+        from(z) = logscale ? exp(z) : z
+        zhat, zlo, zhi = to(phat[j]), to(lo), to(hi)
+        span = zhi - zlo
+        ends = map((-1, 1)) do dir
+            limit = dir < 0 ? zlo : zhi
+            step = span / 200
+            inside = zhat
+            crossed = false
+            while true
+                z = clamp(inside + dir * step, min(zlo, zhi), max(zlo, zhi))
+                if prof(name, from(z)) > CHI2_95
+                    outside = z
+                    for _ in 1:bisections
+                        mid = (inside + outside) / 2
+                        prof(name, from(mid)) > CHI2_95 ? (outside = mid) : (inside = mid)
+                    end
+                    crossed = true
+                    break
                 end
-                push!(prof, r === nothing ? Inf : n * log(max(r.best.objective, 1e-12) / n))
+                inside = z
+                z == limit && break
+                step *= 2
             end
+            (from(inside), crossed)
         end
-        inside = grid[(prof .- base) .<= CHI2_95]
-        lower_open = isempty(inside) || inside[1] <= grid[1]
-        upper_open = isempty(inside) || inside[end] >= grid[end]
-        push!(rows, (parameter = string(name), estimate = phat[j],
-                     lower = isempty(inside) ? NaN : inside[1], upper = isempty(inside) ? NaN : inside[end],
-                     identifiable = !(lower_open || upper_open)))
+        (lower, lo_closed), (upper, hi_closed) = ends
+        push!(rows, (parameter = string(name), estimate = phat[j], lower = lower, upper = upper,
+                     identifiable = lo_closed && hi_closed))
     end
     return DataFrame(rows)
 end
 
 """Fit on the first `frac` of each curve and report the error on the remaining points."""
 function forecast_check(conds::Vector{FitCondition}, models::Vector{String}; frac::Float64 = 0.7, n_starts::Int = 6)
-    rows = NamedTuple[]
-    for c in conds
+    out = Vector{Vector{NamedTuple}}(undef, length(conds))
+    Threads.@threads for i in eachindex(conds)
+        c = conds[i]
+        rows = NamedTuple[]
+        out[i] = rows
         n = length(c.time)
         ntrain = max(3, floor(Int, frac * n))
         ntrain >= n && continue
@@ -163,7 +196,7 @@ function forecast_check(conds::Vector{FitCondition}, models::Vector{String}; fra
         for m in models
             spec = get_model(m)
             r = try
-                fit(spec, [train]; n_starts = n_starts, top_k = 1)
+                fit(spec, [train]; n_starts = n_starts, top_k = 1, optimizer = OPTIMIZER)
             catch
                 nothing
             end
@@ -175,7 +208,16 @@ function forecast_check(conds::Vector{FitCondition}, models::Vector{String}; fra
                          median_rel_error = median(relerr), within_20pct = mean(relerr .<= 0.2)))
         end
     end
-    return DataFrame(rows)
+    return DataFrame(reduce(vcat, out))
+end
+
+"""Profile intervals of `model` on every curve (threaded)."""
+function profile_all(conds::Vector{FitCondition}, model::String)
+    out = Vector{DataFrame}(undef, length(conds))
+    Threads.@threads for i in eachindex(conds)
+        out[i] = insertcols!(profile_intervals(conds[i], model), 1, :subject => conds[i].name)
+    end
+    return reduce(vcat, out)
 end
 
 """Write a dataset's results under results/<id>/."""

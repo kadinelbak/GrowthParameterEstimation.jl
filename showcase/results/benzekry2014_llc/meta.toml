@@ -1,0 +1,8 @@
+n_curves = 20
+runtime_seconds = 44.6
+pick = "exponential_linear_growth"
+script = "run_pipeline.jl"
+models = ["exponential_growth", "logistic_growth", "classic_gompertz_growth", "theta_logistic_growth", "bertalanffy_growth", "general_bertalanffy_growth", "power_law_growth", "exponential_linear_growth"]
+rule = "fewest parameters within 2.0 BIC of best"
+package_version = "0.5.5"
+dataset = "benzekry2014_llc"

@@ -403,6 +403,15 @@ function _theta_logistic_growth!(du, u, p, t, _exposure = nothing)
     return nothing
 end
 
+# Two-parameter Gompertz. The older `gompertz_growth` spec carries an unused `b`
+# parameter, which costs it one parameter in AIC/BIC; this form does not.
+function _classic_gompertz_growth!(du, u, p, t, _exposure = nothing)
+    r, K = p
+    N = max(u[1], 1e-12)
+    du[1] = r * N * log(max(K, 1e-12) / N)
+    return nothing
+end
+
 function _bertalanffy_growth!(du, u, p, t, _exposure = nothing)
     a, b = p
     V = max(u[1], 0.0)
@@ -455,6 +464,8 @@ function _register_classic_growth_laws!()
         ("exponential_growth", _exponential_growth!, [:a], [(1e-6, 5.0)], "exponential"),
         ("theta_logistic_growth", _theta_logistic_growth!, [:r, :K, :theta],
             [(1e-6, 5.0), (1e-3, 1e7), (0.05, 10.0)], "theta_logistic"),
+        ("classic_gompertz_growth", _classic_gompertz_growth!, [:r, :K],
+            [(1e-6, 5.0), (1e-3, 1e7)], "gompertz"),
         ("bertalanffy_growth", _bertalanffy_growth!, [:a, :b], [(1e-6, 50.0), (1e-6, 5.0)], "bertalanffy"),
         ("general_bertalanffy_growth", _general_bertalanffy_growth!, [:a, :b, :gamma],
             [(1e-6, 50.0), (1e-6, 5.0), (0.01, 0.99)], "bertalanffy"),
