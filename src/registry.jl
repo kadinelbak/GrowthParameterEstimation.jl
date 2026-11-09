@@ -387,6 +387,102 @@ function _logistic_linear_kill!(du, u, p, t, exposure)
     du[1] = r * N * (1 - N / max(K, 1e-8)) - kill_coeff * dose * N
 end
 
+# Classic single-population growth laws (forms as compared in Benzekry et al. 2014,
+# PLoS Comput Biol 10:e1003800, and Johnson et al. 2019, PLoS Biol 17:e3000399).
+
+function _exponential_growth!(du, u, p, t, _exposure = nothing)
+    a = p[1]
+    du[1] = a * u[1]
+    return nothing
+end
+
+function _theta_logistic_growth!(du, u, p, t, _exposure = nothing)
+    r, K, theta = p
+    N = max(u[1], 0.0)
+    du[1] = r * N * (1 - (N / max(K, 1e-8))^theta)
+    return nothing
+end
+
+function _bertalanffy_growth!(du, u, p, t, _exposure = nothing)
+    a, b = p
+    V = max(u[1], 0.0)
+    du[1] = a * V^(2 / 3) - b * V
+    return nothing
+end
+
+function _general_bertalanffy_growth!(du, u, p, t, _exposure = nothing)
+    a, b, gamma = p
+    V = max(u[1], 0.0)
+    du[1] = a * V^gamma - b * V
+    return nothing
+end
+
+function _power_law_growth!(du, u, p, t, _exposure = nothing)
+    a, gamma = p
+    V = max(u[1], 0.0)
+    du[1] = a * V^gamma
+    return nothing
+end
+
+# Smooth exponential-linear law: exponential at rate a0 while small, linear at rate a1
+# once large (Benzekry et al. 2014, with their switch sharpness psi = 20).
+const EXPONENTIAL_LINEAR_PSI = 20.0
+
+function _exponential_linear_growth!(du, u, p, t, _exposure = nothing)
+    a0, a1 = p
+    V = max(u[1], 0.0)
+    psi = EXPONENTIAL_LINEAR_PSI
+    du[1] = a0 * V / (1 + (a0 * V / max(a1, 1e-12))^psi)^(1 / psi)
+    return nothing
+end
+
+function _strong_allee_growth!(du, u, p, t, _exposure = nothing)
+    r, K, A = p
+    N = max(u[1], 0.0)
+    du[1] = r * N * (1 - N / max(K, 1e-8)) * (N / max(A, 1e-8) - 1)
+    return nothing
+end
+
+function _weak_allee_growth!(du, u, p, t, _exposure = nothing)
+    r, K, A = p
+    N = max(u[1], 0.0)
+    du[1] = r * N * (1 - N / max(K, 1e-8)) * N / (N + max(A, 0.0) + 1e-12)
+    return nothing
+end
+
+function _register_classic_growth_laws!()
+    laws = [
+        ("exponential_growth", _exponential_growth!, [:a], [(1e-6, 5.0)], "exponential"),
+        ("theta_logistic_growth", _theta_logistic_growth!, [:r, :K, :theta],
+            [(1e-6, 5.0), (1e-3, 1e7), (0.05, 10.0)], "theta_logistic"),
+        ("bertalanffy_growth", _bertalanffy_growth!, [:a, :b], [(1e-6, 50.0), (1e-6, 5.0)], "bertalanffy"),
+        ("general_bertalanffy_growth", _general_bertalanffy_growth!, [:a, :b, :gamma],
+            [(1e-6, 50.0), (1e-6, 5.0), (0.01, 0.99)], "bertalanffy"),
+        ("power_law_growth", _power_law_growth!, [:a, :gamma], [(1e-6, 50.0), (0.01, 0.99)], "power_law"),
+        ("exponential_linear_growth", _exponential_linear_growth!, [:a0, :a1],
+            [(1e-6, 5.0), (1e-6, 1e5)], "exponential_linear"),
+        ("strong_allee_growth", _strong_allee_growth!, [:r, :K, :A],
+            [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 1e5)], "allee"),
+        ("weak_allee_growth", _weak_allee_growth!, [:r, :K, :A],
+            [(1e-6, 5.0), (1e-3, 1e7), (0.0, 1e5)], "allee"),
+    ]
+    for (name, f!, pnames, bounds, family) in laws
+        register_model!(ModelSpec(
+            name=name,
+            ode! = f!,
+            param_names=pnames,
+            bounds=bounds,
+            n_states=1,
+            observable=u -> u[1],
+            base_growth_family=family,
+            default_solver=Tsit5(),
+            state_names=[:N],
+            metadata=Dict(:family => :baseline),
+        ))
+    end
+    return nothing
+end
+
 function _theta_hill_inhibition!(du, u, p, t, exposure)
     r, K, theta, ic50, hill = p
     N = max(u[1], 0.0)
@@ -686,6 +782,8 @@ function register_builtin_models!()
         default_solver=Tsit5(),
         metadata=Dict(:family => :baseline),
     ))
+
+    _register_classic_growth_laws!()
 
     register_model!(ModelSpec(
         name="theta_logistic_hill_inhibition",

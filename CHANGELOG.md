@@ -6,6 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Classic single-population growth laws in the model registry: `exponential_growth`,
+  `theta_logistic_growth` (Richards), `bertalanffy_growth`, `general_bertalanffy_growth`,
+  `power_law_growth`, `exponential_linear_growth` (smooth switch, as in Benzekry et al. 2014),
+  `strong_allee_growth` and `weak_allee_growth`, each tested against its closed-form solution
+  or defining property.
+- `showcase/`: a separate benchmark of the package on ten public tumour-growth datasets
+  (cells, spheroids, mice, patients), with a data manifest, hash-checked download script and
+  shared analysis recipe. No third-party data is committed.
+
 - `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) and GitHub issue templates.
 - Documentation: dedicated API Reference page covering every submodule, and tutorials in the site navigation.
 - Control handoff API (`controlled_model`) that packages a fitted model for
