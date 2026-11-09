@@ -3,6 +3,7 @@ module Analysis
 
 using StatsBase
 using DifferentialEquations
+using OrdinaryDiffEqRosenbrock: Rodas5
 using Distributions
 using Random
 using DataFrames

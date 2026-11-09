@@ -1,6 +1,8 @@
 ﻿module Registry
 
 using DifferentialEquations
+using OrdinaryDiffEqRosenbrock: Rodas5
+using OrdinaryDiffEqSDIRK: TRBDF2
 
 using ..Models
 
