@@ -1,6 +1,7 @@
 ﻿module Simulation
 
 using DifferentialEquations
+using OrdinaryDiffEqRosenbrock: Rodas5
 using DataFrames
 
 using ..Exposure

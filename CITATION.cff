@@ -12,8 +12,9 @@ authors:
     family-names: El bakkouri
     email: elbakkouri.kadin@gmail.com
     # orcid: "https://orcid.org/0000-0000-0000-0000"  # TODO: add ORCID
-version: 0.5.5
-date-released: "2026-10-29"
+version: 0.6.0
+date-released: "2026-11-09"
+doi: 10.5281/zenodo.24095453
 license: MIT
 repository-code: "https://github.com/kadinelbak/GrowthParameterEstimation.jl"
 keywords:

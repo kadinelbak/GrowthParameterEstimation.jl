@@ -5,6 +5,7 @@ using StatsBase
 using CSV
 using DataFrames
 using DifferentialEquations
+using OrdinaryDiffEqRosenbrock: Rodas5
 using LsqFit
 using RecursiveArrayTools
 using DiffEqParamEstim
@@ -21,6 +22,15 @@ export setUpProblem, calculate_bic, pQuickStat, run_single_fit,
     run_joint_fit, run_joint_multistart, profile_joint_fit_bounds,
     profile_joint_fit_bounds_two_sided, compare_joint_models_dict,
     fit_model, fit_condition, predict_model
+
+# Solver verbosity that silences solver warnings. OrdinaryDiffEq v7 rejects a Bool
+# `verbose` and needs a `DEVerbosity` object; older versions take `false`.
+function _quiet_solver_verbosity()
+    if isdefined(DifferentialEquations, :DEVerbosity) && isdefined(DifferentialEquations, :SciMLLogging)
+        return DifferentialEquations.DEVerbosity(DifferentialEquations.SciMLLogging.None())
+    end
+    return false
+end
 
 """
     setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time=100.0, maxiters=10_000)
@@ -74,7 +84,7 @@ function setUpProblem(model, x, y, solver, u0, p0, tspan, bounds; max_time::Real
         L2Loss(x, y),
         Optimization.AutoForwardDiff();
         maxiters = maxiters,
-        verbose  = false,
+        verbose  = _quiet_solver_verbosity(),
     )
 
     if bounds === nothing
