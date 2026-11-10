@@ -40,6 +40,16 @@ harris2016_pc9,in vitro 2D,exponential_linear_growth,2,13,3.8142458555883754,0.0
 harris2016_pc9,in vitro 2D,classic_gompertz_growth,2,13,7.247256250771416,0.0,false
 harris2016_pc9,in vitro 2D,exponential_growth,1,13,13.234295085951176,0.7692307692307693,false
 harris2016_pc9,in vitro 2D,bertalanffy_growth,2,13,19.81039177374659,0.0,false
+johnson2019_bt474,in vitro 2D,weak_allee_growth,3,48,0.0,0.5833333333333334,true
+johnson2019_bt474,in vitro 2D,logistic_growth,2,48,31.83595151583454,0.0625,false
+johnson2019_bt474,in vitro 2D,exponential_growth,1,48,33.79471784071453,0.20833333333333334,false
+johnson2019_bt474,in vitro 2D,theta_logistic_growth,3,48,34.973387929201124,0.020833333333333332,false
+johnson2019_bt474,in vitro 2D,exponential_linear_growth,2,48,35.88119972185621,0.0,false
+johnson2019_bt474,in vitro 2D,general_bertalanffy_growth,3,48,38.79805925474155,0.0,false
+johnson2019_bt474,in vitro 2D,power_law_growth,2,48,38.859703936779745,0.020833333333333332,false
+johnson2019_bt474,in vitro 2D,classic_gompertz_growth,2,48,55.827092950102646,0.0,false
+johnson2019_bt474,in vitro 2D,strong_allee_growth,3,48,88.99284850698258,0.0625,false
+johnson2019_bt474,in vitro 2D,bertalanffy_growth,2,48,112.38637585226837,0.041666666666666664,false
 kaznatcheev2019_h3122,in vitro 2D co-culture,theta_logistic_growth,3,288,0.0,0.2673611111111111,true
 kaznatcheev2019_h3122,in vitro 2D co-culture,logistic_growth,2,288,1.0859271472054577,0.2881944444444444,false
 kaznatcheev2019_h3122,in vitro 2D co-culture,classic_gompertz_growth,2,288,3.961059592737178,0.0798611111111111,false

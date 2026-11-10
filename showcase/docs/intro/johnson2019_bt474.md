@@ -1,0 +1,5 @@
+BT-474 breast cancer cells seeded at very low numbers (from 2 to about 1,000 cells per well) and counted by time-lapse imaging every few hours for up to two weeks; 427 wells in the source. Johnson and colleagues showed that growth at these densities departs from exponential growth and points to an Allee effect: the per-cell growth rate rises with density instead of being highest when cells are sparse.
+
+**What this page fits.** An evenly spaced 48 of the 427 wells, which keeps every seeding density, with the strong and weak Allee laws added to the growth panel. Profiles are skipped here to keep the run near an hour on four cores; set `profiles = true` in `pipeline.toml` to add them.
+
+**Reading the result.** Pooled over wells, the weak Allee law wins by a wide margin and is the pick on 28 of 48 wells, which agrees with the paper. Wells seeded with only two cells are the exception: they are so noisy that plain exponential growth is enough. The forecast check favours the simpler laws, because the late part of a two-week series is nearly exponential once the population has escaped low density.
