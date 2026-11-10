@@ -52,31 +52,39 @@ function cross_tables(ids = finished_datasets())
     return crit, summ
 end
 
-function cross_figures(crit, summ)
+function _heatmaps(crit, summ, tag)
     ids = summ.dataset
-    models = GROWTH_PANEL ∪ unique(crit.model)
+    models = [m for m in (GROWTH_PANEL ∪ unique(crit.model)) if m in crit.model[in.(crit.dataset, Ref(Set(ids)))]]
     labs = [replace(id, r"(\d{4})_" => s"\1 ") for id in ids]
     M = fill(NaN, length(models), length(ids))
     P = fill(NaN, length(models), length(ids))
     for r in eachrow(crit)
+        r.dataset in ids || continue
         i, j = findfirst(==(r.model), models), findfirst(==(r.dataset), ids)
         M[i, j] = min(r.delta_bic_per_curve, 10.0)
         P[i, j] = 100 * r.share_picked
     end
+    # grey background = model not in that dataset's panel
     common = (; xticks = (1:length(ids), labs), yticks = (1:length(models), nice.(models)), xrotation = 30,
-              yflip = true, tickfontsize = 8, size = (180 + 110 * length(ids), 120 + 34 * length(models)),
-              bottom_margin = 10Plots.mm, left_margin = 6Plots.mm)
+              yflip = true, tickfontsize = 8, size = (260 + 95 * length(ids), 140 + 34 * length(models)),
+              bottom_margin = 10Plots.mm, left_margin = 6Plots.mm, background_color_inside = "#d9d9d9", grid = false)
     h1 = heatmap(1:length(ids), 1:length(models), M; c = cgrad(:Blues, rev = true), clims = (0, 10),
                  colorbar_title = "ΔBIC per curve (capped at 10)", common...)
     for r in eachrow(summ)   # mark the rule pick
         scatter!(h1, [findfirst(==(r.dataset), ids)], [findfirst(==(r.pick), models)];
                  marker = :star5, ms = 9, color = "#e07b1a", msw = 0, label = false)
     end
-    f1 = savefig3(h1, "cross", "delta_bic_heatmap")
     h2 = heatmap(1:length(ids), 1:length(models), P; c = :Blues, clims = (0, 100),
                  colorbar_title = "% of curves where the rule picks it", common...)
-    f2 = savefig3(h2, "cross", "pick_share_heatmap")
-    out = [f1, f2]
+    return [savefig3(h1, "cross", "delta_bic_heatmap" * tag), savefig3(h2, "cross", "pick_share_heatmap" * tag)]
+end
+
+function cross_figures(crit, summ)
+    growth = in.(summ.pick, Ref(Set(GROWTH_PANEL)))
+    out = String[]
+    any(growth) && append!(out, _heatmaps(crit, summ[growth, :], ""))
+    any(.!growth) && append!(out, _heatmaps(crit, summ[.!growth, :], "_treated"))
+    labs = [replace(id, r"(\d{4})_" => s"\1 ") for id in summ.dataset]
     ok = .!isnan.(summ.ident_share)
     if any(ok)
         s = summ[ok, :]

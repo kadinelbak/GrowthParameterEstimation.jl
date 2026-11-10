@@ -1,0 +1,5 @@
+model,median_rel_error,share_within_20pct
+classic_gompertz_exposure_kill,0.5432138881730879,0.19447339665018407
+logistic_linear_kill,0.6667959921912907,0.1661987024181072
+exponential_net,1.0,0.08287200635239851
+exponential_exposure_kill,1.0,0.08287200635239851

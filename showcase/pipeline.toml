@@ -53,8 +53,8 @@ id = "johnson2019_bt474"
 xlabel = "hours"
 ylabel = "cells"
 # Johnson et al. compare Allee models at low seeding density, so they join the panel here.
-# 427 wells: an evenly spaced 120 keeps every seeding density and fits on a laptop in minutes.
-max_curves_fitted = 120
+# 427 long wells: an evenly spaced 48 keeps every seeding density and fits in about an hour on 4 cores.
+max_curves_fitted = 48
 profiles = false
 models = [
     "exponential_growth",

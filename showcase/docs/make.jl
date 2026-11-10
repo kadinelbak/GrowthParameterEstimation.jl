@@ -81,17 +81,25 @@ function cross_page(done)
     println(io, "# Across datasets\n")
     println(io, "The same panel, recipe and rule on every dataset, side by side. ",
             "Rebuilt from the committed results with `julia --project=showcase showcase/analyses/cross_dataset.jl`.\n")
-    rows = [["[" * r.title * "](" * r.dataset * ".md)", r.scale, string(r.n_curves), nice(r.pick), nice(r.runner_up),
-             fmt(r.gap_bic), isnan(r.ident_share) ? "—" : string(round(Int, 100 * r.ident_share)),
-             r.forecast_best isa AbstractString && !isempty(r.forecast_best) ? nice(r.forecast_best) * " (" * fmt(100 * r.forecast_best_err) * "%)" : "—",
-             isnan(r.forecast_pick_err) ? "—" : fmt(100 * r.forecast_pick_err)] for r in eachrow(summ)]
-    println(io, md_table(["Dataset", "Scale", "Curves", "Rule pick", "Runner-up", "ΔBIC to runner-up",
-                          "Curves fully identifiable (%)", "Best forecaster (median error)", "Pick's forecast error (%)"], rows))
+    rows = [["[" * replace(r.dataset, "_" => " ") * "](" * r.dataset * ".md)", r.scale, string(r.n_curves),
+             nice(r.pick), fmt(r.gap_bic), isnan(r.ident_share) ? "—" : string(round(Int, 100 * r.ident_share)),
+             r.forecast_best isa AbstractString && !isempty(r.forecast_best) ? nice(r.forecast_best) * " (" * fmt(100 * r.forecast_best_err) * "%)" : "—"]
+            for r in eachrow(summ)]
+    println(io, md_table(["Dataset", "Scale", "Curves", "Rule pick", "ΔBIC to next model",
+                          "Fully identifiable (%)", "Best forecaster (median error)"], rows))
+    println(io, "\n*Fully identifiable*: share of curves on which every parameter of the pick has a closed 95% profile interval.\n")
     println(io, "\n## Which law wins where\n")
-    println(io, "Each cell is the summed ΔBIC divided by the number of curves, so datasets of different size share one scale; the star marks the rule pick.\n")
+    println(io, "Each cell is the summed ΔBIC divided by the number of curves, so datasets of different size share one scale; the star marks the rule pick. Grey means the model was not in that dataset's panel.\n")
+    println(io, "### Untreated growth\n")
     println(io, "![ΔBIC heatmap](../assets/cross/delta_bic_heatmap.png)\n")
     println(io, "How often each law is the pick when every curve is judged on its own. Short or noisy curves favour simple laws, which is why per-curve shares and the dataset-level pick can disagree.\n")
     println(io, "![Pick share heatmap](../assets/cross/pick_share_heatmap.png)\n")
+    if isfile(joinpath(SHOWCASE, "figures", "cross", "delta_bic_heatmap_treated.png"))
+        println(io, "### Under treatment\n")
+        println(io, "Treated datasets use a panel of treatment-response laws (see each dataset page).\n")
+        println(io, "![ΔBIC heatmap, treated](../assets/cross/delta_bic_heatmap_treated.png)\n")
+        println(io, "![Pick share heatmap, treated](../assets/cross/pick_share_heatmap_treated.png)\n")
+    end
     if isfile(joinpath(SHOWCASE, "figures", "cross", "identifiability_by_dataset.png"))
         println(io, "## Identifiability by dataset\n")
         println(io, "Share of curves on which every parameter of the pick has a closed 95% profile interval.\n")
@@ -127,9 +135,19 @@ cross = cross_page(done)
 makedocs(;
     sitename = "GrowthParameterEstimation.jl showcase",
     authors = "Kadin El bakkouri",
-    format = Documenter.HTML(; prettyurls = get(ENV, "CI", "false") == "true",
+    format = Documenter.HTML(; prettyurls = get(ENV, "CI", "false") == "true", edit_link = "main", inventory_version = "showcase",
                              canonical = "https://kadinelbak.github.io/GrowthParameterEstimation.jl/showcase/"),
     pages = ["Home" => "index.md", "Why one package" => "why.md", "Shared recipe" => "recipe.md",
              (cross === nothing ? [] : ["Across datasets" => cross])..., "Datasets" => pages, "Reproduce" => "reproduce.md"],
     warnonly = true,
+)
+
+# Deploy beside the package docs at https://kadinelbak.github.io/GrowthParameterEstimation.jl/showcase/
+# (only from CI on main; a local build just writes showcase/docs/build/).
+deploydocs(;
+    repo = "github.com/kadinelbak/GrowthParameterEstimation.jl",
+    devbranch = "main",
+    dirname = "showcase",
+    versions = nothing,
+    push_preview = false,
 )

@@ -27,6 +27,13 @@ Documentation: <https://kadinelbak.github.io/GrowthParameterEstimation.jl/dev/> 
   a discrete step map, and MPC-convention functions, with bootstrap parameter
   sets attached, for use with external optimal-control and MPC packages.
 
+## Showcase
+
+[`showcase/`](showcase/) applies the package, with one fitting recipe and one model-selection
+rule, to published public tumour-growth datasets: cells in a dish, spheroids, mouse tumours and
+patients. Its site is at <https://kadinelbak.github.io/GrowthParameterEstimation.jl/showcase/>,
+and `showcase/run_pipeline.jl` runs the same analysis on your own CSV.
+
 ## Installation
 ```julia
 using Pkg

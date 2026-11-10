@@ -1,0 +1,70 @@
+name: Showcase
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'showcase/**'
+      - 'src/**'
+      - '.github/workflows/Showcase.yml'
+  pull_request:
+    paths:
+      - 'showcase/**'
+      - '.github/workflows/Showcase.yml'
+  workflow_dispatch:
+    inputs:
+      refit:
+        description: 'Download the public data and refit every dataset before building (slow)'
+        type: boolean
+        default: false
+      only:
+        description: 'Space-separated dataset ids to refit (empty = all)'
+        type: string
+        default: ''
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  site:
+    name: Build showcase site
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    permissions:
+      actions: write
+      contents: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v3
+      - name: Instantiate showcase environment
+        run: julia --project=showcase -e 'using Pkg; Pkg.instantiate()'
+      - name: Download public data
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.refit }}
+        run: |
+          python3 -m pip install -r showcase/data/requirements.txt
+          python3 -I showcase/data/prepare.py
+      - name: Refit
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.refit }}
+        run: |
+          if [ -n "${{ inputs.only }}" ]; then
+            julia --project=showcase -t auto showcase/run_pipeline.jl --only ${{ inputs.only }}
+          else
+            julia --project=showcase -t auto showcase/run_pipeline.jl
+          fi
+      - name: Upload refitted results
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.refit }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-results
+          path: |
+            showcase/results
+            showcase/figures
+      - name: Build (and on main, deploy to /showcase/)
+        run: julia --project=showcase showcase/docs/make.jl
+        env:
+          GKSwstype: '100'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
