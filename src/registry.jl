@@ -361,7 +361,13 @@ end
 """
     get_model(name::String) -> ModelSpec
 """
-get_model(name::String) = MODEL_REGISTRY[name]
+function get_model(name::String)
+    if name in ("gompertz_growth", "gompertz_growth_with_death")
+        Base.depwarn("`$(name)` carries an unused parameter `b` that is still counted in AIC/BIC. " *
+                     "Use `classic_gompertz_growth` (r, K) or `classic_gompertz_kill` instead.", :get_model)
+    end
+    return MODEL_REGISTRY[name]
+end
 
 """
     list_models() -> Vector{String}

@@ -23,7 +23,8 @@ function cross_tables(ids = finished_datasets())
         meta = TOML.parsefile(joinpath(dir, "meta.toml"))
         rk = sort(CSV.read(joinpath(dir, "ranking.csv"), DataFrame), :bic)
         n = meta["n_curves"]
-        scale = get(get(man, id, Dict()), "scale", "")
+        src = get(meta, "source", id)
+        scale = get(get(man, src, Dict()), "scale", "")
         for r in eachrow(rk)
             push!(crit, (id, scale, r.model, r.k, n, r.delta_bic / n, r.curves_picked / n, r.model == meta["pick"]))
         end
@@ -46,7 +47,7 @@ function cross_tables(ids = finished_datasets())
             j = findfirst(==(pick), f.model)
             j === nothing || (fpe = f.median_rel_error[j])
         end
-        push!(summ, (id, get(get(man, id, Dict()), "title", id), scale, n, pick, others[1], gap, ident,
+        push!(summ, (id, get(meta, "title", get(get(man, src, Dict()), "title", id)), scale, n, pick, others[1], gap, ident,
                      fb, fbe, fpe, Float64(get(meta, "runtime_seconds", NaN))))
     end
     return crit, summ

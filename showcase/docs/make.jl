@@ -24,11 +24,11 @@ end
 function dataset_page(id)
     res = joinpath(SHOWCASE, "results", id)
     meta = TOML.parsefile(joinpath(res, "meta.toml"))
-    src = MANIFEST[id]
+    src = MANIFEST[get(meta, "source", id)]
     rd(n) = CSV.read(joinpath(res, "$(n).csv"), DataFrame)
     ranking = rd("ranking")
     io = IOBuffer()
-    println(io, "# ", src["title"], "\n")
+    println(io, "# ", get(meta, "title", src["title"]), "\n")
     println(io, "*", src["citation"], "* · [doi:", src["doi"], "](https://doi.org/", src["doi"], ") · source: [", src["source"], "](", src["source"], ") · licence: ", src["licence"], "\n")
     intro = joinpath(@__DIR__, "intro", "$(id).md")
     isfile(intro) && println(io, read(intro, String), "\n")
@@ -64,7 +64,7 @@ function dataset_page(id)
         println(io, "\n![Forecast](../assets/", id, "/forecast.png)\n")
     end
     println(io, "## Reproduce\n")
-    println(io, "```bash\npython3 -I showcase/data/prepare.py --only ", id, "\njulia --project=showcase -t auto showcase/run_pipeline.jl --only ", id, "\n```\n")
+    println(io, "```bash\npython3 -I showcase/data/prepare.py --only ", get(meta, "source", id), "\njulia --project=showcase -t auto showcase/run_pipeline.jl --only ", id, "\n```\n")
     println(io, "Fitted with GrowthParameterEstimation.jl ", meta["package_version"], ". Results: `showcase/results/", id, "/`.")
     path = joinpath(GEN, "$(id).md")
     write(path, String(take!(io)))
@@ -108,7 +108,7 @@ function cross_page(done)
     println(io, "## Gallery\n")
     for id in done
         isfile(joinpath(SHOWCASE, "figures", id, "fit_gallery.png")) || continue
-        println(io, "### [", MANIFEST[id]["title"], "](", id, ".md)\n")
+        println(io, "### [", page_title(id), "](", id, ".md)\n")
         println(io, "![", id, "](../assets/", id, "/fit_gallery.png)\n")
     end
     write(joinpath(GEN, "cross.md"), String(take!(io)))
@@ -129,7 +129,9 @@ end
 using Statistics
 mkpath(GEN)
 done = sort([d for d in readdir(joinpath(SHOWCASE, "results")) if isfile(joinpath(SHOWCASE, "results", d, "meta.toml"))])
-pages = [MANIFEST[id]["title"] => dataset_page(id) for id in done]
+page_title(id) = get(TOML.parsefile(joinpath(SHOWCASE, "results", id, "meta.toml")), "title",
+                     MANIFEST[get(TOML.parsefile(joinpath(SHOWCASE, "results", id, "meta.toml")), "source", id)]["title"])
+pages = [page_title(id) => dataset_page(id) for id in done]
 cross = cross_page(done)
 
 makedocs(;

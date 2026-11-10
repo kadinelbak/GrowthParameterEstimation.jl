@@ -27,6 +27,10 @@ bruchovsky_iadt_psa,patient,classic_gompertz_exposure_kill,3,72,0.0,0.7222222222
 bruchovsky_iadt_psa,patient,logistic_linear_kill,3,72,37.14115423785976,0.2638888888888889,false
 bruchovsky_iadt_psa,patient,exponential_exposure_kill,2,72,53.83611013347107,0.013888888888888888,false
 bruchovsky_iadt_psa,patient,exponential_net,1,72,66.8208865182867,0.0,false
+ebos_sunitinib,mouse,classic_gompertz_exposure_kill,3,99,0.0,0.13131313131313133,true
+ebos_sunitinib,mouse,classic_gompertz_growth,2,99,0.4509386908462469,0.46464646464646464,false
+ebos_sunitinib,mouse,logistic_linear_kill,3,99,0.6512821516241706,0.0,false
+ebos_sunitinib,mouse,exponential_exposure_kill,2,99,2.6481680400478895,0.40404040404040403,false
 ghaffarilaleh2022_recist,patient,logistic_kill,3,641,0.0,0.0967238689547582,true
 ghaffarilaleh2022_recist,patient,classic_gompertz_kill,3,641,0.013939269163969238,0.0249609984399376,false
 ghaffarilaleh2022_recist,patient,claret_response,3,641,0.25723199461466656,0.11232449297971919,false

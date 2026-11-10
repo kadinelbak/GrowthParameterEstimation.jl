@@ -35,6 +35,13 @@ All notable changes to this project will be documented in this file.
   Results for such models can differ from earlier releases for the same seed.
 - Zenodo DOI (10.5281/zenodo.24095453, all versions) added to README, CITATION.cff and the paper; AI usage disclosure updated.
 
+### Deprecated
+
+- `gompertz_growth` and `gompertz_growth_with_death`: their parameter `b` is unused but still
+  counted in AIC/BIC. `get_model` now emits a deprecation warning (shown with
+  `--depwarn=yes`) pointing to `classic_gompertz_growth` and `classic_gompertz_kill`. Both
+  still work and will be removed in a future breaking release.
+
 ### Fixed
 
 - Models whose right-hand side takes no exposure argument (the composable built-ins such as

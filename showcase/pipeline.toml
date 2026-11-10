@@ -71,6 +71,7 @@ models = [
 
 [[dataset]]
 id = "harris2016_pc9"
+title = "PC9 parental and sublines, untreated"
 xlabel = "hours"
 ylabel = "cells"
 where = { treatment_on = "False" }
@@ -110,3 +111,33 @@ models = [
     "logistic_linear_kill",
     "classic_gompertz_exposure_kill",
 ]
+
+# Ebos lab neoadjuvant sunitinib (human breast xenografts). Only the sunitinib arms are fitted;
+# the vehicle mice are the LM2-4 page. Schedules follow table_summary.pdf in the Zenodo record:
+# 14 days of treatment ending at surgery (day 34, or day 38 for the validation groups written
+# without spaces), 120 mg/kg/day for the first days where stated, then 60 mg/kg/day, then none.
+# Exposure is the dose divided by 60 mg/kg/day.
+[[dataset]]
+id = "ebos_sunitinib"
+xlabel = "days after implantation"
+ylabel = "tumour volume (mm³)"
+curve_label = ""
+where = { condition = ["Su60 (14D)", "Su60 (7D)", "Su60 (3D)", "Su120 (3D) / Su60 (11D)", "Su120 (3D)",
+                       "Su120(3D) / Su60(11D)", "Su120(3D) / Su60(8D)", "Su120(3D) / Su60(4D)", "Su120(3D)"] }
+models = [
+    "classic_gompertz_growth",
+    "exponential_exposure_kill",
+    "logistic_linear_kill",
+    "classic_gompertz_exposure_kill",
+]
+
+[dataset.schedules]
+"Su60 (14D)" = { change_times = [20.0, 34.0], values = [0.0, 1.0, 0.0] }
+"Su60 (7D)" = { change_times = [20.0, 27.0], values = [0.0, 1.0, 0.0] }
+"Su60 (3D)" = { change_times = [20.0, 23.0], values = [0.0, 1.0, 0.0] }
+"Su120 (3D) / Su60 (11D)" = { change_times = [20.0, 23.0, 34.0], values = [0.0, 2.0, 1.0, 0.0] }
+"Su120 (3D)" = { change_times = [20.0, 23.0], values = [0.0, 2.0, 0.0] }
+"Su120(3D) / Su60(11D)" = { change_times = [24.0, 27.0, 38.0], values = [0.0, 2.0, 1.0, 0.0] }
+"Su120(3D) / Su60(8D)" = { change_times = [24.0, 27.0, 35.0], values = [0.0, 2.0, 1.0, 0.0] }
+"Su120(3D) / Su60(4D)" = { change_times = [24.0, 27.0, 31.0], values = [0.0, 2.0, 1.0, 0.0] }
+"Su120(3D)" = { change_times = [24.0, 27.0], values = [0.0, 2.0, 0.0] }

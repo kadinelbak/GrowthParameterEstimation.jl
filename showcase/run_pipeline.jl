@@ -12,8 +12,10 @@ include(joinpath(@__DIR__, "analyses", "common.jl"))
 include(joinpath(@__DIR__, "analyses", "figures.jl"))
 include(joinpath(@__DIR__, "analyses", "cross_dataset.jl"))
 
+const MANIFEST_ALL = TOML.parsefile(joinpath(SHOWCASE, "data", "manifest.toml"))["datasets"]
+
 function load_dataset(cfg::Dict)
-    path = get(cfg, "csv", joinpath(TIDY, cfg["id"] * ".csv"))
+    path = get(cfg, "csv", joinpath(TIDY, get(cfg, "source_id", cfg["id"]) * ".csv"))
     isabspath(path) || (path = normpath(joinpath(SHOWCASE, path)))
     isfile(path) || error("$(cfg["id"]): $(path) not found (for public datasets run showcase/data/prepare.py first)")
     df = CSV.read(path, DataFrame)
@@ -33,8 +35,8 @@ function load_dataset(cfg::Dict)
         vals = lowercase.(want isa AbstractVector ? string.(want) : [string(want)])
         df = df[in.(lowercase.(string.(df[!, Symbol(col)])), Ref(Set(vals))), :]
     end
-    tmax = get(cfg, "time_max", Inf)
-    df = df[.!ismissing.(df.time) .& (coalesce.(df.time, Inf) .<= tmax), :]
+    tmin, tmax = get(cfg, "time_min", -Inf), get(cfg, "time_max", Inf)
+    df = df[.!ismissing.(df.time) .& (coalesce.(df.time, Inf) .<= tmax) .& (coalesce.(df.time, -Inf) .>= tmin), :]
     if haskey(cfg, "time_shift_to_zero") && cfg["time_shift_to_zero"]
         df = transform(groupby(df, :subject), :time => (t -> t .- minimum(t)) => :time)
     end
@@ -62,8 +64,16 @@ function run_dataset(cfg::Dict, defaults::Dict)
     t0 = time()
     df = load_dataset(c)
     # exposure: none (default), or a 0/1 therapy schedule read from a Bool column
+    # or a dose schedule per condition: [dataset.schedules."name"] change_times = [...], values = [...]
     exp_col = get(c, "exposure_on_column", "")
-    exposure_for = isempty(exp_col) ? (_ -> ConstantExposure(0.0)) : (g -> stepped_from_column(g, Symbol(exp_col)))
+    sched = get(c, "schedules", Dict{String,Any}())
+    exposure_for = if !isempty(sched)
+        g -> (s = sched[string(g.condition[1])]; SteppedExposure(Float64.(s["change_times"]), Float64.(s["values"])))
+    elseif !isempty(exp_col)
+        g -> stepped_from_column(g, Symbol(exp_col))
+    else
+        _ -> ConstantExposure(0.0)
+    end
     conds = curves(df; min_points = get(c, "min_points", 5), exposure_for)
     max_n = get(c, "max_curves_fitted", 0)
     # evenly spaced subset, so every condition (e.g. seeding density) stays represented
@@ -87,7 +97,7 @@ function run_dataset(cfg::Dict, defaults::Dict)
             out[:forecast_summary] = sort!(fcs, :median_rel_error)
         end
     end
-    out[:meta] = Dict("dataset" => id, "script" => "run_pipeline.jl", "pick" => summary.pick,
+    out[:meta] = Dict("dataset" => id, "source" => get(c, "source_id", id), "title" => get(c, "title", get(get(MANIFEST_ALL, get(c, "source_id", id), Dict()), "title", id)), "script" => "run_pipeline.jl", "pick" => summary.pick,
                       "n_curves" => summary.n_curves, "models" => models,
                       "rule" => "fewest parameters within $(RULE_BIC) BIC of best",
                       "package_version" => string(pkgversion(GrowthParameterEstimation)),
