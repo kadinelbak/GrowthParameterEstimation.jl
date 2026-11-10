@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Changed
+
+- Zenodo DOI (10.5281/zenodo.24095453, all versions) added to README, CITATION.cff and the paper; AI usage disclosure updated.
+
 ## v0.6.0 - 2026-11-09
 
 ### Added

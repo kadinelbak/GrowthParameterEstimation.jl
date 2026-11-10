@@ -35,8 +35,8 @@ and conditions, a staged pipeline that carries estimates from simpler
 experiments into more complex ones, and uncertainty and identifiability tools
 (bootstrap, profile likelihood, Fisher information, synthetic recovery and
 symbolic structural checks). It is built on the SciML ecosystem
-[@rackauckas2017differentialequations] and is registered in the Julia General
-registry.
+[@rackauckas2017differentialequations], is registered in the Julia General
+registry, and is archived on Zenodo [@elbakkouri2026growthparameterestimation].
 
 # Statement of need
 
@@ -200,8 +200,9 @@ before implementation. From 22 August 2026, Claude Code (Claude Opus 4.7, then
 Claude Opus 5.5) was used for later changes, including the v0.5 releases, the
 control handoff API, the citation metadata, documentation and repository
 cleanup, and dependency updates. Short trials of opencode and Continue.dev with
-an NVIDIA Nemotron model in June 2026 were mostly unsuccessful. [TODO: state
-whether any code from those trials remains.] `docs/AI Reference.md` is a guide
+an NVIDIA Nemotron model in June 2026 were mostly unsuccessful. opencode did a
+small amount of refactoring, which was largely corrected with Claude Code in
+August 2026. `docs/AI Reference.md` is a guide
 for users who integrate the package with an AI assistant, not AI-written code.
 Claude Code drafted the prose of this paper from the author's outline, and the
 author revised and approved the text.
