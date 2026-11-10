@@ -1,5 +1,7 @@
 # GrowthParameterEstimation.jl
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24095453.svg)](https://doi.org/10.5281/zenodo.24095453)
+
 [![CI](https://github.com/kadinelbak/GrowthParameterEstimation.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/kadinelbak/GrowthParameterEstimation.jl/actions/workflows/CI.yml)
 [![Docs (dev)](https://img.shields.io/badge/docs-dev-blue.svg)](https://kadinelbak.github.io/GrowthParameterEstimation.jl/dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
