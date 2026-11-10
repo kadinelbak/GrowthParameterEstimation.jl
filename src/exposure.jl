@@ -107,6 +107,9 @@ end
 
 function (structure::SteppedExposure)(t::Real)
     idx = searchsortedlast(structure.change_times, Float64(t))
+    # Two layouts are accepted: one value per interval (length(values) == length(change_times) + 1,
+    # as in the docstring) or one value per change time, the first holding before it too.
+    length(structure.values) == length(structure.change_times) + 1 && (idx += 1)
     idx = clamp(idx, 1, length(structure.values))
     return structure.values[idx]
 end

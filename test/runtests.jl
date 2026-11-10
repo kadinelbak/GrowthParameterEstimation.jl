@@ -167,6 +167,34 @@ using Random
         @test isapprox(du[1], 0.5 * 5.0 * (1 - 0.05) * 5.0 / 15.0; rtol = 1e-10)
     end
 
+    @testset "Treatment-response laws match closed forms" begin
+        t = collect(0.0:0.5:20.0)
+        relerr(a, b) = maximum(abs.(a .- b) ./ max.(abs.(b), 1e-12))
+        run(name, p, u0) = simulate(get_model(name), t, p; u0 = [u0]).observed
+        V0 = 30.0
+
+        @test relerr(run("exponential_net", [-0.2], V0), V0 .* exp.(-0.2 .* t)) < 1e-5
+
+        # Stein: V0 (f e^{-d t} + (1 - f) e^{g t})
+        f, d, g = 0.9, 0.3, 0.05
+        @test relerr(run("stein_response", [f, d, g], V0), V0 .* (f .* exp.(-d .* t) .+ (1 - f) .* exp.(g .* t))) < 1e-5
+
+        # Claret: V0 exp(g t - (k/λ)(1 - e^{-λ t}))
+        g, k, λ = 0.05, 0.4, 0.2
+        @test relerr(run("claret_response", [g, k, λ], V0), V0 .* exp.(g .* t .- (k / λ) .* (1 .- exp.(-λ .* t)))) < 1e-5
+
+        # Kill terms shift the plateau: logistic to K(1 - d/r), Gompertz to K e^{-d/r}
+        @test isapprox(simulate(get_model("logistic_kill"), [0.0, 200.0], [0.5, 100.0, 0.1]; u0 = [5.0]).observed[end], 80.0; rtol = 1e-3)
+        @test isapprox(simulate(get_model("classic_gompertz_kill"), [0.0, 200.0], [0.5, 100.0, 0.1]; u0 = [5.0]).observed[end],
+                       100 * exp(-0.2); rtol = 1e-3)
+
+        # Exposure-switched kill: net rate r - d while the exposure is 1, r while it is 0
+        on_off = SteppedExposure([10.0], [1.0, 0.0])
+        v = simulate(get_model("exponential_exposure_kill"), t, [0.1, 0.4], u0 = [V0], exposure = on_off).observed
+        exact = [tt <= 10 ? V0 * exp(-0.3 * tt) : V0 * exp(-3.0) * exp(0.1 * (tt - 10)) for tt in t]
+        @test relerr(v, exact) < 1e-3
+    end
+
     @testset "Transformed optimizer matches Fminbox" begin
         tt = collect(0.0:1.0:10.0)
         truth = simulate(get_model("logistic_growth"), tt, [0.6, 80.0]; u0 = [4.0]).observed

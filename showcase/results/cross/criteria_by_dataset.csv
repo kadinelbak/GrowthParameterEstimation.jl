@@ -1,0 +1,33 @@
+dataset,scale,model,k,n_curves,delta_bic_per_curve,share_picked,is_pick
+benzekry2014_llc,mouse,exponential_linear_growth,2,20,0.0,0.3,true
+benzekry2014_llc,mouse,power_law_growth,2,20,0.23789397349815572,0.35,false
+benzekry2014_llc,mouse,logistic_growth,2,20,0.2904936069129221,0.05,false
+benzekry2014_llc,mouse,theta_logistic_growth,3,20,0.44540086650146693,0.0,false
+benzekry2014_llc,mouse,classic_gompertz_growth,2,20,1.1246567115325958,0.0,false
+benzekry2014_llc,mouse,general_bertalanffy_growth,3,20,1.8161702058337723,0.0,false
+benzekry2014_llc,mouse,bertalanffy_growth,2,20,4.550090650564823,0.0,false
+benzekry2014_llc,mouse,exponential_growth,1,20,6.934530508046153,0.3,false
+benzekry2014_lm24,mouse,classic_gompertz_growth,2,64,0.0,0.03125,true
+benzekry2014_lm24,mouse,power_law_growth,2,64,0.15992570439622344,0.140625,false
+benzekry2014_lm24,mouse,bertalanffy_growth,2,64,0.34738593570028886,0.109375,false
+benzekry2014_lm24,mouse,logistic_growth,2,64,0.5994665949857305,0.09375,false
+benzekry2014_lm24,mouse,exponential_linear_growth,2,64,1.0605311803267474,0.25,false
+benzekry2014_lm24,mouse,theta_logistic_growth,3,64,1.103867287708515,0.03125,false
+benzekry2014_lm24,mouse,general_bertalanffy_growth,3,64,1.5190407670154658,0.0,false
+benzekry2014_lm24,mouse,exponential_growth,1,64,6.436269222594791,0.34375,false
+browning2021_spheroids,spheroid,theta_logistic_growth,3,170,0.0,0.2823529411764706,true
+browning2021_spheroids,spheroid,bertalanffy_growth,2,170,0.447456120702608,0.13529411764705881,false
+browning2021_spheroids,spheroid,classic_gompertz_growth,2,170,1.9494196937646526,0.11764705882352941,false
+browning2021_spheroids,spheroid,general_bertalanffy_growth,3,170,3.361180169424498,0.15294117647058825,false
+browning2021_spheroids,spheroid,logistic_growth,2,170,12.574234624232373,0.052941176470588235,false
+browning2021_spheroids,spheroid,power_law_growth,2,170,37.78617146079832,0.047058823529411764,false
+browning2021_spheroids,spheroid,exponential_linear_growth,2,170,40.75832897440961,0.07058823529411765,false
+browning2021_spheroids,spheroid,exponential_growth,1,170,101.77494233197399,0.1411764705882353,false
+harris2016_pc9,in vitro 2D,power_law_growth,2,13,0.0,0.15384615384615385,true
+harris2016_pc9,in vitro 2D,logistic_growth,2,13,1.296261236977251,0.07692307692307693,false
+harris2016_pc9,in vitro 2D,theta_logistic_growth,3,13,2.466412274616101,0.0,false
+harris2016_pc9,in vitro 2D,general_bertalanffy_growth,3,13,2.8949711820614232,0.0,false
+harris2016_pc9,in vitro 2D,exponential_linear_growth,2,13,3.8142458555883754,0.0,false
+harris2016_pc9,in vitro 2D,classic_gompertz_growth,2,13,7.247256250771416,0.0,false
+harris2016_pc9,in vitro 2D,exponential_growth,1,13,13.234295085951176,0.7692307692307693,false
+harris2016_pc9,in vitro 2D,bertalanffy_growth,2,13,19.81039177374659,0.0,false

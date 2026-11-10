@@ -11,30 +11,22 @@ All notable changes to this project will be documented in this file.
   `power_law_growth`, `exponential_linear_growth` (smooth switch, as in Benzekry et al. 2014),
   `strong_allee_growth` and `weak_allee_growth`, each tested against its closed-form solution
   or defining property.
-- `showcase/`: a separate benchmark of the package on ten public tumour-growth datasets
-  (cells, spheroids, mice, patients), with a data manifest, hash-checked download script and
-  shared analysis recipe. No third-party data is committed.
 - `classic_gompertz_growth`: two-parameter Gompertz (`r`, `K`). The older `gompertz_growth`
   spec keeps an unused `b` parameter, so its AIC/BIC carry one extra parameter penalty;
   prefer `classic_gompertz_growth` when comparing growth laws.
+- Treatment-response laws: `exponential_net` (one net rate, may be negative),
+  `stein_response` (bi-exponential decay plus regrowth), `claret_response` (growth with a
+  fading drug effect), `logistic_kill` and `classic_gompertz_kill` (always-on kill term), and
+  the exposure-switched `exponential_exposure_kill` and `classic_gompertz_exposure_kill`.
+  Each is tested against its closed form or plateau.
 - `fit(...; optimizer = :transformed)`: BFGS on an unconstrained transform of the bounded
   parameters (log scale for positive bounds spanning more than two decades). On the classic
   growth laws it reaches the same optima as the default `:fminbox` and is typically 10–300x
   faster. The default is unchanged.
-
-### Changed
-
-- `fit` random starts are drawn on a log scale for positive parameters whose bounds span
-  more than two decades (for example `K` in `(1e-3, 1e7)`), so starts also try small values.
-  Results for such models can differ from 0.5.5 for the same seed.
-
-### Fixed
-
-- Models whose right-hand side takes no exposure argument (the composable built-ins such as
-  `logistic_growth` and `gompertz_growth`) no longer throw and catch a `MethodError` on every
-  right-hand-side call in `simulate`, `fit_model` and `parameter_sensitivity_analysis`; the
-  method is checked once per simulation. Fitting these models is roughly 50–100x faster.
-
+- `showcase/`: a separate benchmark of the package on public tumour-growth datasets
+  (cells, spheroids, mice, patients), with a data manifest, hash-checked download script,
+  shared analysis recipe, one open pipeline (`run_pipeline.jl` + `pipeline.toml`) and its
+  own Documenter site. No third-party data is committed.
 - `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) and GitHub issue templates.
 - Documentation: dedicated API Reference page covering every submodule, and tutorials in the site navigation.
 - Control handoff API (`controlled_model`) that packages a fitted model for
@@ -55,6 +47,20 @@ All notable changes to this project will be documented in this file.
 
 - Documentation home page no longer pins an old release number.
 - CompatHelper workflow updated to the current upstream template, runs weekly and also checks `docs/`.
+
+- `fit` random starts are drawn on a log scale for positive parameters whose bounds span
+  more than two decades (for example `K` in `(1e-3, 1e7)`), so starts also try small values.
+  Results for such models can differ from earlier releases for the same seed.
+
+### Fixed
+
+- Models whose right-hand side takes no exposure argument (the composable built-ins such as
+  `logistic_growth` and `gompertz_growth`) no longer throw and catch a `MethodError` on every
+  right-hand-side call in `simulate`, `fit_model` and `parameter_sensitivity_analysis`; the
+  method is checked once per simulation. Fitting these models is roughly 50–100x faster.
+- `SteppedExposure` with one value per interval (`length(values) == length(change_times) + 1`,
+  the layout in its docstring) returned the value of the previous interval after each change.
+  The layout with one value per change time behaves as before.
 
 ### Removed
 

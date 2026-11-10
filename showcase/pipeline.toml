@@ -36,3 +36,77 @@ max_curves_plotted = 20
 # value_col = "cells"
 # xlabel = "hours"
 # ylabel = "cells"
+
+[[dataset]]
+id = "benzekry2014_lm24"
+xlabel = "days"
+ylabel = "tumour volume (mm³)"
+curve_label = "mouse "
+
+[[dataset]]
+id = "browning2021_spheroids"
+xlabel = "days"
+ylabel = "outer radius (µm)"
+
+[[dataset]]
+id = "johnson2019_bt474"
+xlabel = "hours"
+ylabel = "cells"
+# Johnson et al. compare Allee models at low seeding density, so they join the panel here.
+# 427 wells: an evenly spaced 120 keeps every seeding density and fits on a laptop in minutes.
+max_curves_fitted = 120
+profiles = false
+models = [
+    "exponential_growth",
+    "logistic_growth",
+    "classic_gompertz_growth",
+    "theta_logistic_growth",
+    "bertalanffy_growth",
+    "general_bertalanffy_growth",
+    "power_law_growth",
+    "exponential_linear_growth",
+    "strong_allee_growth",
+    "weak_allee_growth",
+]
+
+[[dataset]]
+id = "harris2016_pc9"
+xlabel = "hours"
+ylabel = "cells"
+where = { treatment_on = "False" }
+
+[[dataset]]
+id = "kaznatcheev2019_h3122"
+xlabel = "hours"
+ylabel = "fluorescent area (px)"
+where = { treatment_on = "False" }
+
+# Treated data: tumour-response laws instead of plain growth laws.
+[[dataset]]
+id = "ghaffarilaleh2022_recist"
+xlabel = "days from baseline scan"
+ylabel = "target lesion diameter (mm)"
+time_shift_to_zero = true     # baseline scan = start of treatment (it is 0–38 days earlier)
+min_points = 6
+curve_label = ""
+models = [
+    "exponential_net",
+    "stein_response",
+    "claret_response",
+    "logistic_kill",
+    "classic_gompertz_kill",
+]
+
+[[dataset]]
+id = "bruchovsky_iadt_psa"
+xlabel = "days"
+ylabel = "PSA (ng/mL)"
+curve_label = "patient "
+exposure_on_column = "treatment_on"   # 1 while on androgen deprivation, 0 while off
+min_points = 8
+models = [
+    "exponential_net",
+    "exponential_exposure_kill",
+    "logistic_linear_kill",
+    "classic_gompertz_exposure_kill",
+]

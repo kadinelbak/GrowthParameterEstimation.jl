@@ -68,28 +68,68 @@ function dataset_page(id)
     println(io, "Fitted with GrowthParameterEstimation.jl ", meta["package_version"], ". Results: `showcase/results/", id, "/`.")
     path = joinpath(GEN, "$(id).md")
     write(path, String(take!(io)))
-    # copy figures next to the page
-    figs = joinpath(SHOWCASE, "figures", id)
-    if isdir(figs)
-        dest = joinpath(SRC, "assets", id)
-        mkpath(dest)
-        for f in readdir(figs)
-            endswith(f, ".png") && cp(joinpath(figs, f), joinpath(dest, f); force = true)
-        end
-    end
+    copy_figs(id)   # figures next to the page
     return "datasets/$(id).md"
+end
+
+function cross_page(done)
+    dir = joinpath(SHOWCASE, "results", "cross")
+    isfile(joinpath(dir, "summary.csv")) || return nothing
+    summ = CSV.read(joinpath(dir, "summary.csv"), DataFrame)
+    summ = summ[in.(summ.dataset, Ref(Set(done))), :]
+    io = IOBuffer()
+    println(io, "# Across datasets\n")
+    println(io, "The same panel, recipe and rule on every dataset, side by side. ",
+            "Rebuilt from the committed results with `julia --project=showcase showcase/analyses/cross_dataset.jl`.\n")
+    rows = [["[" * r.title * "](" * r.dataset * ".md)", r.scale, string(r.n_curves), nice(r.pick), nice(r.runner_up),
+             fmt(r.gap_bic), isnan(r.ident_share) ? "—" : string(round(Int, 100 * r.ident_share)),
+             r.forecast_best isa AbstractString && !isempty(r.forecast_best) ? nice(r.forecast_best) * " (" * fmt(100 * r.forecast_best_err) * "%)" : "—",
+             isnan(r.forecast_pick_err) ? "—" : fmt(100 * r.forecast_pick_err)] for r in eachrow(summ)]
+    println(io, md_table(["Dataset", "Scale", "Curves", "Rule pick", "Runner-up", "ΔBIC to runner-up",
+                          "Curves fully identifiable (%)", "Best forecaster (median error)", "Pick's forecast error (%)"], rows))
+    println(io, "\n## Which law wins where\n")
+    println(io, "Each cell is the summed ΔBIC divided by the number of curves, so datasets of different size share one scale; the star marks the rule pick.\n")
+    println(io, "![ΔBIC heatmap](../assets/cross/delta_bic_heatmap.png)\n")
+    println(io, "How often each law is the pick when every curve is judged on its own. Short or noisy curves favour simple laws, which is why per-curve shares and the dataset-level pick can disagree.\n")
+    println(io, "![Pick share heatmap](../assets/cross/pick_share_heatmap.png)\n")
+    if isfile(joinpath(SHOWCASE, "figures", "cross", "identifiability_by_dataset.png"))
+        println(io, "## Identifiability by dataset\n")
+        println(io, "Share of curves on which every parameter of the pick has a closed 95% profile interval.\n")
+        println(io, "![Identifiability](../assets/cross/identifiability_by_dataset.png)\n")
+    end
+    println(io, "## Gallery\n")
+    for id in done
+        isfile(joinpath(SHOWCASE, "figures", id, "fit_gallery.png")) || continue
+        println(io, "### [", MANIFEST[id]["title"], "](", id, ".md)\n")
+        println(io, "![", id, "](../assets/", id, "/fit_gallery.png)\n")
+    end
+    write(joinpath(GEN, "cross.md"), String(take!(io)))
+    copy_figs("cross")
+    return "datasets/cross.md"
+end
+
+function copy_figs(id)
+    figs = joinpath(SHOWCASE, "figures", id)
+    isdir(figs) || return
+    dest = joinpath(SRC, "assets", id)
+    mkpath(dest)
+    for f in readdir(figs)
+        endswith(f, ".png") && cp(joinpath(figs, f), joinpath(dest, f); force = true)
+    end
 end
 
 using Statistics
 mkpath(GEN)
 done = sort([d for d in readdir(joinpath(SHOWCASE, "results")) if isfile(joinpath(SHOWCASE, "results", d, "meta.toml"))])
 pages = [MANIFEST[id]["title"] => dataset_page(id) for id in done]
+cross = cross_page(done)
 
 makedocs(;
     sitename = "GrowthParameterEstimation.jl showcase",
     authors = "Kadin El bakkouri",
     format = Documenter.HTML(; prettyurls = get(ENV, "CI", "false") == "true",
                              canonical = "https://kadinelbak.github.io/GrowthParameterEstimation.jl/showcase/"),
-    pages = ["Home" => "index.md", "Shared recipe" => "recipe.md", "Datasets" => pages, "Reproduce" => "reproduce.md"],
+    pages = ["Home" => "index.md", "Why one package" => "why.md", "Shared recipe" => "recipe.md",
+             (cross === nothing ? [] : ["Across datasets" => cross])..., "Datasets" => pages, "Reproduce" => "reproduce.md"],
     warnonly = true,
 )

@@ -10,6 +10,7 @@
 
 include(joinpath(@__DIR__, "analyses", "common.jl"))
 include(joinpath(@__DIR__, "analyses", "figures.jl"))
+include(joinpath(@__DIR__, "analyses", "cross_dataset.jl"))
 
 function load_dataset(cfg::Dict)
     path = get(cfg, "csv", joinpath(TIDY, cfg["id"] * ".csv"))
@@ -28,8 +29,9 @@ function load_dataset(cfg::Dict)
     df.condition = string.(df.condition)
     # optional row filters: [dataset.where] column = value or [values]
     for (col, want) in get(cfg, "where", Dict())
-        vals = want isa AbstractVector ? string.(want) : [string(want)]
-        df = df[in.(string.(df[!, Symbol(col)]), Ref(Set(vals))), :]
+        # compared as lowercase text, so "False" matches a column CSV.jl parsed as Bool
+        vals = lowercase.(want isa AbstractVector ? string.(want) : [string(want)])
+        df = df[in.(lowercase.(string.(df[!, Symbol(col)])), Ref(Set(vals))), :]
     end
     tmax = get(cfg, "time_max", Inf)
     df = df[.!ismissing.(df.time) .& (coalesce.(df.time, Inf) .<= tmax), :]
@@ -39,14 +41,33 @@ function load_dataset(cfg::Dict)
     return df
 end
 
+"""Therapy on/off schedule from a Bool column: 1 while on, 0 while off. Each switch is placed
+halfway between the last visit in one state and the first visit in the next."""
+function stepped_from_column(g::AbstractDataFrame, col::Symbol)
+    d = combine(groupby(sort(g, :time), :time), col => (x -> lowercase(string(first(x))) == "true") => :on)
+    vals = Float64[d.on[1]]
+    times = Float64[]
+    for i in 2:nrow(d)
+        if d.on[i] != d.on[i - 1]
+            push!(times, (d.time[i - 1] + d.time[i]) / 2)
+            push!(vals, d.on[i])
+        end
+    end
+    return SteppedExposure(times, vals)
+end
+
 function run_dataset(cfg::Dict, defaults::Dict)
     c = merge(defaults, cfg)
     id = c["id"]
     t0 = time()
     df = load_dataset(c)
-    conds = curves(df; min_points = get(c, "min_points", 5))
+    # exposure: none (default), or a 0/1 therapy schedule read from a Bool column
+    exp_col = get(c, "exposure_on_column", "")
+    exposure_for = isempty(exp_col) ? (_ -> ConstantExposure(0.0)) : (g -> stepped_from_column(g, Symbol(exp_col)))
+    conds = curves(df; min_points = get(c, "min_points", 5), exposure_for)
     max_n = get(c, "max_curves_fitted", 0)
-    max_n > 0 && length(conds) > max_n && (conds = conds[1:max_n])
+    # evenly spaced subset, so every condition (e.g. seeding density) stays represented
+    max_n > 0 && length(conds) > max_n && (conds = conds[round.(Int, range(1, length(conds), length = max_n))])
     isempty(conds) && error("$(id): no curve has enough points")
     models = String.(get(c, "models", GROWTH_PANEL))
     @info "$(id): $(length(conds)) curves × $(length(models)) models on $(Threads.nthreads()) threads"
@@ -89,6 +110,7 @@ function main(args)
         get(d, "skip", false) && continue
         run_dataset(d, defaults)
     end
+    cross_dataset()   # refresh the cross-dataset tables and figures from every finished dataset
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

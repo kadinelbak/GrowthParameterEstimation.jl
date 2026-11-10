@@ -36,7 +36,7 @@ function fit_gallery(id, conds, panel, ranking; max_curves = 12, xlabel = "time"
         for (j, m) in enumerate(models)
             row = panel[(string.(panel.subject) .== c.name) .& (panel.model .== m), :]
             (nrow(row) == 0 || row.params[1] isa Missing || isempty(string(row.params[1]))) && continue
-            sim = simulate(get_model(m), collect(tt), parse_params(row.params[1]); u0 = c.u0)
+            sim = simulate(get_model(m), collect(tt), parse_params(row.params[1]); u0 = c.u0, exposure = c.exposure)
             sim.success && plot!(p, tt, sim.observed; color = j == 1 ? PALETTE.pick : PALETTE.second,
                                  lw = 1.6, ls = j == 1 ? :solid : :dash)
         end

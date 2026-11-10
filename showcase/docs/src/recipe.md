@@ -37,8 +37,8 @@ With ``n`` points and ``k`` parameters, the package reports ``\mathrm{AIC} = n\l
 
 ## Profile intervals
 
-For each parameter of the pick, the parameter is fixed on a grid across its bounds and the others are refitted. The 95% interval is where ``n\ln(\mathrm{WSSE}/n)`` rises by less than 3.84 above its minimum. An interval that reaches a bound is reported as open (not identifiable on that curve).
+For each parameter of the pick, the parameter is held fixed (`fit(...; fixed_params)`) and the others are refitted. Starting at the estimate, the search steps outward with growing steps (on a log scale for positive parameters) until ``n\ln(\mathrm{WSSE}/n)`` rises by 3.84, the χ²₁ 95% cutoff, then bisects the crossing. An interval that reaches a bound is reported as open (not identifiable on that curve).
 
 ## Forecast check
 
-Each model is refitted on the first 70% of a curve's points and simulated forward; the page reports the median relative error on the held-out points and the share within 20%.
+Every model is refitted on the first 70% of each curve's points and asked to predict the rest. The page reports the median relative error on those held-out points and the share of predictions within 20% of the data.

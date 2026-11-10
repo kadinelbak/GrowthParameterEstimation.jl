@@ -459,6 +459,92 @@ function _weak_allee_growth!(du, u, p, t, _exposure = nothing)
     return nothing
 end
 
+# Treatment-response laws for tumours measured under continuous therapy, as used for
+# clinical tumour-size data (Stein et al. 2008 Clin Cancer Res; Claret et al. 2009 J Clin Oncol;
+# Ghaffari Laleh et al. 2022 PLoS Comput Biol). Time is measured from the start of treatment;
+# therapy is assumed to act throughout, so no exposure function is needed.
+
+function _exponential_net!(du, u, p, t, _exposure = nothing)
+    lambda = p[1]
+    du[1] = lambda * max(u[1], 0.0)
+    return nothing
+end
+
+# Stein bi-exponential: V(t) = V0 (f e^{-d t} + (1 - f) e^{g t}), written as an ODE whose
+# per-capita rate is the size-weighted mix of decay (-d) and regrowth (g).
+function _stein_response!(du, u, p, t, _exposure = nothing)
+    f, d, g = p
+    f = clamp(f, 1e-12, 1 - 1e-12)
+    w = 1 / (1 + exp(clamp(log(f / (1 - f)) - (d + g) * t, -700.0, 700.0)))   # resistant share
+    du[1] = max(u[1], 0.0) * (g * w - d * (1 - w))
+    return nothing
+end
+
+# Claret: exponential growth with a drug effect that fades as resistance emerges.
+function _claret_response!(du, u, p, t, _exposure = nothing)
+    g, k, lambda = p
+    du[1] = max(u[1], 0.0) * (g - k * exp(-lambda * t))
+    return nothing
+end
+
+function _logistic_kill!(du, u, p, t, _exposure = nothing)
+    r, K, d = p
+    N = max(u[1], 0.0)
+    du[1] = r * N * (1 - N / max(K, 1e-8)) - d * N
+    return nothing
+end
+
+function _classic_gompertz_kill!(du, u, p, t, _exposure = nothing)
+    r, K, d = p
+    N = max(u[1], 1e-12)
+    du[1] = r * N * log(max(K, 1e-12) / N) - d * N
+    return nothing
+end
+
+# Kill terms switched by the exposure (e.g. 1 while on therapy, 0 while off).
+function _exponential_exposure_kill!(du, u, p, t, exposure)
+    r, d = p
+    du[1] = (r - d * max(exposure(t), 0.0)) * max(u[1], 0.0)
+    return nothing
+end
+
+function _classic_gompertz_exposure_kill!(du, u, p, t, exposure)
+    r, K, d = p
+    N = max(u[1], 1e-12)
+    du[1] = r * N * log(max(K, 1e-12) / N) - d * max(exposure(t), 0.0) * N
+    return nothing
+end
+
+function _register_response_laws!()
+    laws = [
+        ("exponential_net", _exponential_net!, [:lambda], [(-5.0, 5.0)]),
+        ("stein_response", _stein_response!, [:f, :d, :g], [(1e-6, 1 - 1e-6), (1e-6, 5.0), (1e-6, 5.0)]),
+        ("claret_response", _claret_response!, [:g, :k, :lambda], [(1e-6, 5.0), (1e-6, 5.0), (1e-6, 5.0)]),
+        ("logistic_kill", _logistic_kill!, [:r, :K, :d], [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 5.0)]),
+        ("classic_gompertz_kill", _classic_gompertz_kill!, [:r, :K, :d], [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 5.0)]),
+    ]
+    append!(laws, [
+        ("exponential_exposure_kill", _exponential_exposure_kill!, [:r, :d], [(1e-6, 5.0), (1e-6, 5.0)]),
+        ("classic_gompertz_exposure_kill", _classic_gompertz_exposure_kill!, [:r, :K, :d],
+            [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 5.0)]),
+    ])
+    for (name, f!, pnames, bounds) in laws
+        register_model!(ModelSpec(
+            name=name,
+            ode! = f!,
+            param_names=pnames,
+            bounds=bounds,
+            n_states=1,
+            observable=u -> u[1],
+            base_growth_family="response",
+            default_solver=Tsit5(),
+            state_names=[:N],
+            metadata=Dict(:family => :treatment_response),
+        ))
+    end
+    return nothing
+end
+
 function _register_classic_growth_laws!()
     laws = [
         ("exponential_growth", _exponential_growth!, [:a], [(1e-6, 5.0)], "exponential"),
@@ -795,6 +881,7 @@ function register_builtin_models!()
     ))
 
     _register_classic_growth_laws!()
+    _register_response_laws!()
 
     register_model!(ModelSpec(
         name="theta_logistic_hill_inhibition",

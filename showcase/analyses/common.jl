@@ -134,7 +134,7 @@ function profile_intervals(c::FitCondition, model::String; n_starts::Int = 3, bi
     single = length(spec.param_names) == 1
     function prof(name, v)
         if single
-            sim = simulate(spec, c.time, [v]; u0 = c.u0)
+            sim = simulate(spec, c.time, [v]; u0 = c.u0, exposure = c.exposure)
             w = sim.success ? sum(((c.count .- sim.observed) ./ c.error) .^ 2) : Inf
             return n * log(max(w, 1e-12) / n) - base
         end
@@ -201,9 +201,11 @@ function forecast_check(conds::Vector{FitCondition}, models::Vector{String}; fra
                 nothing
             end
             r === nothing && continue
-            sim = simulate(spec, c.time, r.best.params; u0 = c.u0)
+            sim = simulate(spec, c.time, r.best.params; u0 = c.u0, exposure = c.exposure)
             sim.success || continue
-            relerr = abs.(sim.observed[ntrain+1:end] .- c.count[ntrain+1:end]) ./ max.(c.count[ntrain+1:end], 1e-12)
+            # same floor as the error model, so a lesion that shrinks to 0 mm does not divide by zero
+            floor_ = 0.05 * maximum(c.count)
+            relerr = abs.(sim.observed[ntrain+1:end] .- c.count[ntrain+1:end]) ./ max.(c.count[ntrain+1:end], floor_)
             push!(rows, (subject = c.name, model = m, n_train = ntrain, n_test = n - ntrain,
                          median_rel_error = median(relerr), within_20pct = mean(relerr .<= 0.2)))
         end
