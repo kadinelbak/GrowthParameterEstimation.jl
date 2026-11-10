@@ -4,12 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-### Changed
-
-- Zenodo DOI (10.5281/zenodo.24095453, all versions) added to README, CITATION.cff and the paper; AI usage disclosure updated.
-
-## v0.6.0 - 2026-11-09
-
 ### Added
 
 - Classic single-population growth laws in the model registry: `exponential_growth`,
@@ -33,6 +27,28 @@ All notable changes to this project will be documented in this file.
   (cells, spheroids, mice, patients), with a data manifest, hash-checked download script,
   shared analysis recipe, one open pipeline (`run_pipeline.jl` + `pipeline.toml`) and its
   own Documenter site. No third-party data is committed.
+
+### Changed
+
+- `fit` random starts are drawn on a log scale for positive parameters whose bounds span
+  more than two decades (for example `K` in `(1e-3, 1e7)`), so starts also try small values.
+  Results for such models can differ from earlier releases for the same seed.
+- Zenodo DOI (10.5281/zenodo.24095453, all versions) added to README, CITATION.cff and the paper; AI usage disclosure updated.
+
+### Fixed
+
+- Models whose right-hand side takes no exposure argument (the composable built-ins such as
+  `logistic_growth` and `gompertz_growth`) no longer throw and catch a `MethodError` on every
+  right-hand-side call in `simulate`, `fit_model` and `parameter_sensitivity_analysis`; the
+  method is checked once per simulation. Fitting these models is roughly 50–100x faster.
+- `SteppedExposure` with one value per interval (`length(values) == length(change_times) + 1`,
+  the layout in its docstring) returned the value of the previous interval after each change.
+  The layout with one value per change time behaves as before.
+
+## v0.6.0 - 2026-11-09
+
+### Added
+
 - `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) and GitHub issue templates.
 - Documentation: dedicated API Reference page covering every submodule, and tutorials in the site navigation.
 - Control handoff API (`controlled_model`) that packages a fitted model for
@@ -56,20 +72,6 @@ All notable changes to this project will be documented in this file.
 - Dependency compat widened to the current SciML and data stack while keeping the old bounds: CSV 1, DifferentialEquations 8, ForwardDiff 1, JSON 1, Optimization 5, OptimizationBBO 0.4, OptimizationOptimJL 0.4, OrdinaryDiffEq 7, RecursiveArrayTools 4. These have to move together, so the separate CompatHelper bumps could not resolve on their own.
 - `Rodas5` and `TRBDF2` are now imported from `OrdinaryDiffEqRosenbrock` and `OrdinaryDiffEqSDIRK` (new direct dependencies), because DifferentialEquations 8 no longer exports them. The solvers used are unchanged.
 - `setUpProblem` passes a quiet `DEVerbosity` to the solver on OrdinaryDiffEq 7, which no longer accepts `verbose = false`; older versions still get `false`.
-
-- `fit` random starts are drawn on a log scale for positive parameters whose bounds span
-  more than two decades (for example `K` in `(1e-3, 1e7)`), so starts also try small values.
-  Results for such models can differ from earlier releases for the same seed.
-
-### Fixed
-
-- Models whose right-hand side takes no exposure argument (the composable built-ins such as
-  `logistic_growth` and `gompertz_growth`) no longer throw and catch a `MethodError` on every
-  right-hand-side call in `simulate`, `fit_model` and `parameter_sensitivity_analysis`; the
-  method is checked once per simulation. Fitting these models is roughly 50–100x faster.
-- `SteppedExposure` with one value per interval (`length(values) == length(change_times) + 1`,
-  the layout in its docstring) returned the value of the previous interval after each change.
-  The layout with one value per change time behaves as before.
 
 ### Removed
 
