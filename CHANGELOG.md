@@ -4,9 +4,53 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Added
+
+- Classic single-population growth laws in the model registry: `exponential_growth`,
+  `theta_logistic_growth` (Richards), `bertalanffy_growth`, `general_bertalanffy_growth`,
+  `power_law_growth`, `exponential_linear_growth` (smooth switch, as in Benzekry et al. 2014),
+  `strong_allee_growth` and `weak_allee_growth`, each tested against its closed-form solution
+  or defining property.
+- `classic_gompertz_growth`: two-parameter Gompertz (`r`, `K`). The older `gompertz_growth`
+  spec keeps an unused `b` parameter, so its AIC/BIC carry one extra parameter penalty;
+  prefer `classic_gompertz_growth` when comparing growth laws.
+- Treatment-response laws: `exponential_net` (one net rate, may be negative),
+  `stein_response` (bi-exponential decay plus regrowth), `claret_response` (growth with a
+  fading drug effect), `logistic_kill` and `classic_gompertz_kill` (always-on kill term), and
+  the exposure-switched `exponential_exposure_kill` and `classic_gompertz_exposure_kill`.
+  Each is tested against its closed form or plateau.
+- `fit(...; optimizer = :transformed)`: BFGS on an unconstrained transform of the bounded
+  parameters (log scale for positive bounds spanning more than two decades). On the classic
+  growth laws it reaches the same optima as the default `:fminbox` and is typically 10–300x
+  faster. The default is unchanged.
+- `showcase/`: a separate benchmark of the package on public tumour-growth datasets
+  (cells, spheroids, mice, patients), with a data manifest, hash-checked download script,
+  shared analysis recipe, one open pipeline (`run_pipeline.jl` + `pipeline.toml`) and its
+  own Documenter site. No third-party data is committed.
+
 ### Changed
 
+- `fit` random starts are drawn on a log scale for positive parameters whose bounds span
+  more than two decades (for example `K` in `(1e-3, 1e7)`), so starts also try small values.
+  Results for such models can differ from earlier releases for the same seed.
 - Zenodo DOI (10.5281/zenodo.24095453, all versions) added to README, CITATION.cff and the paper; AI usage disclosure updated.
+
+### Deprecated
+
+- `gompertz_growth` and `gompertz_growth_with_death`: their parameter `b` is unused but still
+  counted in AIC/BIC. `get_model` now emits a deprecation warning (shown with
+  `--depwarn=yes`) pointing to `classic_gompertz_growth` and `classic_gompertz_kill`. Both
+  still work and will be removed in a future breaking release.
+
+### Fixed
+
+- Models whose right-hand side takes no exposure argument (the composable built-ins such as
+  `logistic_growth` and `gompertz_growth`) no longer throw and catch a `MethodError` on every
+  right-hand-side call in `simulate`, `fit_model` and `parameter_sensitivity_analysis`; the
+  method is checked once per simulation. Fitting these models is roughly 50–100x faster.
+- `SteppedExposure` with one value per interval (`length(values) == length(change_times) + 1`,
+  the layout in its docstring) returned the value of the previous interval after each change.
+  The layout with one value per change time behaves as before.
 
 ## v0.6.0 - 2026-11-09
 

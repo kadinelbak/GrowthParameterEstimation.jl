@@ -117,6 +117,96 @@ using Random
         @test all(col -> col in Symbol.(names(sweep.summary)), [:seed_total, :resistant_fraction, :dose, :final_total])
     end
 
+    @testset "Classic growth laws match closed forms" begin
+        t = collect(0.0:0.5:10.0)
+        relerr(a, b) = maximum(abs.(a .- b) ./ max.(abs.(b), 1e-12))
+        run(name, p, u0) = simulate(get_model(name), t, p; u0 = [u0]).observed
+
+        # Exponential: N0 e^{a t}
+        @test relerr(run("exponential_growth", [0.3], 2.0), 2.0 .* exp.(0.3 .* t)) < 1e-5
+
+        # Theta-logistic (Richards)
+        r, K, θ, N0 = 0.6, 100.0, 2.5, 5.0
+        exact = K ./ (1 .+ ((K / N0)^θ - 1) .* exp.(-r * θ .* t)) .^ (1 / θ)
+        @test relerr(run("theta_logistic_growth", [r, K, θ], N0), exact) < 1e-5
+
+        # Two-parameter Gompertz: N = K exp(log(N0/K) e^{-r t})
+        r, K, N0 = 0.4, 100.0, 5.0
+        exact = K .* exp.(log(N0 / K) .* exp.(-r .* t))
+        @test relerr(run("classic_gompertz_growth", [r, K], N0), exact) < 1e-5
+
+        # Bertalanffy: V = (a/b - (a/b - V0^{1/3}) e^{-b t / 3})^3
+        a, b, V0 = 2.0, 0.4, 1.0
+        exact = (a / b .- (a / b - V0^(1 / 3)) .* exp.(-b .* t ./ 3)) .^ 3
+        @test relerr(run("bertalanffy_growth", [a, b], V0), exact) < 1e-5
+
+        # General Bertalanffy: V^{1-γ} = a/b + (V0^{1-γ} - a/b) e^{-(1-γ) b t}
+        γ = 0.7
+        exact = (a / b .+ (V0^(1 - γ) - a / b) .* exp.(-(1 - γ) * b .* t)) .^ (1 / (1 - γ))
+        @test relerr(run("general_bertalanffy_growth", [a, b, γ], V0), exact) < 1e-5
+
+        # Power law: V = (V0^{1-γ} + (1-γ) a t)^{1/(1-γ)}
+        exact = (V0^(1 - γ) .+ (1 - γ) * a .* t) .^ (1 / (1 - γ))
+        @test relerr(run("power_law_growth", [a, γ], V0), exact) < 1e-5
+
+        # Exponential-linear: exponential while small, linear at rate a1 once large
+        a0, a1 = 0.5, 10.0
+        small = run("exponential_linear_growth", [a0, a1], 1e-3)
+        @test relerr(small, 1e-3 .* exp.(a0 .* t)) < 1e-3
+        big = run("exponential_linear_growth", [a0, a1], 1e4)
+        @test isapprox((big[end] - big[end-1]) / 0.5, a1; rtol = 1e-3)
+
+        # Allee effects: below the threshold A a strong Allee population declines,
+        # above it the population grows towards K; the weak form always grows.
+        @test run("strong_allee_growth", [0.5, 100.0, 10.0], 5.0)[end] < 5.0
+        @test isapprox(run("strong_allee_growth", [0.5, 100.0, 10.0], 20.0)[end], 100.0; rtol = 1e-2)
+        weak = run("weak_allee_growth", [0.5, 100.0, 10.0], 5.0)
+        @test all(diff(weak) .> 0)
+        du = [0.0]
+        get_model("weak_allee_growth").ode!(du, [5.0], [0.5, 100.0, 10.0], 0.0)
+        @test isapprox(du[1], 0.5 * 5.0 * (1 - 0.05) * 5.0 / 15.0; rtol = 1e-10)
+    end
+
+    @testset "Treatment-response laws match closed forms" begin
+        t = collect(0.0:0.5:20.0)
+        relerr(a, b) = maximum(abs.(a .- b) ./ max.(abs.(b), 1e-12))
+        run(name, p, u0) = simulate(get_model(name), t, p; u0 = [u0]).observed
+        V0 = 30.0
+
+        @test relerr(run("exponential_net", [-0.2], V0), V0 .* exp.(-0.2 .* t)) < 1e-5
+
+        # Stein: V0 (f e^{-d t} + (1 - f) e^{g t})
+        f, d, g = 0.9, 0.3, 0.05
+        @test relerr(run("stein_response", [f, d, g], V0), V0 .* (f .* exp.(-d .* t) .+ (1 - f) .* exp.(g .* t))) < 1e-5
+
+        # Claret: V0 exp(g t - (k/λ)(1 - e^{-λ t}))
+        g, k, λ = 0.05, 0.4, 0.2
+        @test relerr(run("claret_response", [g, k, λ], V0), V0 .* exp.(g .* t .- (k / λ) .* (1 .- exp.(-λ .* t)))) < 1e-5
+
+        # Kill terms shift the plateau: logistic to K(1 - d/r), Gompertz to K e^{-d/r}
+        @test isapprox(simulate(get_model("logistic_kill"), [0.0, 200.0], [0.5, 100.0, 0.1]; u0 = [5.0]).observed[end], 80.0; rtol = 1e-3)
+        @test isapprox(simulate(get_model("classic_gompertz_kill"), [0.0, 200.0], [0.5, 100.0, 0.1]; u0 = [5.0]).observed[end],
+                       100 * exp(-0.2); rtol = 1e-3)
+
+        # Exposure-switched kill: net rate r - d while the exposure is 1, r while it is 0
+        on_off = SteppedExposure([10.0], [1.0, 0.0])
+        v = simulate(get_model("exponential_exposure_kill"), t, [0.1, 0.4], u0 = [V0], exposure = on_off).observed
+        exact = [tt <= 10 ? V0 * exp(-0.3 * tt) : V0 * exp(-3.0) * exp(0.1 * (tt - 10)) for tt in t]
+        @test relerr(v, exact) < 1e-3
+    end
+
+    @testset "Transformed optimizer matches Fminbox" begin
+        tt = collect(0.0:1.0:10.0)
+        truth = simulate(get_model("logistic_growth"), tt, [0.6, 80.0]; u0 = [4.0]).observed
+        cond = FitCondition("synthetic", tt, truth, fill(1.0, length(tt)), [4.0], ConstantExposure(0.0), Dict{Symbol,Any}())
+        spec = get_model("logistic_growth")
+        a = GrowthParameterEstimation.fit(spec, [cond]; n_starts = 3, top_k = 1, optimizer = :fminbox)
+        b = GrowthParameterEstimation.fit(spec, [cond]; n_starts = 3, top_k = 1, optimizer = :transformed)
+        @test isapprox(b.best.params, [0.6, 80.0]; rtol = 1e-3)
+        @test isapprox(a.best.params, b.best.params; rtol = 1e-3)
+        @test_throws ArgumentError GrowthParameterEstimation.fit(spec, [cond]; n_starts = 1, optimizer = :bogus)
+    end
+
     @testset "Pipeline Fit + Ranking" begin
         df = DataFrame(
             time = vcat(collect(0.0:1.0:6.0), collect(0.0:1.0:6.0)),

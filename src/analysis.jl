@@ -510,16 +510,9 @@ function parameter_sensitivity_analysis(
     exposure_fn = _ -> dose_value
 
     function simulate_with(params::Vector{Float64})
+        takes_exposure = applicable(spec.ode!, zeros(1), ones(1), ones(1), 0.0, exposure_fn)
         ode4! = function (du, u, p, t)
-            try
-                spec.ode!(du, u, p, t, exposure_fn)
-            catch err
-                if err isa MethodError
-                    spec.ode!(du, u, p, t)
-                else
-                    rethrow(err)
-                end
-            end
+            takes_exposure ? spec.ode!(du, u, p, t, exposure_fn) : spec.ode!(du, u, p, t)
             return nothing
         end
         u0 = zeros(Float64, spec.n_states)

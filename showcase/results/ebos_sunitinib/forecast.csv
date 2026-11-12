@@ -1,0 +1,397 @@
+subject,model,n_train,n_test,median_rel_error,within_20pct
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,classic_gompertz_growth,6,3,0.2646449151310434,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,exponential_exposure_kill,6,3,0.4033093727085578,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,logistic_linear_kill,6,3,0.26629191542061104,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,classic_gompertz_exposure_kill,6,3,0.26464388205441247,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-2,classic_gompertz_growth,6,3,0.30774511996578585,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-2,exponential_exposure_kill,6,3,0.05311569193932681,1.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-2,logistic_linear_kill,6,3,0.3077450319049263,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-2,classic_gompertz_exposure_kill,6,3,0.3074759267406657,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-3,classic_gompertz_growth,6,3,0.32539276244233895,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-3,exponential_exposure_kill,6,3,0.36846322510412793,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-3,logistic_linear_kill,6,3,0.3719294331493348,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-3,classic_gompertz_exposure_kill,6,3,0.32539207945916004,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-4,classic_gompertz_growth,6,3,0.14774650730481154,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-4,exponential_exposure_kill,6,3,0.08072009307683926,1.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-4,logistic_linear_kill,6,3,0.150663622502186,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-4,classic_gompertz_exposure_kill,6,3,0.14774610594875479,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-5,classic_gompertz_growth,6,3,0.3299833644469297,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-5,exponential_exposure_kill,6,3,0.039137759304049384,1.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-5,logistic_linear_kill,6,3,0.32968970231290085,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-5,classic_gompertz_exposure_kill,6,3,0.3299834514092529,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-1,classic_gompertz_growth,6,3,0.5509026904808906,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-1,exponential_exposure_kill,6,3,0.19922609579963702,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-1,logistic_linear_kill,6,3,0.5509026830391996,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-1,classic_gompertz_exposure_kill,6,3,0.5509026310481908,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-2,classic_gompertz_growth,6,3,0.4281610554209268,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-2,exponential_exposure_kill,6,3,0.22049049141262117,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-2,logistic_linear_kill,6,3,0.4274876718178405,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-2,classic_gompertz_exposure_kill,6,3,0.4281606005116669,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-3,classic_gompertz_growth,6,3,0.44714861646173965,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-3,exponential_exposure_kill,6,3,0.20509684365090117,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-3,logistic_linear_kill,6,3,0.44678134921840873,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-3,classic_gompertz_exposure_kill,6,3,0.4471479894199707,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-4,classic_gompertz_growth,6,3,0.48108238108446133,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-4,exponential_exposure_kill,6,3,0.13452343045368234,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-4,logistic_linear_kill,6,3,0.48103902863323317,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-4,classic_gompertz_exposure_kill,6,3,0.48108261004192515,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,classic_gompertz_growth,6,3,0.41141377191044204,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,exponential_exposure_kill,6,3,0.5520290812645667,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,logistic_linear_kill,6,3,0.41115879624782353,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,classic_gompertz_exposure_kill,6,3,0.4114135660034957,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-6,classic_gompertz_growth,6,3,0.42825463008857007,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-6,exponential_exposure_kill,6,3,1.5094507066391916,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-6,logistic_linear_kill,6,3,0.35189107288182686,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-6,classic_gompertz_exposure_kill,6,3,0.3419995269280601,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-1,classic_gompertz_growth,6,3,0.39321988379639383,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-1,exponential_exposure_kill,6,3,0.2985077959109374,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-1,logistic_linear_kill,6,3,0.1670064503996452,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-1,classic_gompertz_exposure_kill,6,3,0.167005964322865,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-2,classic_gompertz_growth,6,3,0.22707435452963975,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-2,exponential_exposure_kill,6,3,0.05169127941680671,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-2,logistic_linear_kill,6,3,0.22644478458121203,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-2,classic_gompertz_exposure_kill,6,3,0.2270735853700501,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-3,classic_gompertz_growth,6,3,0.14024747808867158,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-3,exponential_exposure_kill,6,3,0.09516929256323114,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-3,logistic_linear_kill,6,3,0.1400875133429422,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-3,classic_gompertz_exposure_kill,6,3,0.14024745061109062,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-4,classic_gompertz_growth,6,3,0.35746773944687105,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-4,exponential_exposure_kill,6,3,0.5231569234467086,0.3333333333333333
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-4,logistic_linear_kill,6,3,0.35239162524078343,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-4,classic_gompertz_exposure_kill,6,3,0.35154320213344836,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-5,classic_gompertz_growth,6,3,0.13087842547819267,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-5,exponential_exposure_kill,6,3,0.6055768994939422,0.0
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-5,logistic_linear_kill,6,3,0.13043034512791524,0.6666666666666666
+Human breast model (AB12-07):Su120(3D) / Su60(8D): 4-5,classic_gompertz_exposure_kill,6,3,0.1308781308537657,0.6666666666666666
+Human breast model (AB12-07):Su120(3D): 2-1,classic_gompertz_growth,6,3,0.2829903730422827,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-1,exponential_exposure_kill,6,3,0.21759988385677445,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-1,logistic_linear_kill,6,3,0.2953054928047764,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-1,classic_gompertz_exposure_kill,6,3,0.28299035735801076,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-2,classic_gompertz_growth,6,3,0.4159539878690628,0.0
+Human breast model (AB12-07):Su120(3D): 2-2,exponential_exposure_kill,6,3,0.08860014221479594,0.6666666666666666
+Human breast model (AB12-07):Su120(3D): 2-2,logistic_linear_kill,6,3,0.4159530570933487,0.0
+Human breast model (AB12-07):Su120(3D): 2-2,classic_gompertz_exposure_kill,6,3,0.37824207675699306,0.0
+Human breast model (AB12-07):Su120(3D): 2-3,classic_gompertz_growth,6,3,0.43196127226976244,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-3,exponential_exposure_kill,6,3,0.19935413376787028,0.6666666666666666
+Human breast model (AB12-07):Su120(3D): 2-3,logistic_linear_kill,6,3,0.4347525115742498,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-3,classic_gompertz_exposure_kill,6,3,0.4319608139820909,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-4,classic_gompertz_growth,6,3,0.42627943025514503,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-4,exponential_exposure_kill,6,3,0.20623997313031572,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-4,logistic_linear_kill,6,3,0.4262788594928957,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-4,classic_gompertz_exposure_kill,6,3,0.42627940199804687,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-5,classic_gompertz_growth,6,3,0.532349579228144,0.0
+Human breast model (AB12-07):Su120(3D): 2-5,exponential_exposure_kill,6,3,0.2505275221063029,0.3333333333333333
+Human breast model (AB12-07):Su120(3D): 2-5,logistic_linear_kill,6,3,0.5315180278609625,0.0
+Human breast model (AB12-07):Su120(3D): 2-5,classic_gompertz_exposure_kill,6,3,0.5323494843260732,0.0
+Human breast model (AB12-07):Su120(3D): 2-6,classic_gompertz_growth,6,3,0.6388205252751732,0.0
+Human breast model (AB12-07):Su120(3D): 2-6,exponential_exposure_kill,6,3,0.03216357272374631,0.6666666666666666
+Human breast model (AB12-07):Su120(3D): 2-6,logistic_linear_kill,6,3,0.6422834947079167,0.0
+Human breast model (AB12-07):Su120(3D): 2-6,classic_gompertz_exposure_kill,6,3,0.6388202090513048,0.0
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-1,classic_gompertz_growth,7,3,0.13436014651470424,1.0
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-1,exponential_exposure_kill,7,3,0.2594377680326898,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-1,logistic_linear_kill,7,3,0.1347038590577443,1.0
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-1,classic_gompertz_exposure_kill,7,3,0.14932257729419984,1.0
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-2,classic_gompertz_growth,7,3,0.028303954921666895,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-2,exponential_exposure_kill,7,3,0.1968381552367311,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-2,logistic_linear_kill,7,3,0.04045672902105411,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-2,classic_gompertz_exposure_kill,7,3,0.12274953087613921,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-3,classic_gompertz_growth,7,3,0.1483335035097263,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-3,exponential_exposure_kill,7,3,0.14669920534801106,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-3,logistic_linear_kill,7,3,0.14877573902217658,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-3,classic_gompertz_exposure_kill,7,3,0.1483991262093258,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-4,classic_gompertz_growth,7,3,0.1482775925723265,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-4,exponential_exposure_kill,7,3,0.08317167135235225,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-4,logistic_linear_kill,7,3,0.14955358688525852,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-4,classic_gompertz_exposure_kill,7,3,0.14827740517422003,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-5,classic_gompertz_growth,7,3,0.12989632762723305,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-5,exponential_exposure_kill,7,3,0.13699193646323107,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-5,logistic_linear_kill,7,3,0.12989618223971758,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-5,classic_gompertz_exposure_kill,7,3,0.1299058167664102,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,classic_gompertz_growth,7,3,0.18676774832450593,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,exponential_exposure_kill,7,3,0.03940027990308294,1.0
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,logistic_linear_kill,7,3,0.19331405978428345,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,classic_gompertz_exposure_kill,7,3,0.1867674704291121,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D):1f-1,classic_gompertz_growth,7,3,0.4859126280699134,0.0
+Human breast model (AB12-11):Su120 (3D):1f-1,exponential_exposure_kill,7,3,0.11848025265378452,1.0
+Human breast model (AB12-11):Su120 (3D):1f-1,logistic_linear_kill,7,3,0.4615772347051776,0.0
+Human breast model (AB12-11):Su120 (3D):1f-1,classic_gompertz_exposure_kill,7,3,0.45882851861027835,0.0
+Human breast model (AB12-11):Su120 (3D):1f-2,classic_gompertz_growth,7,3,0.37954500277613784,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1f-2,exponential_exposure_kill,7,3,0.9929843686577322,0.0
+Human breast model (AB12-11):Su120 (3D):1f-2,logistic_linear_kill,7,3,0.352493461193158,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1f-2,classic_gompertz_exposure_kill,7,3,0.3383295917793634,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1f-3,classic_gompertz_growth,7,3,0.24151606254070632,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1f-3,exponential_exposure_kill,7,3,0.1241475139521478,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D):1f-3,logistic_linear_kill,7,3,0.2303189696947081,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1f-3,classic_gompertz_exposure_kill,7,3,0.22622596749867208,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1f-4,classic_gompertz_growth,7,3,0.4266092688048002,0.0
+Human breast model (AB12-11):Su120 (3D):1f-4,exponential_exposure_kill,7,3,0.4716665314004143,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1f-4,logistic_linear_kill,7,3,0.41963286735799443,0.0
+Human breast model (AB12-11):Su120 (3D):1f-4,classic_gompertz_exposure_kill,7,3,0.41455911649008886,0.0
+Human breast model (AB12-11):Su120 (3D):1f-5,classic_gompertz_growth,7,3,0.1786178099493743,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D):1f-5,exponential_exposure_kill,7,3,0.14139708945796953,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D):1f-5,logistic_linear_kill,7,3,0.19899772033219917,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D):1f-5,classic_gompertz_exposure_kill,7,3,0.17861518060418807,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D):1f-6,classic_gompertz_growth,7,3,0.4081376528352367,0.0
+Human breast model (AB12-11):Su120 (3D):1f-6,exponential_exposure_kill,7,3,0.10874095086810404,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D):1f-6,logistic_linear_kill,7,3,0.4131173825486322,0.0
+Human breast model (AB12-11):Su120 (3D):1f-6,classic_gompertz_exposure_kill,7,3,0.408136531418719,0.0
+Human breast model (AB12-11):Su120 (3D):1g-1,classic_gompertz_growth,7,3,0.2924186216867301,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1g-1,exponential_exposure_kill,7,3,0.2422683228548676,0.0
+Human breast model (AB12-11):Su120 (3D):1g-1,logistic_linear_kill,7,3,0.052527793769477124,1.0
+Human breast model (AB12-11):Su120 (3D):1g-1,classic_gompertz_exposure_kill,7,3,0.29241852873151475,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1g-2,classic_gompertz_growth,7,3,0.30987153993288996,0.0
+Human breast model (AB12-11):Su120 (3D):1g-2,exponential_exposure_kill,7,3,0.19796275628881696,0.6666666666666666
+Human breast model (AB12-11):Su120 (3D):1g-2,logistic_linear_kill,7,3,0.3069357100322977,0.0
+Human breast model (AB12-11):Su120 (3D):1g-2,classic_gompertz_exposure_kill,7,3,0.3070627682033124,0.0
+Human breast model (AB12-11):Su120 (3D):1g-3,classic_gompertz_growth,7,3,0.5425605542969102,0.0
+Human breast model (AB12-11):Su120 (3D):1g-3,exponential_exposure_kill,7,3,0.5451333330285614,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1g-3,logistic_linear_kill,7,3,0.5354291465008831,0.0
+Human breast model (AB12-11):Su120 (3D):1g-3,classic_gompertz_exposure_kill,7,3,0.5260423760227829,0.0
+Human breast model (AB12-11):Su120 (3D):1g-4,classic_gompertz_growth,7,3,0.49434969409030605,0.0
+Human breast model (AB12-11):Su120 (3D):1g-4,exponential_exposure_kill,7,3,0.9904075052726055,0.0
+Human breast model (AB12-11):Su120 (3D):1g-4,logistic_linear_kill,7,3,0.47454006952456884,0.0
+Human breast model (AB12-11):Su120 (3D):1g-4,classic_gompertz_exposure_kill,7,3,0.4615097700506584,0.0
+Human breast model (AB12-11):Su120 (3D):1g-5,classic_gompertz_growth,7,3,0.2918272756479729,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1g-5,exponential_exposure_kill,7,3,0.7400127510672463,0.0
+Human breast model (AB12-11):Su120 (3D):1g-5,logistic_linear_kill,7,3,0.7427616620887681,0.0
+Human breast model (AB12-11):Su120 (3D):1g-5,classic_gompertz_exposure_kill,7,3,0.23941153581340605,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1g-6,classic_gompertz_growth,7,3,0.3831945336432854,0.0
+Human breast model (AB12-11):Su120 (3D):1g-6,exponential_exposure_kill,7,3,0.35312103024635505,0.3333333333333333
+Human breast model (AB12-11):Su120 (3D):1g-6,logistic_linear_kill,7,3,0.3947954411870146,0.0
+Human breast model (AB12-11):Su120 (3D):1g-6,classic_gompertz_exposure_kill,7,3,0.38319353944758044,0.0
+Human breast model (AB12-11):Su60 (14D):1b-1,classic_gompertz_growth,7,3,0.23356013517859253,0.3333333333333333
+Human breast model (AB12-11):Su60 (14D):1b-1,exponential_exposure_kill,7,3,0.1381531775723325,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-1,logistic_linear_kill,7,3,0.22583292933947696,0.3333333333333333
+Human breast model (AB12-11):Su60 (14D):1b-1,classic_gompertz_exposure_kill,7,3,0.17112033580910974,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-2,classic_gompertz_growth,7,3,0.11816894157937367,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-2,exponential_exposure_kill,7,3,0.08046722230499471,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-2,logistic_linear_kill,7,3,0.13658029526170498,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-2,classic_gompertz_exposure_kill,7,3,0.11816905516307541,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-3,classic_gompertz_growth,7,3,0.13601969869782693,1.0
+Human breast model (AB12-11):Su60 (14D):1b-3,exponential_exposure_kill,7,3,0.21449684246291995,0.3333333333333333
+Human breast model (AB12-11):Su60 (14D):1b-3,logistic_linear_kill,7,3,0.16588486739770886,1.0
+Human breast model (AB12-11):Su60 (14D):1b-3,classic_gompertz_exposure_kill,7,3,0.16802742758788422,1.0
+Human breast model (AB12-11):Su60 (14D):1b-4,classic_gompertz_growth,7,3,0.021323691023853734,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-4,exponential_exposure_kill,7,3,0.06199701395258825,1.0
+Human breast model (AB12-11):Su60 (14D):1b-4,logistic_linear_kill,7,3,0.026156255888251333,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-4,classic_gompertz_exposure_kill,7,3,0.02132398901360774,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-5,classic_gompertz_growth,7,3,0.22153548685079008,0.3333333333333333
+Human breast model (AB12-11):Su60 (14D):1b-5,exponential_exposure_kill,7,3,0.31008770429322835,0.3333333333333333
+Human breast model (AB12-11):Su60 (14D):1b-5,logistic_linear_kill,7,3,0.2216723308020591,0.3333333333333333
+Human breast model (AB12-11):Su60 (14D):1b-5,classic_gompertz_exposure_kill,7,3,0.22153582481402198,0.3333333333333333
+Human breast model (AB12-11):Su60 (14D):1b-6,classic_gompertz_growth,7,3,0.10948608711643155,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-6,exponential_exposure_kill,7,3,0.12449517583010922,1.0
+Human breast model (AB12-11):Su60 (14D):1b-6,logistic_linear_kill,7,3,0.10291621789740808,0.6666666666666666
+Human breast model (AB12-11):Su60 (14D):1b-6,classic_gompertz_exposure_kill,7,3,0.10463102952083049,1.0
+Human breast model (AB13-06):Su60 (14D):5-1,classic_gompertz_growth,7,3,0.14869583413787324,1.0
+Human breast model (AB13-06):Su60 (14D):5-1,exponential_exposure_kill,7,3,0.07731695834190165,1.0
+Human breast model (AB13-06):Su60 (14D):5-1,logistic_linear_kill,7,3,0.1259596267766001,1.0
+Human breast model (AB13-06):Su60 (14D):5-1,classic_gompertz_exposure_kill,7,3,0.1493326457179461,1.0
+Human breast model (AB13-06):Su60 (14D):5-2,classic_gompertz_growth,7,3,0.16621879248184665,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-2,exponential_exposure_kill,7,3,0.09106403602131488,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-2,logistic_linear_kill,7,3,0.12431021954353476,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-2,classic_gompertz_exposure_kill,7,3,0.10992130801075338,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-3,classic_gompertz_growth,7,3,0.1499466827944745,1.0
+Human breast model (AB13-06):Su60 (14D):5-3,exponential_exposure_kill,7,3,0.2070999692310183,0.3333333333333333
+Human breast model (AB13-06):Su60 (14D):5-3,logistic_linear_kill,7,3,0.1260806567452064,1.0
+Human breast model (AB13-06):Su60 (14D):5-3,classic_gompertz_exposure_kill,7,3,0.14994654729721085,1.0
+Human breast model (AB13-06):Su60 (14D):5-4,classic_gompertz_growth,7,3,0.08566831262263118,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-4,exponential_exposure_kill,7,3,0.13702078027441303,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-4,logistic_linear_kill,7,3,0.09501344221443019,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-4,classic_gompertz_exposure_kill,7,3,0.13468026762989063,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-5,classic_gompertz_growth,7,3,0.26892958542712203,0.3333333333333333
+Human breast model (AB13-06):Su60 (14D):5-5,exponential_exposure_kill,7,3,0.18574779275720782,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-5,logistic_linear_kill,7,3,0.3107093462228431,0.3333333333333333
+Human breast model (AB13-06):Su60 (14D):5-5,classic_gompertz_exposure_kill,7,3,0.2540270825897018,0.3333333333333333
+Human breast model (AB13-06):Su60 (14D):5-6,classic_gompertz_growth,7,3,0.13376208514057797,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-6,exponential_exposure_kill,7,3,0.007691550943739489,1.0
+Human breast model (AB13-06):Su60 (14D):5-6,logistic_linear_kill,7,3,0.1976628943604699,0.6666666666666666
+Human breast model (AB13-06):Su60 (14D):5-6,classic_gompertz_exposure_kill,7,3,0.1337617561452383,0.6666666666666666
+Human breast model (AB13-06):Su60 (3D):3-1,classic_gompertz_growth,7,3,0.20343462336803433,0.3333333333333333
+Human breast model (AB13-06):Su60 (3D):3-1,exponential_exposure_kill,7,3,1.6007154668114705,0.0
+Human breast model (AB13-06):Su60 (3D):3-1,logistic_linear_kill,7,3,0.1963405667854647,0.6666666666666666
+Human breast model (AB13-06):Su60 (3D):3-1,classic_gompertz_exposure_kill,7,3,0.16290979425678684,0.6666666666666666
+Human breast model (AB13-06):Su60 (3D):3-2,classic_gompertz_growth,7,3,0.2058603316768657,0.3333333333333333
+Human breast model (AB13-06):Su60 (3D):3-2,exponential_exposure_kill,7,3,0.20303226473310684,0.3333333333333333
+Human breast model (AB13-06):Su60 (3D):3-2,logistic_linear_kill,7,3,0.26637487500386026,0.0
+Human breast model (AB13-06):Su60 (3D):3-2,classic_gompertz_exposure_kill,7,3,0.20585841736401045,0.3333333333333333
+Human breast model (AB13-06):Su60 (3D):3-3,classic_gompertz_growth,7,3,0.4592528622781776,0.3333333333333333
+Human breast model (AB13-06):Su60 (3D):3-3,exponential_exposure_kill,7,3,0.24330030011272807,0.3333333333333333
+Human breast model (AB13-06):Su60 (3D):3-3,logistic_linear_kill,7,3,0.4759205209682128,0.3333333333333333
+Human breast model (AB13-06):Su60 (3D):3-3,classic_gompertz_exposure_kill,7,3,0.45925201042391983,0.3333333333333333
+Human breast model (AB13-06):Su60 (3D):3-4,classic_gompertz_growth,7,3,0.3851100101125195,0.0
+Human breast model (AB13-06):Su60 (3D):3-4,exponential_exposure_kill,7,3,0.7260658142205821,0.0
+Human breast model (AB13-06):Su60 (3D):3-4,logistic_linear_kill,7,3,0.4325356682451691,0.0
+Human breast model (AB13-06):Su60 (3D):3-4,classic_gompertz_exposure_kill,7,3,0.3851090424434194,0.0
+Human breast model (AB13-06):Su60 (3D):3-5,classic_gompertz_growth,7,3,0.31165526906168395,0.0
+Human breast model (AB13-06):Su60 (3D):3-5,exponential_exposure_kill,7,3,0.213095423832521,0.3333333333333333
+Human breast model (AB13-06):Su60 (3D):3-5,logistic_linear_kill,7,3,0.35239201478574617,0.0
+Human breast model (AB13-06):Su60 (3D):3-5,classic_gompertz_exposure_kill,7,3,0.3116540716242643,0.0
+Human breast model (AB13-06):Su60 (3D):3-6,classic_gompertz_growth,7,3,0.5426374840828202,0.0
+Human breast model (AB13-06):Su60 (3D):3-6,exponential_exposure_kill,7,3,0.17608581150755567,0.6666666666666666
+Human breast model (AB13-06):Su60 (3D):3-6,logistic_linear_kill,7,3,0.565972849210305,0.0
+Human breast model (AB13-06):Su60 (3D):3-6,classic_gompertz_exposure_kill,7,3,0.5426366468273878,0.0
+Human breast model (AB13-06):Su60 (7D):4-1,classic_gompertz_growth,7,3,0.25644689461964615,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-1,exponential_exposure_kill,7,3,0.01728285890094682,1.0
+Human breast model (AB13-06):Su60 (7D):4-1,logistic_linear_kill,7,3,0.277622867626664,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-1,classic_gompertz_exposure_kill,7,3,0.009548836735591327,1.0
+Human breast model (AB13-06):Su60 (7D):4-2,classic_gompertz_growth,7,3,0.050803576752171384,0.6666666666666666
+Human breast model (AB13-06):Su60 (7D):4-2,exponential_exposure_kill,7,3,1.243400237429269,0.0
+Human breast model (AB13-06):Su60 (7D):4-2,logistic_linear_kill,7,3,0.1001756691935739,0.6666666666666666
+Human breast model (AB13-06):Su60 (7D):4-2,classic_gompertz_exposure_kill,7,3,0.37214482145951716,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-3,classic_gompertz_growth,7,3,0.3478422061887155,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-3,exponential_exposure_kill,7,3,0.4859185098485448,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-3,logistic_linear_kill,7,3,0.36021344365210006,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-3,classic_gompertz_exposure_kill,7,3,0.2318165492626719,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-4,classic_gompertz_growth,7,3,0.13816481305629275,1.0
+Human breast model (AB13-06):Su60 (7D):4-4,exponential_exposure_kill,7,3,0.9700688557018339,0.0
+Human breast model (AB13-06):Su60 (7D):4-4,logistic_linear_kill,7,3,0.19899685610501613,0.6666666666666666
+Human breast model (AB13-06):Su60 (7D):4-4,classic_gompertz_exposure_kill,7,3,0.071590212563806,1.0
+Human breast model (AB13-06):Su60 (7D):4-5,classic_gompertz_growth,7,3,0.28644093144913324,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-5,exponential_exposure_kill,7,3,0.02341865918664411,1.0
+Human breast model (AB13-06):Su60 (7D):4-5,logistic_linear_kill,7,3,0.2891953935894895,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-5,classic_gompertz_exposure_kill,7,3,0.2864389162504074,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-6,classic_gompertz_growth,7,3,0.3192232568195183,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-6,exponential_exposure_kill,7,3,0.5454959602581165,0.0
+Human breast model (AB13-06):Su60 (7D):4-6,logistic_linear_kill,7,3,0.36853810834459216,0.3333333333333333
+Human breast model (AB13-06):Su60 (7D):4-6,classic_gompertz_exposure_kill,7,3,0.19680296848882753,0.6666666666666666
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-1,classic_gompertz_growth,7,4,0.03657236348911924,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-1,exponential_exposure_kill,7,4,0.14957678170655986,0.75
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-1,logistic_linear_kill,7,4,0.14955607364886564,0.75
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-1,classic_gompertz_exposure_kill,7,4,0.03656526072059868,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-2,classic_gompertz_growth,7,4,0.04715075762057088,0.75
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-2,exponential_exposure_kill,7,4,0.19241636245415394,0.5
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-2,logistic_linear_kill,7,4,0.021008386816327655,0.75
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-2,classic_gompertz_exposure_kill,7,4,0.16548598759048783,0.5
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-3,classic_gompertz_growth,7,4,0.06857612721439316,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-3,exponential_exposure_kill,7,4,0.39733022853311745,0.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-3,logistic_linear_kill,7,4,0.13765852178612953,0.75
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-3,classic_gompertz_exposure_kill,7,4,0.04129409132743611,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-4,classic_gompertz_growth,7,4,0.10644772033692251,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-4,exponential_exposure_kill,7,4,0.1796432485939331,0.75
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-4,logistic_linear_kill,7,4,0.08949462338935629,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-4,classic_gompertz_exposure_kill,7,4,0.1202486151088159,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-5,classic_gompertz_growth,7,4,0.2938725855037345,0.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-5,exponential_exposure_kill,7,4,0.5128701703819509,0.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-5,logistic_linear_kill,7,4,0.20505432495148296,0.5
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-5,classic_gompertz_exposure_kill,7,4,0.46898455977411196,0.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-6,classic_gompertz_growth,7,4,0.15669245312565794,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-6,exponential_exposure_kill,7,4,0.022803020583615344,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-6,logistic_linear_kill,7,4,0.17454634284083595,0.5
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-6,classic_gompertz_exposure_kill,7,4,0.12327650574725724,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-7,classic_gompertz_growth,7,4,0.058304551752426576,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-7,exponential_exposure_kill,7,4,0.15096694322886764,0.75
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-7,logistic_linear_kill,7,4,0.13386792191310903,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-7,classic_gompertz_exposure_kill,7,4,0.058300147180924834,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,classic_gompertz_growth,7,4,0.09667707276412271,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,exponential_exposure_kill,7,4,0.19988973228706117,0.5
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,logistic_linear_kill,7,4,0.07824725436687024,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,classic_gompertz_exposure_kill,7,4,0.10758234572812819,1.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-9,classic_gompertz_growth,7,4,0.3215194612817408,0.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-9,exponential_exposure_kill,7,4,0.4036141458417819,0.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-9,logistic_linear_kill,7,4,0.13458788329712984,0.75
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-9,classic_gompertz_exposure_kill,7,4,0.3348771324596049,0.0
+Human breast model (AB14-14):Su120 (3D):3-1,classic_gompertz_growth,7,4,0.3311599486144997,0.25
+Human breast model (AB14-14):Su120 (3D):3-1,exponential_exposure_kill,7,4,0.3328747608001019,0.25
+Human breast model (AB14-14):Su120 (3D):3-1,logistic_linear_kill,7,4,0.3405089352695996,0.25
+Human breast model (AB14-14):Su120 (3D):3-1,classic_gompertz_exposure_kill,7,4,0.24516864547773826,0.25
+Human breast model (AB14-14):Su120 (3D):3-2,classic_gompertz_growth,7,4,0.32440416235279135,0.25
+Human breast model (AB14-14):Su120 (3D):3-2,exponential_exposure_kill,7,4,0.18399716739946906,0.5
+Human breast model (AB14-14):Su120 (3D):3-2,logistic_linear_kill,7,4,0.34263005089746723,0.25
+Human breast model (AB14-14):Su120 (3D):3-2,classic_gompertz_exposure_kill,7,4,0.32440157980587947,0.25
+Human breast model (AB14-14):Su120 (3D):3-3,classic_gompertz_growth,7,4,0.13566832151024097,0.75
+Human breast model (AB14-14):Su120 (3D):3-3,exponential_exposure_kill,7,4,1.1173386660062266,0.0
+Human breast model (AB14-14):Su120 (3D):3-3,logistic_linear_kill,7,4,0.15577245441871196,0.75
+Human breast model (AB14-14):Su120 (3D):3-3,classic_gompertz_exposure_kill,7,4,0.15032567762257013,0.75
+Human breast model (AB14-14):Su120 (3D):3-5,classic_gompertz_growth,7,4,0.3801168102008496,0.25
+Human breast model (AB14-14):Su120 (3D):3-5,exponential_exposure_kill,7,4,0.9853045117690455,0.0
+Human breast model (AB14-14):Su120 (3D):3-5,logistic_linear_kill,7,4,0.4592575519550516,0.25
+Human breast model (AB14-14):Su120 (3D):3-5,classic_gompertz_exposure_kill,7,4,0.38011341440965624,0.25
+Human breast model (AB14-14):Su120 (3D):3-6,classic_gompertz_growth,7,4,0.25879511462556304,0.25
+Human breast model (AB14-14):Su120 (3D):3-6,exponential_exposure_kill,7,4,0.18519262051008215,0.75
+Human breast model (AB14-14):Su120 (3D):3-6,logistic_linear_kill,7,4,0.18522306245588402,0.75
+Human breast model (AB14-14):Su120 (3D):3-6,classic_gompertz_exposure_kill,7,4,0.2587949310487772,0.25
+Human breast model (AB14-14):Su120 (3D):3-7,classic_gompertz_growth,7,4,0.16727502263327634,0.75
+Human breast model (AB14-14):Su120 (3D):3-7,exponential_exposure_kill,7,4,0.24962459653885088,0.5
+Human breast model (AB14-14):Su120 (3D):3-7,logistic_linear_kill,7,4,0.25140185015686245,0.25
+Human breast model (AB14-14):Su120 (3D):3-7,classic_gompertz_exposure_kill,7,4,0.1672698214112811,0.75
+Human breast model (AB14-14):Su120 (3D):3-8,classic_gompertz_growth,7,4,0.05904301970758543,0.75
+Human breast model (AB14-14):Su120 (3D):3-8,exponential_exposure_kill,7,4,0.13703165626270908,0.75
+Human breast model (AB14-14):Su120 (3D):3-8,logistic_linear_kill,7,4,0.13698324912463547,0.75
+Human breast model (AB14-14):Su120 (3D):3-8,classic_gompertz_exposure_kill,7,4,0.05904272346760096,0.75
+Human breast model (AB14-14):Su120 (3D):3-9,classic_gompertz_growth,7,4,0.20256499152281388,0.5
+Human breast model (AB14-14):Su120 (3D):3-9,exponential_exposure_kill,7,4,1.7869870579535285,0.0
+Human breast model (AB14-14):Su120 (3D):3-9,logistic_linear_kill,7,4,0.3194797495697824,0.25
+Human breast model (AB14-14):Su120 (3D):3-9,classic_gompertz_exposure_kill,7,4,0.2025621121336735,0.5
+Human breast model (AB14-14):Su60 (14D):4-1,classic_gompertz_growth,7,4,0.24773637650426503,0.5
+Human breast model (AB14-14):Su60 (14D):4-1,exponential_exposure_kill,7,4,0.5007713085842685,0.0
+Human breast model (AB14-14):Su60 (14D):4-1,logistic_linear_kill,7,4,0.36449841778579994,0.0
+Human breast model (AB14-14):Su60 (14D):4-1,classic_gompertz_exposure_kill,7,4,0.3765650721040519,0.0
+Human breast model (AB14-14):Su60 (14D):4-2,classic_gompertz_growth,7,4,0.12130509411344667,0.5
+Human breast model (AB14-14):Su60 (14D):4-2,exponential_exposure_kill,7,4,0.15501433168598147,0.75
+Human breast model (AB14-14):Su60 (14D):4-2,logistic_linear_kill,7,4,0.1550163888549313,0.75
+Human breast model (AB14-14):Su60 (14D):4-2,classic_gompertz_exposure_kill,7,4,0.1488794682324222,0.75
+Human breast model (AB14-14):Su60 (14D):4-3,classic_gompertz_growth,7,4,0.0642356247416836,1.0
+Human breast model (AB14-14):Su60 (14D):4-3,exponential_exposure_kill,7,4,0.1131215164534737,1.0
+Human breast model (AB14-14):Su60 (14D):4-3,logistic_linear_kill,7,4,0.11310854827842873,1.0
+Human breast model (AB14-14):Su60 (14D):4-3,classic_gompertz_exposure_kill,7,4,0.06423371277647995,1.0
+Human breast model (AB14-14):Su60 (14D):4-4,classic_gompertz_growth,7,4,0.8242367160945392,0.0
+Human breast model (AB14-14):Su60 (14D):4-4,exponential_exposure_kill,7,4,0.6587085403893558,0.0
+Human breast model (AB14-14):Su60 (14D):4-4,logistic_linear_kill,7,4,0.6586573091829333,0.0
+Human breast model (AB14-14):Su60 (14D):4-4,classic_gompertz_exposure_kill,7,4,0.622817716072059,0.0
+Human breast model (AB14-14):Su60 (14D):4-5,classic_gompertz_growth,7,4,0.14161678841130484,0.5
+Human breast model (AB14-14):Su60 (14D):4-5,exponential_exposure_kill,7,4,0.4021399750234528,0.0
+Human breast model (AB14-14):Su60 (14D):4-5,logistic_linear_kill,7,4,0.2766141087860619,0.25
+Human breast model (AB14-14):Su60 (14D):4-5,classic_gompertz_exposure_kill,7,4,0.30412504081788533,0.0
+Human breast model (AB14-14):Su60 (14D):4-6,classic_gompertz_growth,7,4,0.10007711607667183,0.75
+Human breast model (AB14-14):Su60 (14D):4-6,exponential_exposure_kill,7,4,0.13617728061942885,0.75
+Human breast model (AB14-14):Su60 (14D):4-6,logistic_linear_kill,7,4,0.08355093569600314,1.0
+Human breast model (AB14-14):Su60 (14D):4-6,classic_gompertz_exposure_kill,7,4,0.11526332551116689,0.75
+Human breast model (AB14-14):Su60 (14D):4-7,classic_gompertz_growth,7,4,0.16257545887259858,0.75
+Human breast model (AB14-14):Su60 (14D):4-7,exponential_exposure_kill,7,4,0.19774730053433182,0.5
+Human breast model (AB14-14):Su60 (14D):4-7,logistic_linear_kill,7,4,0.19773046435573646,0.5
+Human breast model (AB14-14):Su60 (14D):4-7,classic_gompertz_exposure_kill,7,4,0.16256838484211894,0.75
+Human breast model (AB14-14):Su60 (14D):4-8,classic_gompertz_growth,7,4,0.20532149301217617,0.5
+Human breast model (AB14-14):Su60 (14D):4-8,exponential_exposure_kill,7,4,0.3378149678940944,0.25
+Human breast model (AB14-14):Su60 (14D):4-8,logistic_linear_kill,7,4,0.23246323322434964,0.5
+Human breast model (AB14-14):Su60 (14D):4-8,classic_gompertz_exposure_kill,7,4,0.30126343338496375,0.25
+Human breast model (AB14-14):Su60 (14D):4-9,classic_gompertz_growth,7,4,0.10562846772487927,0.5
+Human breast model (AB14-14):Su60 (14D):4-9,exponential_exposure_kill,7,4,0.31186299590147315,0.25
+Human breast model (AB14-14):Su60 (14D):4-9,logistic_linear_kill,7,4,0.14840511840004228,0.5
+Human breast model (AB14-14):Su60 (14D):4-9,classic_gompertz_exposure_kill,7,4,0.29699475552809934,0.25
+Human breast model (AB14-14):Su60 (3D):2-1,classic_gompertz_growth,7,4,0.40236395987530194,0.25
+Human breast model (AB14-14):Su60 (3D):2-1,exponential_exposure_kill,7,4,0.4409053859732728,0.25
+Human breast model (AB14-14):Su60 (3D):2-1,logistic_linear_kill,7,4,0.44479881027425183,0.25
+Human breast model (AB14-14):Su60 (3D):2-1,classic_gompertz_exposure_kill,7,4,0.40236256932475123,0.25
+Human breast model (AB14-14):Su60 (3D):2-2,classic_gompertz_growth,7,4,0.2986979333464892,0.25
+Human breast model (AB14-14):Su60 (3D):2-2,exponential_exposure_kill,7,4,1.2204579109709468,0.0
+Human breast model (AB14-14):Su60 (3D):2-2,logistic_linear_kill,7,4,0.23000900229575388,0.5
+Human breast model (AB14-14):Su60 (3D):2-2,classic_gompertz_exposure_kill,7,4,0.0906036756747634,1.0
+Human breast model (AB14-14):Su60 (3D):2-3,classic_gompertz_growth,7,4,0.10948567961474717,0.75
+Human breast model (AB14-14):Su60 (3D):2-3,exponential_exposure_kill,7,4,0.5863003208267923,0.25
+Human breast model (AB14-14):Su60 (3D):2-3,logistic_linear_kill,7,4,0.052625886807769716,0.75
+Human breast model (AB14-14):Su60 (3D):2-3,classic_gompertz_exposure_kill,7,4,0.10064118649292325,0.75
+Human breast model (AB14-14):Su60 (3D):2-4,classic_gompertz_growth,7,4,0.3318069652865707,0.25
+Human breast model (AB14-14):Su60 (3D):2-4,exponential_exposure_kill,7,4,0.6870155277554528,0.0
+Human breast model (AB14-14):Su60 (3D):2-4,logistic_linear_kill,7,4,0.26927017611965837,0.25
+Human breast model (AB14-14):Su60 (3D):2-4,classic_gompertz_exposure_kill,7,4,0.19748643530575943,0.5
+Human breast model (AB14-14):Su60 (3D):2-5,classic_gompertz_growth,7,4,0.12276042784780711,0.75
+Human breast model (AB14-14):Su60 (3D):2-5,exponential_exposure_kill,7,4,0.11044979974348237,1.0
+Human breast model (AB14-14):Su60 (3D):2-5,logistic_linear_kill,7,4,0.11043875127426571,1.0
+Human breast model (AB14-14):Su60 (3D):2-5,classic_gompertz_exposure_kill,7,4,0.12276022755644833,0.75
+Human breast model (AB14-14):Su60 (3D):2-6,classic_gompertz_growth,7,4,0.41714612043945964,0.25
+Human breast model (AB14-14):Su60 (3D):2-6,exponential_exposure_kill,7,4,0.6697793319496018,0.0
+Human breast model (AB14-14):Su60 (3D):2-6,logistic_linear_kill,7,4,0.4366497652148661,0.25
+Human breast model (AB14-14):Su60 (3D):2-6,classic_gompertz_exposure_kill,7,4,0.4010116878272389,0.25
+Human breast model (AB14-14):Su60 (3D):2-7,classic_gompertz_growth,7,4,0.2227205847790083,0.5
+Human breast model (AB14-14):Su60 (3D):2-7,exponential_exposure_kill,7,4,0.4472083909214587,0.25
+Human breast model (AB14-14):Su60 (3D):2-7,logistic_linear_kill,7,4,0.0953118025098221,0.75
+Human breast model (AB14-14):Su60 (3D):2-7,classic_gompertz_exposure_kill,7,4,0.06440973021864366,1.0
+Human breast model (AB14-14):Su60 (3D):2-8,classic_gompertz_growth,7,4,0.45100427370625695,0.25
+Human breast model (AB14-14):Su60 (3D):2-8,exponential_exposure_kill,7,4,0.2793598724109134,0.5
+Human breast model (AB14-14):Su60 (3D):2-8,logistic_linear_kill,7,4,0.27937205374241686,0.5
+Human breast model (AB14-14):Su60 (3D):2-8,classic_gompertz_exposure_kill,7,4,0.34547556817563885,0.25
+Human breast model (AB14-14):Su60 (3D):2-9,classic_gompertz_growth,7,4,0.1615616462720556,0.5
+Human breast model (AB14-14):Su60 (3D):2-9,exponential_exposure_kill,7,4,0.5003764266931583,0.25
+Human breast model (AB14-14):Su60 (3D):2-9,logistic_linear_kill,7,4,0.25029815026338226,0.25
+Human breast model (AB14-14):Su60 (3D):2-9,classic_gompertz_exposure_kill,7,4,0.16156011792170663,0.5

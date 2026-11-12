@@ -33,6 +33,7 @@ result.params, result.bic
 - [Advanced Usage](tutorial/advanced_usage.md)
 - [Identifiability](identifiability.md)
 - [API Reference](api.md)
+- [Showcase](https://kadinelbak.github.io/GrowthParameterEstimation.jl/showcase/): the package applied with one recipe to public tumour-growth datasets (cells, spheroids, mice, patients)
 
 Runnable templates live in the repository:
 

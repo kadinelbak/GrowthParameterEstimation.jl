@@ -353,16 +353,9 @@ function _simulate_observed(
     reltol::Float64,
     abstol::Float64,
 )
+    takes_exposure = applicable(model_spec.ode!, zeros(1), ones(1), ones(1), 0.0, exposure_fn)
     ode4! = function (du, u, p, t)
-        try
-            model_spec.ode!(du, u, p, t, exposure_fn)
-        catch err
-            if err isa MethodError
-                model_spec.ode!(du, u, p, t)
-            else
-                rethrow(err)
-            end
-        end
+        takes_exposure ? model_spec.ode!(du, u, p, t, exposure_fn) : model_spec.ode!(du, u, p, t)
         return nothing
     end
     prob = ODEProblem(ode4!, u0, (x[1], x[end]), p_full)

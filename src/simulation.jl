@@ -202,15 +202,16 @@ function simulate(
     param_vec = collect(params)
     value_type = promote_type(Float64, eltype(param_vec), eltype(u0))
 
+    # Decide once whether the right-hand side takes an exposure argument. Catching a
+    # MethodError on every call made 4-argument models roughly 100x slower to fit.
+    probe_u = value_type.(u0)
+    takes_exposure = applicable(spec.dynamics!, similar(probe_u), probe_u, value_type.(param_vec), tspan[1], exposure)
+
     wrapped! = function (du, u, p, t)
-        try
+        if takes_exposure
             spec.dynamics!(du, u, p, t, exposure)
-        catch err
-            if err isa MethodError
-                spec.dynamics!(du, u, p, t)
-            else
-                rethrow(err)
-            end
+        else
+            spec.dynamics!(du, u, p, t)
         end
         if enforce_nonnegative
             for i in eachindex(du)

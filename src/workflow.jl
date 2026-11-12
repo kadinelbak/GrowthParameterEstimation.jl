@@ -1483,11 +1483,37 @@ function _expand_params(
     return p
 end
 
+_log_scaled(lo, hi) = lo > 0 && hi / lo > 100
+
+# Bounded <-> unconstrained maps used by `fit(...; optimizer = :transformed)`.
+function _from_unbounded(z::AbstractVector, lb::Vector{Float64}, ub::Vector{Float64})
+    return map(eachindex(z)) do i
+        s = 1 / (1 + exp(-clamp(z[i], -40, 40)))
+        _log_scaled(lb[i], ub[i]) ? exp(log(lb[i]) + s * (log(ub[i]) - log(lb[i]))) :
+                                    lb[i] + s * (ub[i] - lb[i])
+    end
+end
+
+function _to_unbounded(theta::AbstractVector, lb::Vector{Float64}, ub::Vector{Float64})
+    return map(eachindex(theta)) do i
+        f = _log_scaled(lb[i], ub[i]) ? (log(theta[i]) - log(lb[i])) / (log(ub[i]) - log(lb[i])) :
+                                         (theta[i] - lb[i]) / max(ub[i] - lb[i], 1e-12)
+        f = clamp(f, 1e-9, 1 - 1e-9)
+        log(f / (1 - f))
+    end
+end
+
 function _initial_theta(index_map, lb::Vector{Float64}, ub::Vector{Float64}, rng::AbstractRNG)
     theta = similar(lb)
     for i in eachindex(lb)
-        width = max(ub[i] - lb[i], 1e-12)
-        theta[i] = lb[i] + rand(rng) * width
+        if _log_scaled(lb[i], ub[i])
+            # Positive bounds spanning several decades: sample on a log scale so random
+            # starts also try small values (a uniform draw on (1e-3, 1e7) is almost always > 1e5).
+            theta[i] = exp(log(lb[i]) + rand(rng) * (log(ub[i]) - log(lb[i])))
+        else
+            width = max(ub[i] - lb[i], 1e-12)
+            theta[i] = lb[i] + rand(rng) * width
+        end
     end
     return theta
 end
@@ -1506,6 +1532,7 @@ end
         abstol::Float64 = 1e-8,
         seed::Int = 42,
         top_k::Int = 5,
+        optimizer::Symbol = :fminbox,
     )
 
 Fit a model to multiple conditions with optional parameter sharing and constraints.
@@ -1523,6 +1550,13 @@ Fit a model to multiple conditions with optional parameter sharing and constrain
 - `abstol::Float64 = 1e-8`: Absolute tolerance for ODE solvers
 - `seed::Int = 42`: Random seed for reproducibility
 - `top_k::Int = 5`: Number of top fits to retain
+- `optimizer::Symbol = :fminbox`: `:fminbox` runs box-constrained BFGS (Optim's barrier
+  method, the original behaviour). `:transformed` maps each bounded parameter to an
+  unconstrained variable (logistic map, on a log scale when the bounds are positive and
+  span more than two decades) and runs plain BFGS; it gives the same optima on the
+  built-in growth laws and is usually many times faster. Its first start is the
+  geometric midpoint for log-scaled parameters. A start that drifts onto a bound can
+  stall there (the transform is flat at the bounds), so use several starts.
 
 # Returns
 - Named tuple containing:
@@ -1569,7 +1603,10 @@ function fit(
     abstol::Float64 = 1e-8,
     seed::Int = 42,
     top_k::Int = 5,
+    optimizer::Symbol = :fminbox,
 )
+    optimizer in (:fminbox, :transformed) ||
+        throw(ArgumentError("optimizer must be :fminbox or :transformed"))
     rng = MersenneTwister(seed)
     n_conditions = length(conditions)
     n_obs = sum(length(c.time) for c in conditions)
@@ -1622,22 +1659,30 @@ function fit(
     end
 
     loss = OptimizationFunction((x, p) -> objective(x, p), Optimization.AutoForwardDiff())
+    tloss = OptimizationFunction((z, p) -> objective(_from_unbounded(z, lb, ub), p), Optimization.AutoForwardDiff())
 
     rows = NamedTuple[]
     best = nothing
 
     for start_id in 1:n_starts
         theta0 = if start_id == 1
-            (lb .+ ub) ./ 2
+            # :transformed starts at z = 0: the box midpoint, or the geometric midpoint
+            # for parameters handled on a log scale.
+            optimizer == :transformed ? _from_unbounded(zeros(length(lb)), lb, ub) : (lb .+ ub) ./ 2
         else
             _initial_theta(index_map, lb, ub, rng)
         end
 
         try
-            prob = OptimizationProblem(loss, theta0; lb=lb, ub=ub)
-            result = solve(prob, OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS()); maxiters=maxiters)
-
-            theta_hat = collect(result.u)
+            result, theta_hat = if optimizer == :fminbox
+                prob = OptimizationProblem(loss, theta0; lb=lb, ub=ub)
+                res = solve(prob, OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS()); maxiters=maxiters)
+                res, collect(res.u)
+            else
+                prob = OptimizationProblem(tloss, _to_unbounded(theta0, lb, ub))
+                res = solve(prob, OptimizationOptimJL.BFGS(); maxiters=maxiters)
+                res, _from_unbounded(collect(res.u), lb, ub)
+            end
             obj = objective(theta_hat, nothing)
 
             k = length(theta_hat)

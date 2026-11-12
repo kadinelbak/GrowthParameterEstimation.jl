@@ -1,0 +1,143 @@
+# Configuration for showcase/run_pipeline.jl.
+# [defaults] apply to every dataset; any key can be overridden inside a [[dataset]] block.
+# To run your own data, copy this file, point `csv` at your table and set the column names.
+
+[defaults]
+models = [
+    "exponential_growth",
+    "logistic_growth",
+    "classic_gompertz_growth",
+    "theta_logistic_growth",
+    "bertalanffy_growth",
+    "general_bertalanffy_growth",
+    "power_law_growth",
+    "exponential_linear_growth",
+]
+n_starts = 8
+min_points = 5
+profiles = true          # profile-likelihood intervals for the pick on every curve
+forecast = true          # refit on the first 70% of each curve, predict the rest
+forecast_frac = 0.7
+max_curves_plotted = 12
+
+[[dataset]]
+id = "benzekry2014_llc"
+xlabel = "days"
+ylabel = "tumour volume (mm³)"
+curve_label = "mouse "
+max_curves_plotted = 20
+
+# Example for your own data (columns: well, hours, cells):
+# [[dataset]]
+# id = "my_experiment"
+# csv = "/path/to/my_counts.csv"
+# subject_col = "well"
+# time_col = "hours"
+# value_col = "cells"
+# xlabel = "hours"
+# ylabel = "cells"
+
+[[dataset]]
+id = "benzekry2014_lm24"
+xlabel = "days"
+ylabel = "tumour volume (mm³)"
+curve_label = "mouse "
+
+[[dataset]]
+id = "browning2021_spheroids"
+xlabel = "days"
+ylabel = "outer radius (µm)"
+
+[[dataset]]
+id = "johnson2019_bt474"
+xlabel = "hours"
+ylabel = "cells"
+# Johnson et al. compare Allee models at low seeding density, so they join the panel here.
+# 427 long wells: an evenly spaced 48 keeps every seeding density and fits in about an hour on 4 cores.
+max_curves_fitted = 48
+profiles = false
+models = [
+    "exponential_growth",
+    "logistic_growth",
+    "classic_gompertz_growth",
+    "theta_logistic_growth",
+    "bertalanffy_growth",
+    "general_bertalanffy_growth",
+    "power_law_growth",
+    "exponential_linear_growth",
+    "strong_allee_growth",
+    "weak_allee_growth",
+]
+
+[[dataset]]
+id = "harris2016_pc9"
+title = "PC9 parental and sublines, untreated"
+xlabel = "hours"
+ylabel = "cells"
+where = { treatment_on = "False" }
+
+[[dataset]]
+id = "kaznatcheev2019_h3122"
+xlabel = "hours"
+ylabel = "fluorescent area (px)"
+where = { treatment_on = "False" }
+
+# Treated data: tumour-response laws instead of plain growth laws.
+[[dataset]]
+id = "ghaffarilaleh2022_recist"
+xlabel = "days from baseline scan"
+ylabel = "target lesion diameter (mm)"
+time_shift_to_zero = true     # baseline scan = start of treatment (it is 0–38 days earlier)
+min_points = 6
+curve_label = ""
+models = [
+    "exponential_net",
+    "stein_response",
+    "claret_response",
+    "logistic_kill",
+    "classic_gompertz_kill",
+]
+
+[[dataset]]
+id = "bruchovsky_iadt_psa"
+xlabel = "days"
+ylabel = "PSA (ng/mL)"
+curve_label = "patient "
+exposure_on_column = "treatment_on"   # 1 while on androgen deprivation, 0 while off
+min_points = 8
+models = [
+    "exponential_net",
+    "exponential_exposure_kill",
+    "logistic_linear_kill",
+    "classic_gompertz_exposure_kill",
+]
+
+# Ebos lab neoadjuvant sunitinib (human breast xenografts). Only the sunitinib arms are fitted;
+# the vehicle mice are the LM2-4 page. Schedules follow table_summary.pdf in the Zenodo record:
+# 14 days of treatment ending at surgery (day 34, or day 38 for the validation groups written
+# without spaces), 120 mg/kg/day for the first days where stated, then 60 mg/kg/day, then none.
+# Exposure is the dose divided by 60 mg/kg/day.
+[[dataset]]
+id = "ebos_sunitinib"
+xlabel = "days after implantation"
+ylabel = "tumour volume (mm³)"
+curve_label = ""
+where = { condition = ["Su60 (14D)", "Su60 (7D)", "Su60 (3D)", "Su120 (3D) / Su60 (11D)", "Su120 (3D)",
+                       "Su120(3D) / Su60(11D)", "Su120(3D) / Su60(8D)", "Su120(3D) / Su60(4D)", "Su120(3D)"] }
+models = [
+    "classic_gompertz_growth",
+    "exponential_exposure_kill",
+    "logistic_linear_kill",
+    "classic_gompertz_exposure_kill",
+]
+
+[dataset.schedules]
+"Su60 (14D)" = { change_times = [20.0, 34.0], values = [0.0, 1.0, 0.0] }
+"Su60 (7D)" = { change_times = [20.0, 27.0], values = [0.0, 1.0, 0.0] }
+"Su60 (3D)" = { change_times = [20.0, 23.0], values = [0.0, 1.0, 0.0] }
+"Su120 (3D) / Su60 (11D)" = { change_times = [20.0, 23.0, 34.0], values = [0.0, 2.0, 1.0, 0.0] }
+"Su120 (3D)" = { change_times = [20.0, 23.0], values = [0.0, 2.0, 0.0] }
+"Su120(3D) / Su60(11D)" = { change_times = [24.0, 27.0, 38.0], values = [0.0, 2.0, 1.0, 0.0] }
+"Su120(3D) / Su60(8D)" = { change_times = [24.0, 27.0, 35.0], values = [0.0, 2.0, 1.0, 0.0] }
+"Su120(3D) / Su60(4D)" = { change_times = [24.0, 27.0, 31.0], values = [0.0, 2.0, 1.0, 0.0] }
+"Su120(3D)" = { change_times = [24.0, 27.0], values = [0.0, 2.0, 0.0] }

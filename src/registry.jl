@@ -361,7 +361,13 @@ end
 """
     get_model(name::String) -> ModelSpec
 """
-get_model(name::String) = MODEL_REGISTRY[name]
+function get_model(name::String)
+    if name in ("gompertz_growth", "gompertz_growth_with_death")
+        Base.depwarn("`$(name)` carries an unused parameter `b` that is still counted in AIC/BIC. " *
+                     "Use `classic_gompertz_growth` (r, K) or `classic_gompertz_kill` instead.", :get_model)
+    end
+    return MODEL_REGISTRY[name]
+end
 
 """
     list_models() -> Vector{String}
@@ -387,6 +393,199 @@ function _logistic_linear_kill!(du, u, p, t, exposure)
     N = max(u[1], 0.0)
     dose = max(exposure(t), 0.0)
     du[1] = r * N * (1 - N / max(K, 1e-8)) - kill_coeff * dose * N
+end
+
+# Classic single-population growth laws (forms as compared in Benzekry et al. 2014,
+# PLoS Comput Biol 10:e1003800, and Johnson et al. 2019, PLoS Biol 17:e3000399).
+
+function _exponential_growth!(du, u, p, t, _exposure = nothing)
+    a = p[1]
+    du[1] = a * u[1]
+    return nothing
+end
+
+function _theta_logistic_growth!(du, u, p, t, _exposure = nothing)
+    r, K, theta = p
+    N = max(u[1], 0.0)
+    du[1] = r * N * (1 - (N / max(K, 1e-8))^theta)
+    return nothing
+end
+
+# Two-parameter Gompertz. The older `gompertz_growth` spec carries an unused `b`
+# parameter, which costs it one parameter in AIC/BIC; this form does not.
+function _classic_gompertz_growth!(du, u, p, t, _exposure = nothing)
+    r, K = p
+    N = max(u[1], 1e-12)
+    du[1] = r * N * log(max(K, 1e-12) / N)
+    return nothing
+end
+
+function _bertalanffy_growth!(du, u, p, t, _exposure = nothing)
+    a, b = p
+    V = max(u[1], 0.0)
+    du[1] = a * V^(2 / 3) - b * V
+    return nothing
+end
+
+function _general_bertalanffy_growth!(du, u, p, t, _exposure = nothing)
+    a, b, gamma = p
+    V = max(u[1], 0.0)
+    du[1] = a * V^gamma - b * V
+    return nothing
+end
+
+function _power_law_growth!(du, u, p, t, _exposure = nothing)
+    a, gamma = p
+    V = max(u[1], 0.0)
+    du[1] = a * V^gamma
+    return nothing
+end
+
+# Smooth exponential-linear law: exponential at rate a0 while small, linear at rate a1
+# once large (Benzekry et al. 2014, with their switch sharpness psi = 20).
+const EXPONENTIAL_LINEAR_PSI = 20.0
+
+function _exponential_linear_growth!(du, u, p, t, _exposure = nothing)
+    a0, a1 = p
+    V = max(u[1], 0.0)
+    psi = EXPONENTIAL_LINEAR_PSI
+    du[1] = a0 * V / (1 + (a0 * V / max(a1, 1e-12))^psi)^(1 / psi)
+    return nothing
+end
+
+function _strong_allee_growth!(du, u, p, t, _exposure = nothing)
+    r, K, A = p
+    N = max(u[1], 0.0)
+    du[1] = r * N * (1 - N / max(K, 1e-8)) * (N / max(A, 1e-8) - 1)
+    return nothing
+end
+
+function _weak_allee_growth!(du, u, p, t, _exposure = nothing)
+    r, K, A = p
+    N = max(u[1], 0.0)
+    du[1] = r * N * (1 - N / max(K, 1e-8)) * N / (N + max(A, 0.0) + 1e-12)
+    return nothing
+end
+
+# Treatment-response laws for tumours measured under continuous therapy, as used for
+# clinical tumour-size data (Stein et al. 2008 Clin Cancer Res; Claret et al. 2009 J Clin Oncol;
+# Ghaffari Laleh et al. 2022 PLoS Comput Biol). Time is measured from the start of treatment;
+# therapy is assumed to act throughout, so no exposure function is needed.
+
+function _exponential_net!(du, u, p, t, _exposure = nothing)
+    lambda = p[1]
+    du[1] = lambda * max(u[1], 0.0)
+    return nothing
+end
+
+# Stein bi-exponential: V(t) = V0 (f e^{-d t} + (1 - f) e^{g t}), written as an ODE whose
+# per-capita rate is the size-weighted mix of decay (-d) and regrowth (g).
+function _stein_response!(du, u, p, t, _exposure = nothing)
+    f, d, g = p
+    f = clamp(f, 1e-12, 1 - 1e-12)
+    w = 1 / (1 + exp(clamp(log(f / (1 - f)) - (d + g) * t, -700.0, 700.0)))   # resistant share
+    du[1] = max(u[1], 0.0) * (g * w - d * (1 - w))
+    return nothing
+end
+
+# Claret: exponential growth with a drug effect that fades as resistance emerges.
+function _claret_response!(du, u, p, t, _exposure = nothing)
+    g, k, lambda = p
+    du[1] = max(u[1], 0.0) * (g - k * exp(-lambda * t))
+    return nothing
+end
+
+function _logistic_kill!(du, u, p, t, _exposure = nothing)
+    r, K, d = p
+    N = max(u[1], 0.0)
+    du[1] = r * N * (1 - N / max(K, 1e-8)) - d * N
+    return nothing
+end
+
+function _classic_gompertz_kill!(du, u, p, t, _exposure = nothing)
+    r, K, d = p
+    N = max(u[1], 1e-12)
+    du[1] = r * N * log(max(K, 1e-12) / N) - d * N
+    return nothing
+end
+
+# Kill terms switched by the exposure (e.g. 1 while on therapy, 0 while off).
+function _exponential_exposure_kill!(du, u, p, t, exposure)
+    r, d = p
+    du[1] = (r - d * max(exposure(t), 0.0)) * max(u[1], 0.0)
+    return nothing
+end
+
+function _classic_gompertz_exposure_kill!(du, u, p, t, exposure)
+    r, K, d = p
+    N = max(u[1], 1e-12)
+    du[1] = r * N * log(max(K, 1e-12) / N) - d * max(exposure(t), 0.0) * N
+    return nothing
+end
+
+function _register_response_laws!()
+    laws = [
+        ("exponential_net", _exponential_net!, [:lambda], [(-5.0, 5.0)]),
+        ("stein_response", _stein_response!, [:f, :d, :g], [(1e-6, 1 - 1e-6), (1e-6, 5.0), (1e-6, 5.0)]),
+        ("claret_response", _claret_response!, [:g, :k, :lambda], [(1e-6, 5.0), (1e-6, 5.0), (1e-6, 5.0)]),
+        ("logistic_kill", _logistic_kill!, [:r, :K, :d], [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 5.0)]),
+        ("classic_gompertz_kill", _classic_gompertz_kill!, [:r, :K, :d], [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 5.0)]),
+    ]
+    append!(laws, [
+        ("exponential_exposure_kill", _exponential_exposure_kill!, [:r, :d], [(1e-6, 5.0), (1e-6, 5.0)]),
+        ("classic_gompertz_exposure_kill", _classic_gompertz_exposure_kill!, [:r, :K, :d],
+            [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 5.0)]),
+    ])
+    for (name, f!, pnames, bounds) in laws
+        register_model!(ModelSpec(
+            name=name,
+            ode! = f!,
+            param_names=pnames,
+            bounds=bounds,
+            n_states=1,
+            observable=u -> u[1],
+            base_growth_family="response",
+            default_solver=Tsit5(),
+            state_names=[:N],
+            metadata=Dict(:family => :treatment_response),
+        ))
+    end
+    return nothing
+end
+
+function _register_classic_growth_laws!()
+    laws = [
+        ("exponential_growth", _exponential_growth!, [:a], [(1e-6, 5.0)], "exponential"),
+        ("theta_logistic_growth", _theta_logistic_growth!, [:r, :K, :theta],
+            [(1e-6, 5.0), (1e-3, 1e7), (0.05, 10.0)], "theta_logistic"),
+        ("classic_gompertz_growth", _classic_gompertz_growth!, [:r, :K],
+            [(1e-6, 5.0), (1e-3, 1e7)], "gompertz"),
+        ("bertalanffy_growth", _bertalanffy_growth!, [:a, :b], [(1e-6, 50.0), (1e-6, 5.0)], "bertalanffy"),
+        ("general_bertalanffy_growth", _general_bertalanffy_growth!, [:a, :b, :gamma],
+            [(1e-6, 50.0), (1e-6, 5.0), (0.01, 0.99)], "bertalanffy"),
+        ("power_law_growth", _power_law_growth!, [:a, :gamma], [(1e-6, 50.0), (0.01, 0.99)], "power_law"),
+        ("exponential_linear_growth", _exponential_linear_growth!, [:a0, :a1],
+            [(1e-6, 5.0), (1e-6, 1e5)], "exponential_linear"),
+        ("strong_allee_growth", _strong_allee_growth!, [:r, :K, :A],
+            [(1e-6, 5.0), (1e-3, 1e7), (1e-6, 1e5)], "allee"),
+        ("weak_allee_growth", _weak_allee_growth!, [:r, :K, :A],
+            [(1e-6, 5.0), (1e-3, 1e7), (0.0, 1e5)], "allee"),
+    ]
+    for (name, f!, pnames, bounds, family) in laws
+        register_model!(ModelSpec(
+            name=name,
+            ode! = f!,
+            param_names=pnames,
+            bounds=bounds,
+            n_states=1,
+            observable=u -> u[1],
+            base_growth_family=family,
+            default_solver=Tsit5(),
+            state_names=[:N],
+            metadata=Dict(:family => :baseline),
+        ))
+    end
+    return nothing
 end
 
 function _theta_hill_inhibition!(du, u, p, t, exposure)
@@ -688,6 +887,9 @@ function register_builtin_models!()
         default_solver=Tsit5(),
         metadata=Dict(:family => :baseline),
     ))
+
+    _register_classic_growth_laws!()
+    _register_response_laws!()
 
     register_model!(ModelSpec(
         name="theta_logistic_hill_inhibition",

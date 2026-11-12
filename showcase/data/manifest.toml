@@ -1,0 +1,135 @@
+# Showcase datasets: where each file comes from and its SHA-256.
+# Generated 2026-11-09. Raw files are downloaded at run time and never committed.
+
+[datasets.johnson2019_bt474]
+title = "BT-474 growth at low seeding density"
+citation = "Johnson KE et al. (2019) PLoS Biol 17(8):e3000399"
+doi = "10.1371/journal.pbio.3000399"
+scale = "in vitro 2D"
+licence = "none stated (repository); article CC BY 4.0"
+source = "https://github.com/brocklab/Johnson-AlleeGrowthModel"
+treated = false
+files = [
+  { name = "data/BT_474_Nseed5_5_30wflags.xls", url = "https://raw.githubusercontent.com/brocklab/Johnson-AlleeGrowthModel/e446299f090b640b58ded6fcb319e38fab4f4288/data/BT_474_Nseed5_5_30wflags.xls", sha256 = "df2d5231b1cddfff017ae30775e0fcdd3fbdb7ebc7e39df57b47a34dbc86bbf6" },
+  { name = "data/BT_474_Nseed2_7_1wflags.xls", url = "https://raw.githubusercontent.com/brocklab/Johnson-AlleeGrowthModel/e446299f090b640b58ded6fcb319e38fab4f4288/data/BT_474_Nseed2_7_1wflags.xls", sha256 = "430d61d1485cfc1a828a778fc2cdd04454371407517f0ea05f6ab74db095e778" },
+  { name = "data/BT_474_Nseed10_7_12wflags.xls", url = "https://raw.githubusercontent.com/brocklab/Johnson-AlleeGrowthModel/e446299f090b640b58ded6fcb319e38fab4f4288/data/BT_474_Nseed10_7_12wflags.xls", sha256 = "9ec9e4b7f7bf8ffdf263b4f81c7e467a352547a8cd4ff6c5620025c09cf4f3c9" },
+  { name = "data/BT_474_Nseed67_30wflags.xls", url = "https://raw.githubusercontent.com/brocklab/Johnson-AlleeGrowthModel/e446299f090b640b58ded6fcb319e38fab4f4288/data/BT_474_Nseed67_30wflags.xls", sha256 = "79c8cc8c5ab4e7db37b09aa3ffb966e7d14c64ddb3eb44dea8d6b60f9cd96f40" },
+  { name = "data/BT_474_Nseed15802wflags.xls", url = "https://raw.githubusercontent.com/brocklab/Johnson-AlleeGrowthModel/e446299f090b640b58ded6fcb319e38fab4f4288/data/BT_474_Nseed15802wflags.xls", sha256 = "b2bea047b7aee191938d72481c4c17534d7592b0d90442d7c823fa8d50dec2ad" },
+  { name = "data/BT-474_Nseed12_8_16wflags.xls", url = "https://raw.githubusercontent.com/brocklab/Johnson-AlleeGrowthModel/e446299f090b640b58ded6fcb319e38fab4f4288/data/BT-474_Nseed12_8_16wflags.xls", sha256 = "46b2d1a7778fe265d18a4f3d0877ee886bd64a48c5d04fd950a9ae33b8d14fa1" },
+  { name = "data/BT-474_Nseed8_8_16wflags.xls", url = "https://raw.githubusercontent.com/brocklab/Johnson-AlleeGrowthModel/e446299f090b640b58ded6fcb319e38fab4f4288/data/BT-474_Nseed8_8_16wflags.xls", sha256 = "100b0893bfec1cd9195136333ce5cc9ce3077b2973c4e3f681266ad5cb3894e9" },
+  { name = "data/BT-474_Nseed_large.xls", url = "https://raw.githubusercontent.com/brocklab/Johnson-AlleeGrowthModel/e446299f090b640b58ded6fcb319e38fab4f4288/data/BT-474_Nseed_large.xls", sha256 = "1dd6f75676e478ced58ee29d03989ff22e0b5388d21d332d0a14bc15a7fe9b21" },
+]
+
+[datasets.kaznatcheev2019_h3122]
+title = "H3122 parental vs alectinib-resistant co-culture"
+citation = "Kaznatcheev A et al. (2019) Nat Ecol Evol 3:450-456"
+doi = "10.1038/s41559-018-0768-z"
+scale = "in vitro 2D co-culture"
+licence = "GPL-3.0 (repository)"
+source = "https://github.com/kaznatcheev/GameAssay"
+treated = true
+files = [
+  { name = "Processed/red_all.npy", url = "https://raw.githubusercontent.com/kaznatcheev/GameAssay/16796a709229184f4e518c12b6058dfeca268826/Processed/red_all.npy", sha256 = "9cfd0404400dbb38970808150c53bde863de611a7fbeb410aa1d00c548bb7552" },
+  { name = "Processed/green_all.npy", url = "https://raw.githubusercontent.com/kaznatcheev/GameAssay/16796a709229184f4e518c12b6058dfeca268826/Processed/green_all.npy", sha256 = "b4756c0d85afb398d032d1e5a142a84fb48cd0b28654bac2f32d69257748255c" },
+  { name = "Processed/time_all.npy", url = "https://raw.githubusercontent.com/kaznatcheev/GameAssay/16796a709229184f4e518c12b6058dfeca268826/Processed/time_all.npy", sha256 = "47cdefe2128dc465d681eae0e2e0461c04e684ac07c7a5e6d6d07b49de52fc28" },
+  { name = "Processed/DataLoad.py", url = "https://raw.githubusercontent.com/kaznatcheev/GameAssay/16796a709229184f4e518c12b6058dfeca268826/Processed/DataLoad.py", sha256 = "b74542cffb6be363caa549c71e630c54981dd7753dfd39f53c66cac1d8bf97d9" },
+]
+
+[datasets.harris2016_pc9]
+title = "PC9 parental and sublines with erlotinib"
+citation = "Harris LA et al. (2016) Nat Methods 13:497-500"
+doi = "10.1038/nmeth.3852"
+scale = "in vitro 2D"
+licence = "none stated (repository)"
+source = "https://github.com/QuLab-VU/DIP_rate_NatMeth2016"
+treated = true
+files = [
+  { name = "data_for_figs/DS345 growth curve data.csv", url = "https://raw.githubusercontent.com/QuLab-VU/DIP_rate_NatMeth2016/39cd9ea157ec1834e9af584a51d65aa3a253299a/data_for_figs/DS345%20growth%20curve%20data.csv", sha256 = "6434b5a12ea7ba66dd84bca7348b8a6e905cbd56d93ed9ad2b282d1540367fa8" },
+  { name = "data_for_figs/DS345+erl in HTS core.csv", url = "https://raw.githubusercontent.com/QuLab-VU/DIP_rate_NatMeth2016/39cd9ea157ec1834e9af584a51d65aa3a253299a/data_for_figs/DS345%2Berl%20in%20HTS%20core.csv", sha256 = "a0557b96c945a20bfdba3312e963b19b7707d7d25ad4f917be2cbfa60067af22" },
+]
+
+[datasets.browning2021_spheroids]
+title = "Melanoma spheroid radius over time"
+citation = "Browning AP et al. (2021) eLife 10:e73020"
+doi = "10.7554/eLife.73020"
+scale = "spheroid"
+licence = "CC BY 4.0 (repository)"
+source = "https://github.com/ap-browning/spheroids"
+treated = false
+files = [
+  { name = "Data/IncucyteData.csv", url = "https://raw.githubusercontent.com/ap-browning/spheroids/9d23a94ef4f31d34dc3d110a033680867bad3b99/Data/IncucyteData.csv", sha256 = "f0665a7f45c0e895d87ca5812698369309693caecb1ba810d7059352c9dc91e1" },
+]
+
+[datasets.murphy2023_oxygen]
+title = "Melanoma spheroids under normoxia, hypoxia and oxygen switches"
+citation = "Murphy RJ et al. (2023) PLoS Comput Biol 19(1):e1010833"
+doi = "10.1371/journal.pcbi.1010833"
+scale = "spheroid"
+licence = "none stated (repository); article CC BY 4.0"
+source = "https://github.com/ryanmurphy42/Murphy2022SpheroidOxygenAdaptation"
+treated = true
+files = [
+  { name = "1Data/ExpOA_WM983b.xlsx", url = "https://raw.githubusercontent.com/ryanmurphy42/Murphy2022SpheroidOxygenAdaptation/4ccd486c7f7a4071047ee5f82d96b66a1d59f9c4/1Data/ExpOA_WM983b.xlsx", sha256 = "39780cd721d78020a80cc96836393f14542bf3ac937bd5caa56acae71ef7ecbf" },
+  { name = "1Data/ExpOA_WM793b.xlsx", url = "https://raw.githubusercontent.com/ryanmurphy42/Murphy2022SpheroidOxygenAdaptation/4ccd486c7f7a4071047ee5f82d96b66a1d59f9c4/1Data/ExpOA_WM793b.xlsx", sha256 = "5c51d5960b0a38c283bc857ae60e66313fde419cebad67d24266024c37d2eb34" },
+  { name = "1Data/ExpOA_WM164.xlsx", url = "https://raw.githubusercontent.com/ryanmurphy42/Murphy2022SpheroidOxygenAdaptation/4ccd486c7f7a4071047ee5f82d96b66a1d59f9c4/1Data/ExpOA_WM164.xlsx", sha256 = "3f96549484013d09a323a7f07f6cc3cbf78d99d42f64f21c8da1fc8691c0681b" },
+]
+
+[datasets.benzekry2014_llc]
+title = "Lewis lung carcinoma subcutaneous volumes"
+citation = "Benzekry S et al. (2014) PLoS Comput Biol 10(8):e1003800; data Zenodo 3572401"
+doi = "10.5281/zenodo.3572401"
+scale = "mouse"
+licence = "CC BY 4.0"
+source = "https://doi.org/10.5281/zenodo.3572401"
+treated = false
+files = [
+  { name = "LLC_sc_CCSB.txt", url = "https://zenodo.org/api/records/3572401/files/LLC_sc_CCSB.txt/content", sha256 = "66f30842f245550cee17ccb35026039097d1783e447b7565b427ba569272d492" },
+]
+
+[datasets.benzekry2014_lm24]
+title = "LM2-4LUC+ breast xenograft volumes (vehicle)"
+citation = "Benzekry S et al. (2014) PLoS Comput Biol 10(8):e1003800; data Zenodo 3574531 (Mastri, Tracz, Ebos)"
+doi = "10.5281/zenodo.3574531"
+scale = "mouse"
+licence = "CC BY 4.0"
+source = "https://doi.org/10.5281/zenodo.3574531"
+treated = false
+files = [
+  { name = "LM2-4LUC.txt", url = "https://zenodo.org/api/records/3574531/files/LM2-4LUC.txt/content", sha256 = "f6641ce7319b7fb99d6d41bbe1f2eff0cc17fe8385030178234c34e9bda5df27" },
+]
+
+[datasets.ebos_sunitinib]
+title = "Breast xenografts with neoadjuvant sunitinib or axitinib"
+citation = "Ebos lab, Zenodo 10607753; preprint doi 10.1101/2023.02.22.529613"
+doi = "10.5281/zenodo.10607753"
+scale = "mouse"
+licence = "CC BY 4.0"
+source = "https://doi.org/10.5281/zenodo.10607753"
+treated = true
+files = [
+  { name = "ebos_data_breast.xlsx", url = "https://zenodo.org/api/records/10607753/files/ebos_data_breast.xlsx/content", sha256 = "7a62e35bd0b588208962b4b959de9cd521a491bf1b11f4c54cabaa4b9c1fa070" },
+]
+
+[datasets.ghaffarilaleh2022_recist]
+title = "NSCLC and bladder cancer target-lesion diameters under atezolizumab/docetaxel"
+citation = "Ghaffari Laleh N et al. (2022) PLoS Comput Biol 18(2):e1009822, S1 Data"
+doi = "10.1371/journal.pcbi.1009822"
+scale = "patient"
+licence = "CC BY 4.0"
+source = "https://doi.org/10.1371/journal.pcbi.1009822"
+treated = true
+files = [
+  { name = "S1_Data.xlsx", url = "https://journals.plos.org/ploscompbiol/article/file?type=supplementary&id=10.1371/journal.pcbi.1009822.s006", sha256 = "ffca72e8b9a54129d2245c315ba89d8169e63dbd2c971119a63f454e5fe63e3d" },
+]
+
+[datasets.bruchovsky_iadt_psa]
+title = "PSA under intermittent androgen deprivation"
+citation = "Bruchovsky N et al. (2006) Cancer 107:389-395; data as posted for Tanaka et al."
+doi = "10.1002/cncr.21989"
+scale = "patient"
+licence = "none stated (posted by trial lead for research use)"
+source = "https://www.nicholasbruchovsky.com/clinicalResearch.html"
+treated = true
+files = [
+  { name = "dataTanaka.zip", url = "https://www.nicholasbruchovsky.com/dataTanaka.zip", sha256 = "845683954e99253ddf68e488a48223e89c19247a92aec27daa79130d8f46904f" },
+]

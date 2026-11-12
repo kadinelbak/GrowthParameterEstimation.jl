@@ -1,0 +1,14 @@
+subject,pick,best_bic,lowest_bic_model
+dose:DS3_1_F02,exponential_growth,18.4552892390828,exponential_growth
+dose:DS3_1_F11,power_law_growth,-38.41962084682022,power_law_growth
+dose:DS3_1_G02,exponential_growth,12.155743939944978,exponential_growth
+dose:DS3_1_G11,power_law_growth,-15.925858628247887,power_law_growth
+dose:DS4_2_B02,exponential_growth,7.819628443866498,exponential_growth
+dose:DS4_2_B11,exponential_growth,15.846921661572045,exponential_growth
+dose:DS4_2_C02,exponential_growth,11.766712584019654,exponential_linear_growth
+dose:DS4_2_C11,exponential_growth,21.545024974322736,exponential_growth
+dose:DS5_2_D02,exponential_growth,19.676711225098032,exponential_growth
+dose:DS5_2_D11,exponential_growth,41.85582836787571,exponential_growth
+dose:DS5_2_E02,exponential_growth,11.348430592507928,exponential_growth
+dose:DS5_2_E11,exponential_growth,49.33377876555152,exponential_growth
+growth:PC9.par_X20120612_DMSO_B09,logistic_growth,-154.04046354383402,logistic_growth
