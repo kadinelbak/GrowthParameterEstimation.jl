@@ -180,8 +180,10 @@ the documentation's Research use page.
   [TODO: confirm whether the posted or revised preprint uses the package.]
 - **Benchmark across public datasets.** The repository includes a showcase that
   refits published tumour and cell-growth datasets from other groups with the
-  same workflow and compares growth laws across them. [TODO: update with the
-  dataset count and link once the showcase is merged.]
+  same workflow and compares growth laws across them. It covers nine public
+  datasets, from cell lines and spheroids to mice and 641 patients, and
+  reproduces each fit from a single configuration file. The results are at
+  <https://kadinelbak.github.io/GrowthParameterEstimation.jl/showcase/>.
 
 These analyses support an undergraduate honors thesis in biomedical
 engineering at the University of Florida and manuscripts in preparation.
