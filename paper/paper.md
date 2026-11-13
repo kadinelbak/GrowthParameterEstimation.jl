@@ -213,7 +213,7 @@ The author made the primary design decisions described above. These are the
 split between the generic package and project-specific code, BIC-based
 selection, staged inheritance, explicit pooling, the identifiability methods,
 and removing an earlier graphical interface in favour of a programmatic API.
-AI-generated code was checked by the package test suite (about 250 tests)
+AI-generated code was checked by the package test suite (more than 250 tests)
 under continuous integration on Julia 1.10, 1.11 and 1.12, by use in the
 author's own analyses, and by scientific review of any change to model rankings
 before merging. [TODO: add any hand checks, e.g. fits against known parameters
