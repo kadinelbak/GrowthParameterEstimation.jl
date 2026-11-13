@@ -180,8 +180,10 @@ the documentation's Research use page.
   [TODO: confirm whether the posted or revised preprint uses the package.]
 - **Benchmark across public datasets.** The repository includes a showcase that
   refits published tumour and cell-growth datasets from other groups with the
-  same workflow and compares growth laws across them. [TODO: update with the
-  dataset count and link once the showcase is merged.]
+  same workflow and compares growth laws across them. It covers nine public
+  datasets, from cell lines and spheroids to mice and 641 patients, and
+  reproduces each fit from a single configuration file. The results are at
+  <https://kadinelbak.github.io/GrowthParameterEstimation.jl/showcase/>.
 
 These analyses support an undergraduate honors thesis in biomedical
 engineering at the University of Florida and manuscripts in preparation.
@@ -211,7 +213,7 @@ The author made the primary design decisions described above. These are the
 split between the generic package and project-specific code, BIC-based
 selection, staged inheritance, explicit pooling, the identifiability methods,
 and removing an earlier graphical interface in favour of a programmatic API.
-AI-generated code was checked by the package test suite (about 250 tests)
+AI-generated code was checked by the package test suite (more than 250 tests)
 under continuous integration on Julia 1.10, 1.11 and 1.12, by use in the
 author's own analyses, and by scientific review of any change to model rankings
 before merging. [TODO: add any hand checks, e.g. fits against known parameters

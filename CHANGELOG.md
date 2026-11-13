@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## v0.6.1 - 2026-11-13
+
 ### Added
 
 - Classic single-population growth laws in the model registry: `exponential_growth`,
