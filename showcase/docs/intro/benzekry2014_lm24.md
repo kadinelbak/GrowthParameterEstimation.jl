@@ -1,4 +1,4 @@
-Orthotopic LM2-4 breast tumours (a metastatic MDA-MB-231 derivative) in 64 mice, measured with calipers as volume (mm³). Benzekry and colleagues fitted the same panel of classic laws to these curves and found the Gompertz model described them best for its parameter count.
+Orthotopic LM2-4 breast tumours (a metastatic MDA-MB-231 derivative) in 64 mice, measured with calipers as volume (mm³). Benzekry and colleagues fitted a panel of classic laws to breast tumours from this model and found Gompertz and exponential-linear growth described them best.
 
 **Same mice as the Ebos vehicle arm.** Every row of this file matches the vehicle (untreated) arm of the Ebos sunitinib dataset, so the two are one experiment, not two. The showcase counts them once: this page covers the untreated curves and the Ebos page covers only the treated arms.
 

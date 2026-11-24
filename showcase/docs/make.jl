@@ -6,6 +6,28 @@ const SHOWCASE = normpath(joinpath(@__DIR__, ".."))
 const SRC = joinpath(@__DIR__, "src")
 const GEN = joinpath(SRC, "datasets")
 const MANIFEST = TOML.parsefile(joinpath(SHOWCASE, "data", "manifest.toml"))["datasets"]
+# Agreement of each page with its source paper, written by hand in docs/verdicts.toml.
+const VERDICTS = TOML.parsefile(joinpath(@__DIR__, "verdicts.toml"))
+const VERDICT_STYLE = Dict(
+    "match" => ("tip", "✅ Matches the paper"),
+    "partial" => ("warning", "⚠️ Partly matches the paper"),
+    "differs" => ("danger", "❌ Does not match the paper"),
+    "not_comparable" => ("note", "➖ Not directly comparable with the paper"),
+)
+verdict_label(id) = haskey(VERDICTS, id) ? VERDICT_STYLE[VERDICTS[id]["verdict"]][2] : "—"
+
+"""A coloured box at the top of a dataset page: verdict, the paper's finding, ours, and why."""
+function verdict_block(id)
+    haskey(VERDICTS, id) || return ""
+    v = VERDICTS[id]
+    kind, label = VERDICT_STYLE[v["verdict"]]
+    io = IOBuffer()
+    println(io, "!!! ", kind, " \"", label, "\"")
+    println(io, "    **The paper found:** ", v["paper"], "\n")
+    println(io, "    **This page found:** ", v["ours"], "\n")
+    println(io, "    **Why they differ / caveats:** ", v["why"], "\n")
+    return String(take!(io))
+end
 
 nice(m) = replace(replace(m, "_growth" => ""), "_" => " ")
 fmt(x::Real) = isfinite(x) ? @sprintf("%.1f", x) : "—"
@@ -14,7 +36,7 @@ fmtp(x::Real) = !isfinite(x) ? "—" : (abs(x) >= 1e4 || abs(x) < 1e-2) ? @sprin
 function md_table(header, rows)
     io = IOBuffer()
     println(io, "| ", join(header, " | "), " |")
-    println(io, "|", join(fill(" --- ", length(header)), "|"), "|")
+    println(io, "|", join(fill(" :--- ", length(header)), "|"), "|")
     for r in rows
         println(io, "| ", join(r, " | "), " |")
     end
@@ -29,6 +51,7 @@ function dataset_page(id)
     ranking = rd("ranking")
     io = IOBuffer()
     println(io, "# ", get(meta, "title", src["title"]), "\n")
+    println(io, verdict_block(id))
     println(io, "*", src["citation"], "* · [doi:", src["doi"], "](https://doi.org/", src["doi"], ") · source: [", src["source"], "](", src["source"], ") · licence: ", src["licence"], "\n")
     intro = joinpath(@__DIR__, "intro", "$(id).md")
     isfile(intro) && println(io, read(intro, String), "\n")
@@ -83,10 +106,11 @@ function cross_page(done)
             "Rebuilt from the committed results with `julia --project=showcase showcase/analyses/cross_dataset.jl`.\n")
     rows = [["[" * replace(r.dataset, "_" => " ") * "](" * r.dataset * ".md)", r.scale, string(r.n_curves),
              nice(r.pick), fmt(r.gap_bic), isnan(r.ident_share) ? "—" : string(round(Int, 100 * r.ident_share)),
-             r.forecast_best isa AbstractString && !isempty(r.forecast_best) ? nice(r.forecast_best) * " (" * fmt(100 * r.forecast_best_err) * "%)" : "—"]
+             r.forecast_best isa AbstractString && !isempty(r.forecast_best) ? nice(r.forecast_best) * " (" * fmt(100 * r.forecast_best_err) * "%)" : "—",
+             verdict_label(r.dataset)]
             for r in eachrow(summ)]
     println(io, md_table(["Dataset", "Scale", "Curves", "Rule pick", "ΔBIC to next model",
-                          "Fully identifiable (%)", "Best forecaster (median error)"], rows))
+                          "Fully identifiable (%)", "Best forecaster (median error)", "Agrees with paper?"], rows))
     println(io, "\n*Fully identifiable*: share of curves on which every parameter of the pick has a closed 95% profile interval.\n")
     println(io, "\n## Which law wins where\n")
     println(io, "Each cell is the summed ΔBIC divided by the number of curves, so datasets of different size share one scale; the star marks the rule pick. Grey means the model was not in that dataset's panel.\n")
@@ -134,12 +158,31 @@ page_title(id) = get(TOML.parsefile(joinpath(SHOWCASE, "results", id, "meta.toml
 pages = [page_title(id) => dataset_page(id) for id in done]
 cross = cross_page(done)
 
+"""One page listing every dataset's verdict against its paper."""
+function agreement_page(done)
+    io = IOBuffer()
+    println(io, "# Does it match the papers?\n")
+    println(io, "Each dataset page opens with a coloured box comparing the showcase result with the source paper. This page collects them. ",
+            "The showcase applies one shared recipe to every dataset, so it re-analyses the data rather than reproducing each paper's own analysis; ",
+            "where the two differ, the box says why.\n")
+    counts = Dict(k => count(id -> get(get(VERDICTS, id, Dict()), "verdict", "") == k, done) for k in keys(VERDICT_STYLE))
+    println(io, md_table(["Verdict", "Datasets"], [[VERDICT_STYLE[k][2], string(counts[k])]
+                                                  for k in ("match", "partial", "differs", "not_comparable")]), "\n")
+    rows = [["[" * page_title(id) * "](" * id * ".md)", verdict_label(id),
+             get(get(VERDICTS, id, Dict()), "paper", "—"), get(get(VERDICTS, id, Dict()), "ours", "—")] for id in done]
+    println(io, md_table(["Dataset", "Verdict", "Paper", "This showcase"], rows))
+    write(joinpath(GEN, "agreement.md"), String(take!(io)))
+    return "datasets/agreement.md"
+end
+agreement = agreement_page(done)
+
 makedocs(;
     sitename = "GrowthParameterEstimation.jl showcase",
     authors = "Kadin El bakkouri",
     format = Documenter.HTML(; prettyurls = get(ENV, "CI", "false") == "true", edit_link = "main", inventory_version = "showcase",
                              canonical = "https://kadinelbak.github.io/GrowthParameterEstimation.jl/showcase/"),
-    pages = ["Home" => "index.md", "Why one package" => "why.md", "Shared recipe" => "recipe.md",
+    pages = ["Home" => "index.md", "Does it match the papers?" => agreement, "What it covers" => "coverage.md",
+             "Why one package" => "why.md", "Shared recipe" => "recipe.md",
              (cross === nothing ? [] : ["Across datasets" => cross])..., "Datasets" => pages, "Reproduce" => "reproduce.md"],
     warnonly = true,
 )

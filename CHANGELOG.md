@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- Showcase: every dataset page opens with a verdict box comparing the result with the source paper (matches, partly matches, does not match, or not directly comparable), plus a "Does it match the papers?" summary page and a "What it covers" page listing which package features the showcase uses and which it does not yet.
+
 ## v0.6.1 - 2026-11-13
 
 ### Added
