@@ -2,6 +2,8 @@
 
 This site applies one package, one fitting recipe and one model-selection rule to published, public tumour-growth datasets: cells in a dish, spheroids, mice and patients.
 
+**Does it agree with the papers?** Every dataset page opens with a coloured box saying whether the result matches the source paper (✅ matches, ⚠️ partly, ❌ does not, ➖ not directly comparable), with the paper's finding and ours side by side. [Does it match the papers?](datasets/agreement.md) collects them, and [What it covers](coverage.md) lists which package features the showcase uses and which it does not yet.
+
 Each dataset page shows the same things in the same order:
 
 1. **Model comparison**: every growth law in the panel fitted to every curve, scored by BIC, AIC and AICc, with the pick under the rule *fewest parameters within 2 BIC of the best*.

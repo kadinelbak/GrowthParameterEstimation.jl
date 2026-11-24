@@ -1,0 +1,58 @@
+# Does each dataset page agree with its source paper?
+# verdict: "match" | "partial" | "differs" | "not_comparable"
+# paper: what the paper reported (checked against the paper's text, November 2026).
+# ours: what this showcase found. why: what limits the comparison.
+
+[benzekry2014_llc]
+verdict = "partial"
+paper = "Gompertz and power law gave the most parsimonious, identifiable description of the 20 lung tumours. Logistic and exponential were rejected. No model forecast well beyond the next measurement."
+ours = "Exponential-linear is the pick. Power law is a close second (ΔBIC 4.8), logistic third (5.8) and Gompertz well behind (ΔBIC 22.5)."
+why = "Power law agrees; Gompertz does not. The paper used a volume-dependent error model and its own initial condition. Here every curve starts from its first measurement with a 10% proportional error, which favours laws that keep growing."
+
+[benzekry2014_lm24]
+verdict = "partial"
+paper = "For the breast tumours, Gompertz and exponential-linear captured the dynamics best. Exponential-linear also forecast best, with prediction scores of 80% or more up to 12 days ahead."
+ours = "Gompertz is the pick, matching the paper. Exponential-linear is far behind (ΔBIC 68), and power law forecasts best (median error 16%)."
+why = "Gompertz agrees; exponential-linear does not. The paper used 34 mice, while the public Zenodo release used here has 64, so the data are not identical. Error model and forecast scoring also differ."
+
+[browning2021_spheroids]
+verdict = "not_comparable"
+paper = "Fitted a mechanistic spheroid model with necrotic and inhibited regions to outer and inner radii, comparing cell lines and seeding densities."
+ours = "Theta-logistic best describes outer radius over time."
+why = "The paper did not rank classic growth laws, and it modelled the internal structure that this showcase ignores. The two results answer different questions."
+
+[johnson2019_bt474]
+verdict = "match"
+paper = "Growth at low seeding density deviates from exponential growth; by BIC, a weak Allee effect on birth is more likely than a strong Allee effect, and both beat simple birth-death growth."
+ours = "Weak Allee growth is the pick by a wide margin (strong Allee is far behind) and wins on 28 of 48 wells."
+why = "Same conclusion. The paper used stochastic birth-death models on all wells; this page uses deterministic laws on an evenly spaced 48 of 427 wells."
+
+[harris2016_pc9]
+verdict = "not_comparable"
+paper = "Introduced the drug-induced proliferation (DIP) rate: after a delay, treated populations grow or shrink exponentially, and the DIP rate is a better drug-response metric than an end-point count."
+ours = "Untreated wells only: plain exponential growth is the pick on 10 of 13 wells, consistent with the paper's assumption; the pooled pick is power law."
+why = "The paper's results are about erlotinib-treated wells, which this page does not fit. Only the exponential-growth assumption for untreated cells can be checked, and it holds per well."
+
+[kaznatcheev2019_h3122]
+verdict = "not_comparable"
+paper = "Measured the evolutionary game between alectinib-sensitive and resistant cells from their growth rates in co-culture, and showed that drug and fibroblasts change the game."
+ours = "Each population fitted on its own: theta-logistic is the pick."
+why = "The paper's result is the interaction (game payoffs) between the two lines, which needs a two-population model. This page fits single populations only."
+
+[ghaffarilaleh2022_recist]
+verdict = "partial"
+paper = "Compared exponential, logistic, classic and general Bertalanffy, classic and general Gompertz. Gompertz gave the best balance of fit and parameters; general Bertalanffy and Gompertz predicted held-out scans best."
+ours = "With explicit treatment laws, logistic growth with a kill term is the pick and Gompertz with a kill term is 9 BIC behind; the two forecast equally well (median error 10.4% vs 10.5%)."
+why = "Gompertz is close but not the pick. The model panels differ: the paper fitted growth laws without an explicit treatment term, while this page adds a kill term and other response laws."
+
+[bruchovsky_iadt_psa]
+verdict = "not_comparable"
+paper = "A clinical trial of intermittent androgen deprivation; the PSA data have since been modelled in many papers with different models, with no single published ranking to compare against."
+ours = "Gompertz growth with an on-therapy kill term is the clear pick (52 of 72 patients)."
+why = "There is no single reference result. The poor forecasts here agree with the common finding that single-population models miss emerging resistance."
+
+[ebos_sunitinib]
+verdict = "match"
+paper = "Benzekry et al. 2024 (PLoS Comput Biol 20:e1012088) modelled primary tumour growth as Gompertz-type with a sunitinib term proportional to drug concentration, and found a measurable effect on the primary tumour."
+ours = "Gompertz growth with a dose-proportional kill term beats Gompertz without a drug term by 45 BIC pooled over 99 mice."
+why = "Same qualitative conclusion: Gompertz-type growth with a measurable dose-proportional drug effect. The paper modelled drug concentration with decay after each dose, while this page uses the daily dose as a step function."
