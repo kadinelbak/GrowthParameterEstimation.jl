@@ -14,11 +14,11 @@ The showcase fits every curve separately with one recipe. That keeps the dataset
 | Time-varying exposure: on/off therapy (`SteppedExposure`) | Bruchovsky PSA, Ebos sunitinib |
 | Dose-step schedules per group | Ebos sunitinib |
 | Treatment-response laws (kill terms, Stein, Claret) | Ghaffari Laleh, Bruchovsky, Ebos |
-| Fisher information and Wald intervals (`fisher_information`) | "Package diagnostics" on every page |
-| Built-in profile likelihood (`profile_likelihood`), with its default grid and with a Fisher-scaled grid | "Package diagnostics" on every page |
-| Residual bootstrap (`bootstrap_joint_fit`) | "Package diagnostics" on every page |
-| Synthetic recovery on each curve's own design (`synthetic_recovery_benchmark`) | "Package diagnostics" on every page |
-| Cross-validation (`k_fold_cross_validation`) | "Package diagnostics" on every page |
+| Fisher information and Wald intervals (`fisher_information`) | "Package diagnostics" on every page, every model |
+| Built-in profile likelihood (`profile_likelihood`), on its default grid plus a Fisher-scaled grid | "Package diagnostics" on every page, every model |
+| Residual bootstrap (`bootstrap_joint_fit`) | "Package diagnostics" on every page, every model |
+| Synthetic recovery on each curve's own design (`synthetic_recovery_benchmark`) | "Package diagnostics" on every page, every model |
+| 5-fold cross-validation with the showcase objective (not `k_fold_cross_validation`; see below) | "Package diagnostics" on every page, every model |
 
 ## Not shown yet
 
@@ -48,8 +48,11 @@ Building the showcase needed some code that the package does not provide, which 
 - **A profile search that steps outward from the estimate** and bisects the crossing, which was more reliable than a fixed grid on short curves (now `profile_intervals`).
 - **Fixes found by running the package's own tools on real curves:**
     - `profile_likelihood`'s default grid spreads 8 points per side across the whole bound range. On these curves the nearest grid point is often far outside the interval, so only the estimate passes (a zero-width interval) or the interval runs to a bound.
+    - Even on a fine grid, `profile_likelihood` reports the outermost grid point inside the cutoff, not where the profile crosses it, so its intervals read one grid step narrow (about 20% at ±0.5 standard-error spacing). The showcase interpolates the crossing from the returned profile.
     - Both cases are still labelled `bounded`: the check compares the last accepted point with the bound, and the log-spaced grid recomputes the bound with rounding error (1.0000000000000004e-6 > 1e-6).
     - `k_fold_cross_validation`'s default solver (`Rodas5`) differentiates the model in time, which fails on any model with a step exposure (a dose schedule); pass `solver = Tsit5()`.
-    - `k_fold_cross_validation` starts each fold from the first training point, so a fold that holds out the first measurement predicts from the wrong initial condition.
+    - `fisher_information` applied its rank tolerance (1e-8) to the pseudo-inverse of JᵀJ, which squares the singular-value ratio of J. A parameter on a much larger scale than the others (K ≈ 10³ next to r ≈ 0.1) lost its direction and got a near-zero standard error, so the Wald interval of K collapsed to a point. Fixed in this release: the covariance now comes from the SVD of J with the same cutoff as the rank.
+    - `k_fold_cross_validation` integrates from the first training point, so when a fold holds out the first measurement that point is predicted outside the solve and silently dropped; failed folds are skipped without a mark. It also fits unweighted least squares from one start. The showcase therefore runs its own 5-fold cross-validation with the showcase objective (`showcase_cv` in `package_checks.jl`). With few random starts a fold fit can stall in a corner of the bounds (theta-logistic with r → 0 and K at its upper bound gave 47% held-out error on a curve it fits to 1.5%), so each fold is retried with more starts until it reaches the full-curve fit's error level.
+    - The joint-fit tools treat `residual_scale` as a known error SD. The nominal 10% error is right in shape but not in size (the residual scatter is 0.5× to 7× it across datasets), so `package_checks.jl` estimates the scale per fit (s² = wSSE/n, the maximum-likelihood value) before calling them.
 - **Weighted errors in the joint-fit tools:** `run_joint_fit` and the tools built on it take one `residual_scale` per data set, not one per point. Proportional error needs the workaround in `package_checks.jl` (fit y/σ against u/σ). `k_fold_cross_validation` and `leave_one_out_validation` are unweighted and hold points out at random, so they measure interpolation, not forecasting.
 - **Stochastic and Bayesian fitting:** Johnson et al. used stochastic birth-death models and several papers use Bayesian calibration; the package fits deterministic ODEs by least squares only.

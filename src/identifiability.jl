@@ -305,13 +305,20 @@ function fisher_information(
     derivative = prediction_jacobian(model, dataset_specs, u0, p; kwargs...)
     jacobian = derivative.jacobian
     information = jacobian' * jacobian
-    singular_values = svdvals(jacobian)
+    decomposition = svd(jacobian)
+    singular_values = decomposition.S
     maximum_singular = isempty(singular_values) ? 0.0 : maximum(singular_values)
     threshold = max(Float64(rank_tolerance) * maximum_singular, eps(Float64))
     numerical_rank = count(>=(threshold), singular_values)
     condition_number = numerical_rank == length(p) && !isempty(singular_values) ?
         maximum_singular / max(minimum(singular_values), eps(Float64)) : Inf
-    covariance = pinv(information; rtol = Float64(rank_tolerance))
+    # Pseudo-inverse of J'J from the SVD of J, with the same cutoff as the rank. Applying
+    # `rank_tolerance` to J'J instead squares the singular-value ratio, which drops the
+    # direction of a parameter on a much larger scale (e.g. K ~ 1e3 next to r ~ 0.1) and
+    # reports a near-zero standard error for it.
+    kept = singular_values .>= threshold
+    V = decomposition.V[:, kept]
+    covariance = V * Diagonal(1 ./ singular_values[kept] .^ 2) * V'
     std_errors = sqrt.(max.(diag(covariance), 0.0))
     correlation = Matrix{Float64}(undef, length(p), length(p))
     for i in eachindex(p), j in eachindex(p)
