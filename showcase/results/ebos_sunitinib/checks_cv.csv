@@ -1,0 +1,13 @@
+subject,r_squared,rel_rmse
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,NaN,NaN
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,NaN,NaN
+Human breast model (AB12-07):Su120(3D): 2-3,NaN,NaN
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,NaN,NaN
+Human breast model (AB12-11):Su120 (3D):1g-3,NaN,NaN
+Human breast model (AB12-11):Su60 (14D):1b-6,NaN,NaN
+Human breast model (AB13-06):Su60 (3D):3-2,NaN,NaN
+Human breast model (AB13-06):Su60 (7D):4-5,NaN,NaN
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,NaN,NaN
+Human breast model (AB14-14):Su120 (3D):3-9,NaN,NaN
+Human breast model (AB14-14):Su60 (14D):4-9,NaN,NaN
+Human breast model (AB14-14):Su60 (3D):2-9,NaN,NaN

@@ -1,0 +1,73 @@
+subject,grid,parameter,estimate,lower,upper,status,grid_min,grid_max
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,default_grid,r,5.0,0.7271070805053123,4.999999999999999,bounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,default_grid,K,632.257,632.2569999999996,632.2569999999996,bounded,0.001,1.0e7
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,default_grid,d,1.0e-6,1.0000000000000004e-6,0.1058723841113764,bounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,fine_grid,r,5.0,0.7271077167244768,5.0,upper_unbounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,fine_grid,K,632.257,600.3604109189141,743.8950617838005,bounded,0.001,1.0e7
+Human breast model (AB12-07):Su120(3D) / Su60(11D): 5-1,fine_grid,d,1.0e-6,1.0e-6,0.5624416856219895,lower_unbounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,default_grid,r,0.0404898,0.010749987835219216,0.1349693166941197,bounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,default_grid,K,12469.3,1617.780857370736,4.334994267041977e6,bounded,0.001,1.0e7
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,default_grid,d,0.0992779,0.09927544430408639,0.1620346368120401,bounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,fine_grid,r,0.0404898,0.010750469406596845,0.13497449919713794,bounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,fine_grid,K,12469.3,1617.5652728289317,4.334911736781328e6,bounded,0.001,1.0e7
+Human breast model (AB12-07):Su120(3D) / Su60(4D): 3-5,fine_grid,d,0.0992779,0.053880814253652674,0.16203814391075144,bounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D): 2-3,default_grid,r,0.0066713,0.006671314180005144,0.034906077331057536,bounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D): 2-3,default_grid,K,1.0e7,1778.279375158754,9.999999960770871e6,bounded,0.001,1.0e7
+Human breast model (AB12-07):Su120(3D): 2-3,default_grid,d,1.0e-6,1.0000000000000004e-6,0.015377295864490098,bounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D): 2-3,fine_grid,r,0.0066713,0.006023632025970043,0.0798445533616153,bounded,1.0e-6,5.0
+Human breast model (AB12-07):Su120(3D): 2-3,fine_grid,K,1.0e7,1778.2794100389244,1.0e7,upper_unbounded,0.001,1.0e7
+Human breast model (AB12-07):Su120(3D): 2-3,fine_grid,d,1.0e-6,1.0e-6,0.015376456101806879,lower_unbounded,1.0e-6,5.0
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,default_grid,r,0.10718,0.025199111144944934,0.4528562217120993,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,default_grid,K,1263.46,1263.241768194562,3.256010596527472e6,bounded,0.001,1.0e7
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,default_grid,d,0.110008,1.0000000000000004e-6,0.1772561248795996,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,fine_grid,r,0.10718,0.025197040475838168,0.45282964122817315,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,fine_grid,K,1263.46,1263.4599993744155,3.256080902880322e6,bounded,0.001,1.0e7
+Human breast model (AB12-11):Su120 (3D) / Su60 (11D):1h-6,fine_grid,d,0.110008,1.0000000000000004e-6,0.1772627514040711,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su120 (3D):1g-3,default_grid,r,0.0953569,0.09535807684260425,0.09535807684260425,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su120 (3D):1g-3,default_grid,K,2162.84,2162.817899973847,6210.727301840888,bounded,0.001,1.0e7
+Human breast model (AB12-11):Su120 (3D):1g-3,default_grid,d,0.123613,0.1236150079406155,0.1236150079406155,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su120 (3D):1g-3,fine_grid,r,0.0953569,0.061652991195828954,0.12906080880417103,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su120 (3D):1g-3,fine_grid,K,2162.84,2162.8399981586826,6210.782831252131,bounded,0.001,1.0e7
+Human breast model (AB12-11):Su120 (3D):1g-3,fine_grid,d,0.123613,0.07777641859177688,0.18472844187763082,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su60 (14D):1b-6,default_grid,r,0.0156385,0.015638421055208185,0.06612827250996803,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su60 (14D):1b-6,default_grid,K,1.0e7,1778.279409931419,9.999999999879107e6,bounded,0.001,1.0e7
+Human breast model (AB12-11):Su60 (14D):1b-6,default_grid,d,0.177832,0.17782998549336665,0.17782998549336665,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su60 (14D):1b-6,fine_grid,r,0.0156385,0.013552664572928655,0.06612852287792687,bounded,1.0e-6,5.0
+Human breast model (AB12-11):Su60 (14D):1b-6,fine_grid,K,1.0e7,1778.2794100389244,1.0e7,upper_unbounded,0.001,1.0e7
+Human breast model (AB12-11):Su60 (14D):1b-6,fine_grid,d,0.177832,0.11858038250654789,0.2032255503543366,bounded,1.0e-6,5.0
+Human breast model (AB13-06):Su60 (3D):3-2,default_grid,r,0.0420763,0.04207673714469531,0.04207673714469531,bounded,1.0e-6,5.0
+Human breast model (AB13-06):Su60 (3D):3-2,default_grid,K,6588.66,6588.526142251419,102740.73561970404,bounded,0.001,1.0e7
+Human breast model (AB13-06):Su60 (3D):3-2,default_grid,d,0.00343221,1.0000000000000004e-6,0.05269032572510854,bounded,1.0e-6,5.0
+Human breast model (AB13-06):Su60 (3D):3-2,fine_grid,r,0.0420763,0.027069541780403685,0.057083058219596305,bounded,1.0e-6,5.0
+Human breast model (AB13-06):Su60 (3D):3-2,fine_grid,K,6588.66,6588.659999782007,102742.04021640655,bounded,0.001,1.0e7
+Human breast model (AB13-06):Su60 (3D):3-2,fine_grid,d,0.00343221,1.0000000000000004e-6,0.0983627292073821,bounded,1.0e-6,5.0
+Human breast model (AB13-06):Su60 (7D):4-5,default_grid,r,0.0243699,0.024369974201492006,0.04740994334056534,bounded,1.0e-6,5.0
+Human breast model (AB13-06):Su60 (7D):4-5,default_grid,K,16682.6,2086.780082626491,4.495545351981753e6,bounded,0.001,1.0e7
+Human breast model (AB13-06):Su60 (7D):4-5,default_grid,d,0.0711407,0.07114071057765846,0.07114071057765846,bounded,1.0e-6,5.0
+Human breast model (AB13-06):Su60 (7D):4-5,fine_grid,r,0.0243699,0.014656046376352797,0.04740981703131997,bounded,1.0e-6,5.0
+Human breast model (AB13-06):Su60 (7D):4-5,fine_grid,K,16682.6,2086.7997196614997,4.495551395388475e6,bounded,0.001,1.0e7
+Human breast model (AB13-06):Su60 (7D):4-5,fine_grid,d,0.0711407,0.02697224825024866,0.11530915174975134,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,default_grid,r,0.0637201,0.0637147989159618,0.10992121692135423,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,default_grid,K,4686.42,4687.752206512989,3.8359291831605393e6,bounded,0.001,1.0e7
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,default_grid,d,0.0992718,0.023564010192478606,0.09927873407940838,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,fine_grid,r,0.0637201,0.04785930330483641,0.10992921916361006,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,fine_grid,K,4686.42,4686.419999895308,3.8357929002177934e6,bounded,0.001,1.0e7
+Human breast model (AB14-14):Su120 (3D) / Su60 (11D):5-8,fine_grid,d,0.0992718,0.023562570095527622,0.14847061691672592,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su120 (3D):3-9,default_grid,r,0.118729,0.11873173175777221,0.11873173175777221,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su120 (3D):3-9,default_grid,K,1533.37,1533.32992682936,1533.32992682936,bounded,0.001,1.0e7
+Human breast model (AB14-14):Su120 (3D):3-9,default_grid,d,0.0451414,1.0000000000000004e-6,0.08130467900565912,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su120 (3D):3-9,fine_grid,r,0.118729,0.09413067812247938,0.14332732187752062,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su120 (3D):3-9,fine_grid,K,1533.37,1533.3699958648526,1533.3700041351472,bounded,0.001,1.0e7
+Human breast model (AB14-14):Su120 (3D):3-9,fine_grid,d,0.0451414,1.0000000000000004e-6,0.09469094742700221,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su60 (14D):4-9,default_grid,r,0.0105974,0.010597361618165822,0.049390203632613074,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su60 (14D):4-9,default_grid,K,1.0e7,1778.2794095094239,9.999999999404501e6,bounded,0.001,1.0e7
+Human breast model (AB14-14):Su60 (14D):4-9,default_grid,d,0.0774754,0.07747538609165629,0.07747538609165629,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su60 (14D):4-9,fine_grid,r,0.0105974,0.009035991570512006,0.04939033779471512,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su60 (14D):4-9,fine_grid,K,1.0e7,1778.2794100389244,1.0e7,upper_unbounded,0.001,1.0e7
+Human breast model (AB14-14):Su60 (14D):4-9,fine_grid,d,0.0774754,0.04191887632693344,0.09880931420383994,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su60 (3D):2-9,default_grid,r,0.0737572,0.07375699411215625,0.07375699411215625,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su60 (3D):2-9,default_grid,K,2359.25,2359.2350400627824,2359.2350400627824,bounded,0.001,1.0e7
+Human breast model (AB14-14):Su60 (3D):2-9,default_grid,d,0.0254017,1.0000000000000004e-6,0.0951328892580184,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su60 (3D):2-9,fine_grid,r,0.0737572,0.049585999120257754,0.09792840087974224,bounded,1.0e-6,5.0
+Human breast model (AB14-14):Su60 (3D):2-9,fine_grid,K,2359.25,2359.249996499023,2359.250003500977,bounded,0.001,1.0e7
+Human breast model (AB14-14):Su60 (3D):2-9,fine_grid,d,0.0254017,1.0000000000000004e-6,0.11650102558801813,bounded,1.0e-6,5.0

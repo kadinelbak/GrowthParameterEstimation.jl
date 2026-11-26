@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Showcase: every dataset page opens with a verdict box comparing the result with the source paper (matches, partly matches, does not match, or not directly comparable), plus a "Does it match the papers?" summary page and a "What it covers" page listing which package features the showcase uses and which it does not yet.
+- Showcase: a "Package diagnostics" section on every dataset page runs the package's own `fisher_information`, `profile_likelihood`, `bootstrap_joint_fit`, `synthetic_recovery_benchmark` and `k_fold_cross_validation` on up to 12 curves with the rule pick, and compares their intervals with the showcase profile (`showcase/analyses/package_checks.jl`). It found that `profile_likelihood`'s default grid gives zero-width intervals labelled `bounded` on these curves.
 
 ## v0.6.1 - 2026-11-13
 

@@ -86,6 +86,7 @@ function dataset_page(id)
                              [[nice(r.model), fmt(100 * r.median_rel_error), fmt(100 * r.share_within_20pct)] for r in eachrow(fc)]))
         println(io, "\n![Forecast](../assets/", id, "/forecast.png)\n")
     end
+    isfile(joinpath(res, "checks_fisher.csv")) && package_checks_section(io, id, res, rd)
     println(io, "## Reproduce\n")
     println(io, "```bash\npython3 -I showcase/data/prepare.py --only ", get(meta, "source", id), "\njulia --project=showcase -t auto showcase/run_pipeline.jl --only ", id, "\n```\n")
     println(io, "Fitted with GrowthParameterEstimation.jl ", meta["package_version"], ". Results: `showcase/results/", id, "/`.")
@@ -93,6 +94,87 @@ function dataset_page(id)
     write(path, String(take!(io)))
     copy_figs(id)   # figures next to the page
     return "datasets/$(id).md"
+end
+
+relwidth(lo, hi, est) = all(isfinite, (lo, hi, est)) && est != 0 ? 100 * (hi - lo) / abs(est) : NaN
+medfin(x) = (v = filter(isfinite, collect(skipmissing(x))); isempty(v) ? NaN : median(v))
+pct(x) = isempty(x) ? "—" : string(round(Int, 100 * count(x) / length(x)))
+
+# closed = a grid point below and above the interval failed the cutoff, and the interval has
+# width. Checked here because the package also labels as `bounded` an interval that reaches
+# the edge of its grid (clipped grids, or a bound recomputed with rounding error).
+inside(v, edge) = abs(v - edge) > 1e-6 * max(abs(edge), 1e-12)
+closed(d) = (d.status .== "bounded") .& (d.upper .> d.lower) .& inside.(d.lower, d.grid_min) .& inside.(d.upper, d.grid_max)
+
+"""Read the package-diagnostics tables (written by analyses/package_checks.jl) for one dataset,
+with the Fisher-vs-profile agreement count."""
+function checks_data(res)
+    rd(n) = (d = CSV.read(joinpath(res, "$(n).csv"), DataFrame); d.subject = string.(d.subject); d)
+    fi, pr, bs, rc, cv = rd("checks_fisher"), rd("checks_profile"), rd("checks_boot"), rd("checks_recovery"), rd("checks_cv")
+    pg = pr[pr.grid .== "fine_grid", :]
+    pd = pr[pr.grid .== "default_grid", :]
+    pg2 = copy(pg)
+    pg2.closed = closed(pg)
+    j = innerjoin(select(fi, :subject, :parameter, [:wald_lower, :wald_upper, :estimate] => ByRow(relwidth) => :wf),
+                  select(pg2, :subject, :parameter, :closed, [:lower, :upper, :estimate] => ByRow(relwidth) => :wp),
+                  on = [:subject, :parameter])
+    ok = j[j.closed .& isfinite.(j.wf) .& isfinite.(j.wp), :]
+    agree = isempty(ok) ? 0 : count(r -> 2 / 3 <= r.wf / r.wp <= 1.5, eachrow(ok))
+    return (; fi, pg, pd, bs, rc, cv, n = length(unique(fi.subject)), agree, pairs = nrow(j))
+end
+
+"""The package's own diagnostics on a subset of curves, as a dataset-page section."""
+function package_checks_section(io, id, res, rd)
+    (; fi, pg, pd, bs, rc, cv, n, agree, pairs) = checks_data(res)
+    own = isfile(joinpath(res, "profiles.csv")) ? rd("profiles") : nothing
+    own === nothing || (own.subject = string.(own.subject))
+    println(io, "## Package diagnostics\n")
+    println(io, "The package's built-in tools, run on ", n, " evenly spaced curves with the pick (",
+            nice(TOML.parsefile(joinpath(res, "meta.toml"))["pick"]), ") and the same 10% proportional error: ",
+            "`fisher_information`, `profile_likelihood`, `bootstrap_joint_fit` (residual, 40 resamples), ",
+            "`synthetic_recovery_benchmark` (20 simulated data sets per curve) and `k_fold_cross_validation` (5 folds). ",
+            "Script: `showcase/analyses/package_checks.jl`.\n")
+    if pairs > 0
+        share = agree / pairs
+        kind = share >= 0.75 ? "tip" : share >= 0.4 ? "warning" : "danger"
+        label = share >= 0.75 ? "✅ Fisher and profile intervals agree" : share >= 0.4 ? "⚠️ Fisher and profile intervals partly agree" : "❌ Fisher intervals are not reliable here"
+        println(io, "!!! ", kind, " \"", label, "\"\n    The Fisher (Wald) interval is within a factor of 1.5 of the profile interval for ", agree, " of ", pairs,
+                " parameter-curve pairs. Where they disagree, trust the profile and bootstrap intervals: the Fisher interval assumes the likelihood is quadratic around the estimate.\n")
+    end
+
+    rows = Vector{String}[]
+    for nm in unique(fi.parameter)
+        f = fi[fi.parameter .== nm, :]
+        g = pg[pg.parameter .== nm, :]
+        d = pd[pd.parameter .== nm, :]
+        b = bs[bs.parameter .== nm, :]
+        wf = medfin(relwidth.(f.wald_lower, f.wald_upper, f.estimate))
+        wp = medfin(relwidth.(g.lower, g.upper, g.estimate)[closed(g)])
+        wb = medfin(relwidth.(b.lower, b.upper, b.estimate))
+        wo = "—"
+        if own !== nothing
+            o = own[(own.parameter .== nm) .& in.(own.subject, Ref(Set(f.subject))), :]
+            nrow(o) > 0 && (wo = fmt(medfin(relwidth.(o.lower, o.upper, o.estimate)[o.identifiable])) * " (" * pct(o.identifiable) * "%)")
+        end
+        push!(rows, [nm, fmt(wf), fmt(wp) * " (" * pct(closed(g)) * "%)", wo, fmt(wb), pct(closed(d))])
+    end
+    println(io, "**95% interval width, median % of the estimate** (in brackets: share of curves where the interval closes inside the parameter bounds)\n")
+    println(io, md_table(["Parameter", "Fisher (Wald)", "Package profile", "Showcase profile", "Bootstrap", "Package profile, default grid: closes (%)"], rows))
+    println(io, "\nThe package profile here uses the package's default grid plus points at ±0.5 to ±4 Fisher standard errors around the estimate. ",
+            "It reports the outermost grid points inside the cutoff, so it can read up to one grid step narrower than the showcase profile, which bisects the crossing. ",
+            "Its default grid (8 log-spaced points per side spanning the whole parameter bounds) is too coarse for these curves: ",
+            "often only the estimate passes the cutoff (a zero-width interval), or the interval runs to a bound. The package labels both `bounded`; the last column counts only intervals that really close.\n")
+
+    rrows = Vector{String}[]
+    for nm in unique(rc.parameter)
+        r = rc[rc.parameter .== nm, :]
+        push!(rrows, [nm, fmt(100 * medfin(r.rel_bias)), fmt(100 * medfin(r.rel_rmse)), fmt(100 * medfin(r.success_rate))])
+    end
+    println(io, "**Synthetic recovery** (data simulated from each curve's fit at its own time points and 10% noise, then refitted)\n")
+    println(io, md_table(["Parameter", "Median bias (% of truth)", "Median RMSE (% of truth)", "Fits converged (%)"], rrows))
+    println(io, "\n**Cross-validation.** Five-fold cross-validation on ", nrow(cv), " curves, with points held out at random (interpolation, unweighted): median R² ",
+            @sprintf("%.2f", medfin(cv.r_squared)), ", median RMSE ", fmt(100 * medfin(cv.rel_rmse)),
+            "% of the mean value. The forecast check above is the harder test, because it holds out the end of each curve.\n")
 end
 
 function cross_page(done)
@@ -123,6 +205,23 @@ function cross_page(done)
         println(io, "Treated datasets use a panel of treatment-response laws (see each dataset page).\n")
         println(io, "![ΔBIC heatmap, treated](../assets/cross/delta_bic_heatmap_treated.png)\n")
         println(io, "![Pick share heatmap, treated](../assets/cross/pick_share_heatmap_treated.png)\n")
+    end
+    withchecks = [id for id in done if isfile(joinpath(SHOWCASE, "results", id, "checks_fisher.csv"))]
+    if !isempty(withchecks)
+        println(io, "## Package diagnostics by dataset\n")
+        println(io, "The package's own tools on up to 12 curves per dataset (details on each page). ",
+                "Fisher agrees = Wald interval within a factor of 1.5 of the profile interval; profile closes = the 95% interval ends inside the parameter bounds.\n")
+        crow = Vector{String}[]
+        for id in withchecks
+            d = checks_data(joinpath(SHOWCASE, "results", id))
+            push!(crow, ["[" * page_title(id) * "](" * id * ".md)", string(d.n),
+                         d.pairs == 0 ? "—" : string(round(Int, 100 * d.agree / d.pairs)),
+                         pct(closed(d.pg)), pct(closed(d.pd)),
+                         fmt(100 * medfin(abs.(d.rc.rel_bias))), @sprintf("%.2f", medfin(d.cv.r_squared))])
+        end
+        println(io, md_table(["Dataset", "Curves", "Fisher agrees (%)", "Profile closes (%)", "Default-grid profile closes (%)",
+                              "Synthetic recovery: median abs. bias (%)", "k-fold CV median R²"], crow))
+        println(io)
     end
     if isfile(joinpath(SHOWCASE, "figures", "cross", "identifiability_by_dataset.png"))
         println(io, "## Identifiability by dataset\n")
