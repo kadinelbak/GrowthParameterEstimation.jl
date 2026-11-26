@@ -172,9 +172,13 @@ function package_checks_section(io, id, res, rd)
     end
     println(io, "**Synthetic recovery** (data simulated from each curve's fit at its own time points and 10% noise, then refitted)\n")
     println(io, md_table(["Parameter", "Median bias (% of truth)", "Median RMSE (% of truth)", "Fits converged (%)"], rrows))
-    println(io, "\n**Cross-validation.** Five-fold cross-validation on ", nrow(cv), " curves, with points held out at random (interpolation, unweighted): median R² ",
-            @sprintf("%.2f", medfin(cv.r_squared)), ", median RMSE ", fmt(100 * medfin(cv.rel_rmse)),
-            "% of the mean value. The forecast check above is the harder test, because it holds out the end of each curve.\n")
+    if any(isfinite, cv.r_squared)
+        println(io, "\n**Cross-validation.** Five-fold cross-validation on ", count(isfinite, cv.r_squared), " curves, with points held out at random (interpolation, unweighted): median R² ",
+                @sprintf("%.2f", medfin(cv.r_squared)), ", median RMSE ", fmt(100 * medfin(cv.rel_rmse)),
+                "% of the mean value. The forecast check above is the harder test, because it holds out the end of each curve.\n")
+    else
+        println(io, "\n**Cross-validation.** `k_fold_cross_validation` did not finish on this dataset: with a dose schedule its default solver fails, and with `Tsit5` the bounded Nelder-Mead fits ran for over an hour on 12 curves.\n")
+    end
 end
 
 function cross_page(done)
@@ -217,7 +221,7 @@ function cross_page(done)
             push!(crow, ["[" * page_title(id) * "](" * id * ".md)", string(d.n),
                          d.pairs == 0 ? "—" : string(round(Int, 100 * d.agree / d.pairs)),
                          pct(closed(d.pg)), pct(closed(d.pd)),
-                         fmt(100 * medfin(abs.(d.rc.rel_bias))), @sprintf("%.2f", medfin(d.cv.r_squared))])
+                         fmt(100 * medfin(abs.(d.rc.rel_bias))), (x = medfin(d.cv.r_squared); isfinite(x) ? @sprintf("%.2f", x) : "—")])
         end
         println(io, md_table(["Dataset", "Curves", "Fisher agrees (%)", "Profile closes (%)", "Default-grid profile closes (%)",
                               "Synthetic recovery: median abs. bias (%)", "k-fold CV median R²"], crow))
