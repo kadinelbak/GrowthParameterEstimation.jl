@@ -86,6 +86,7 @@ function dataset_page(id)
                              [[nice(r.model), fmt(100 * r.median_rel_error), fmt(100 * r.share_within_20pct)] for r in eachrow(fc)]))
         println(io, "\n![Forecast](../assets/", id, "/forecast.png)\n")
     end
+    isfile(joinpath(res, "checks_fisher.csv")) && package_checks_section(io, id, res, rd)
     println(io, "## Reproduce\n")
     println(io, "```bash\npython3 -I showcase/data/prepare.py --only ", get(meta, "source", id), "\njulia --project=showcase -t auto showcase/run_pipeline.jl --only ", id, "\n```\n")
     println(io, "Fitted with GrowthParameterEstimation.jl ", meta["package_version"], ". Results: `showcase/results/", id, "/`.")
@@ -93,6 +94,114 @@ function dataset_page(id)
     write(path, String(take!(io)))
     copy_figs(id)   # figures next to the page
     return "datasets/$(id).md"
+end
+
+relwidth(lo, hi, est) = all(isfinite, (lo, hi, est)) && est != 0 ? 100 * (hi - lo) / abs(est) : NaN
+medfin(x) = (v = filter(isfinite, collect(skipmissing(x))); isempty(v) ? NaN : median(v))
+pct(x) = isempty(x) ? "—" : string(round(Int, 100 * count(x) / length(x)))
+
+# closed = a grid point below and above the interval failed the cutoff, and the interval has
+# width. Checked here because the package also labels as `bounded` an interval that reaches
+# the edge of its grid (clipped grids, or a bound recomputed with rounding error).
+inside(v, edge) = abs(v - edge) > 1e-6 * max(abs(edge), 1e-12)
+closed(d) = (d.status .== "bounded") .& (d.upper .> d.lower) .& inside.(d.lower, d.grid_min) .& inside.(d.upper, d.grid_max)
+
+"""Read the package-diagnostics tables (written by analyses/package_checks.jl) for one dataset."""
+function read_checks(res)
+    rd(n) = (d = CSV.read(joinpath(res, "$(n).csv"), DataFrame); d.subject = string.(d.subject); d.model = String.(d.model); d)
+    pg = rd("checks_profile")
+    # use the cutoff crossing interpolated between grid points where there is one
+    pg.lower = ifelse.(isfinite.(pg.lower_interp), pg.lower_interp, pg.lower)
+    pg.upper = ifelse.(isfinite.(pg.upper_interp), pg.upper_interp, pg.upper)
+    return (fi = rd("checks_fisher"), pg, bs = rd("checks_boot"), rc = rd("checks_recovery"), cv = rd("checks_cv"))
+end
+
+"""One model's diagnostics, with the Fisher-vs-profile agreement count."""
+function checks_data(all, model)
+    f(d) = d[d.model .== model, :]
+    fi, pg, bs, rc, cv = f(all.fi), f(all.pg), f(all.bs), f(all.rc), f(all.cv)
+    pg2 = copy(pg)
+    pg2.closed = closed(pg)
+    j = innerjoin(select(fi, :subject, :parameter, [:wald_lower, :wald_upper, :estimate] => ByRow(relwidth) => :wf),
+                  select(pg2, :subject, :parameter, :closed, [:lower, :upper, :estimate] => ByRow(relwidth) => :wp),
+                  on = [:subject, :parameter])
+    ok = j[j.closed .& isfinite.(j.wf) .& isfinite.(j.wp), :]
+    agree = isempty(ok) ? 0 : count(r -> 2 / 3 <= r.wf / r.wp <= 1.5, eachrow(ok))
+    return (; fi, pg, bs, rc, cv, n = length(unique(fi.subject)), agree, pairs = nrow(j))
+end
+
+share_str(a, b) = b == 0 ? "—" : string(round(Int, 100 * a / b))
+
+"""The package's own diagnostics on a subset of curves, for every model, as a dataset-page section."""
+function package_checks_section(io, id, res, rd)
+    all = read_checks(res)
+    pick = TOML.parsefile(joinpath(res, "meta.toml"))["pick"]
+    models = unique(all.fi.model)
+    d = checks_data(all, pick)
+    own = isfile(joinpath(res, "profiles.csv")) ? rd("profiles") : nothing
+    own === nothing || (own.subject = string.(own.subject))
+    scale = medfin(unique(select(all.fi, :subject, :model, :scale)).scale)
+    println(io, "## Package diagnostics\n")
+    println(io, "The package's built-in tools, run on every model in the panel on the same ", d.n,
+            " evenly spaced curves, each starting from its showcase fit: ",
+            "`fisher_information`, `profile_likelihood`, `bootstrap_joint_fit` (residual, 40 resamples) and ",
+            "`synthetic_recovery_benchmark` (20 simulated data sets per curve), plus 5-fold cross-validation. ",
+            "Script: `showcase/analyses/package_checks.jl`.\n")
+    println(io, "The 10% proportional error sets the weights; its overall size is estimated from each fit's residuals ",
+            "(the same maximum-likelihood scale the BIC and the showcase profile use). Here the residual scatter is a median ",
+            fmt(scale), "× the nominal 10%, so every interval and simulated data set is calibrated to the scatter the data really have.\n")
+    if d.pairs > 0
+        share = d.agree / d.pairs
+        kind = share >= 0.75 ? "tip" : share >= 0.4 ? "warning" : "danger"
+        label = share >= 0.75 ? "✅ Fisher and profile intervals agree for the pick" : share >= 0.4 ? "⚠️ Fisher and profile intervals partly agree for the pick" : "❌ Fisher intervals are not reliable for the pick"
+        println(io, "!!! ", kind, " \"", label, "\"\n    For ", nice(pick), ", the Fisher (Wald) interval is within a factor of 1.5 of the profile interval for ", d.agree, " of ", d.pairs,
+                " parameter-curve pairs. Where they disagree, trust the profile and bootstrap intervals: the Fisher interval assumes the likelihood is quadratic around the estimate.\n")
+    end
+
+    # every model, one row each
+    mrows = Vector{String}[]
+    for m in models
+        x = checks_data(all, m)
+        k = length(unique(x.fi.parameter))
+        push!(mrows, [(m == pick ? "**" * nice(m) * "** (pick)" : nice(m)), string(k),
+                      share_str(x.agree, x.pairs), pct(closed(x.pg)),
+                      fmt(100 * medfin(relwidth.(x.bs.lower, x.bs.upper, x.bs.estimate))),
+                      fmt(100 * medfin(abs.(x.rc.rel_bias))),
+                      fmt(100 * medfin(x.cv.median_rel_error)), fmt(100 * medfin(x.cv.within_20pct)),
+                      sum(x.cv.k) > 0 ? fmt(100 * sum(x.cv.folds_converged) / sum(x.cv.k)) : "—"])
+    end
+    println(io, "**Every model** (medians over curves and parameters)\n")
+    println(io, md_table(["Model", "Parameters", "Fisher agrees with profile (%)", "Profile interval closes (%)",
+                          "Bootstrap 95% width (% of estimate)", "Synthetic recovery: abs. bias (%)",
+                          "Cross-validation: held-out error (%)", "Held-out points within 20% (%)", "Folds converged (%)"], mrows))
+    println(io, "\n*Profile interval closes*: the 95% interval ends inside the parameter bounds on both sides. ",
+            "*Cross-validation*: the first point is the initial condition and stays in every training set; the others are dealt into 5 interleaved folds, ",
+            "each refitted with the showcase objective and predicted from the full curve, so this tests interpolation. A fold counts as converged when its fit reaches a weighted error per point within 4× the full-curve fit's (retried with up to 32 starts); folds that never do are not scored. The forecast check above tests extrapolation.\n")
+
+    # the pick, parameter by parameter
+    rows = Vector{String}[]
+    for nm in unique(d.fi.parameter)
+        f = d.fi[d.fi.parameter .== nm, :]
+        g = d.pg[d.pg.parameter .== nm, :]
+        b = d.bs[d.bs.parameter .== nm, :]
+        r = d.rc[d.rc.parameter .== nm, :]
+        wf = medfin(relwidth.(f.wald_lower, f.wald_upper, f.estimate))
+        wp = medfin(relwidth.(g.lower, g.upper, g.estimate)[closed(g)])
+        wb = medfin(relwidth.(b.lower, b.upper, b.estimate))
+        wo = "—"
+        if own !== nothing
+            o = own[(own.parameter .== nm) .& in.(own.subject, Ref(Set(f.subject))), :]
+            nrow(o) > 0 && (wo = fmt(medfin(relwidth.(o.lower, o.upper, o.estimate)[o.identifiable])) * " (" * pct(o.identifiable) * "%)")
+        end
+        push!(rows, [nm, fmt(wf), fmt(wp) * " (" * pct(closed(g)) * "%)", wo, fmt(wb),
+                     fmt(100 * medfin(r.rel_bias)), fmt(100 * medfin(r.rel_rmse))])
+    end
+    println(io, "**The pick, ", nice(pick), ", parameter by parameter.** 95% interval width as median % of the estimate (in brackets: share of curves where the interval closes), and synthetic recovery.\n")
+    println(io, md_table(["Parameter", "Fisher (Wald)", "Package profile", "Showcase profile", "Bootstrap",
+                          "Recovery: median bias (% of truth)", "Recovery: median RMSE (% of truth)"], rows))
+    println(io, "\nThe package profile uses the package's default grid plus points at ±0.5 to ±4 Fisher standard errors around the estimate. ",
+            "`profile_likelihood` reports the outermost grid points inside the cutoff, which reads about 20% narrow at this spacing, so the widths here interpolate the crossing between grid points. ",
+            "The showcase profile searches outward and bisects the crossing, and uses the exact log-likelihood ratio n·log(wSSE/wSSE₀) rather than its quadratic form, so it reads slightly wider.\n")
 end
 
 function cross_page(done)
@@ -123,6 +232,45 @@ function cross_page(done)
         println(io, "Treated datasets use a panel of treatment-response laws (see each dataset page).\n")
         println(io, "![ΔBIC heatmap, treated](../assets/cross/delta_bic_heatmap_treated.png)\n")
         println(io, "![Pick share heatmap, treated](../assets/cross/pick_share_heatmap_treated.png)\n")
+    end
+    withchecks = [id for id in done if isfile(joinpath(SHOWCASE, "results", id, "checks_fisher.csv"))]
+    if !isempty(withchecks)
+        println(io, "## Package diagnostics by dataset\n")
+        println(io, "The package's own tools on up to 12 curves per dataset, for every model in the panel (details on each page). ",
+                "Fisher agrees = Wald interval within a factor of 1.5 of the profile interval; profile closes = the 95% interval ends inside the parameter bounds; ",
+                "error scale = residual scatter as a multiple of the nominal 10% error.\n")
+        crow = Vector{String}[]
+        bymodel = DataFrame(model = String[], dataset = String[], agree = Int[], pairs = Int[], closes = Float64[], bias = Float64[], cv = Float64[])
+        for id in withchecks
+            res = joinpath(SHOWCASE, "results", id)
+            all = read_checks(res)
+            pick = TOML.parsefile(joinpath(res, "meta.toml"))["pick"]
+            for m in unique(all.fi.model)
+                x = checks_data(all, m)
+                push!(bymodel, (m, id, x.agree, x.pairs, isempty(x.pg.status) ? NaN : count(closed(x.pg)) / nrow(x.pg),
+                                medfin(abs.(x.rc.rel_bias)), medfin(x.cv.median_rel_error)))
+            end
+            d = checks_data(all, pick)
+            sub = bymodel[bymodel.dataset .== id, :]
+            bestcv = sub.model[argmin(replace(sub.cv, NaN => Inf))]
+            push!(crow, ["[" * page_title(id) * "](" * id * ".md)", string(d.n), string(nrow(sub)),
+                         fmt(medfin(unique(select(all.fi, :subject, :model, :scale)).scale)),
+                         share_str(d.agree, d.pairs), pct(closed(d.pg)), fmt(100 * medfin(abs.(d.rc.rel_bias))),
+                         fmt(100 * medfin(d.cv.median_rel_error)), nice(bestcv) * " (" * fmt(100 * minimum(replace(sub.cv, NaN => Inf))) * "%)"])
+        end
+        println(io, "**The pick on each dataset**\n")
+        println(io, md_table(["Dataset", "Curves", "Models checked", "Error scale (× 10%)", "Fisher agrees (%)", "Profile closes (%)",
+                              "Synthetic recovery: abs. bias (%)", "Cross-validation: held-out error (%)", "Lowest held-out error (model)"], crow))
+        println(io, "\n**Each model, across the datasets it was fitted on** (medians of the per-dataset values)\n")
+        mrow = Vector{String}[]
+        for g in groupby(bymodel, :model)
+            push!(mrow, [nice(g.model[1]), string(nrow(g)), share_str(sum(g.agree), sum(g.pairs)),
+                         fmt(100 * medfin(g.closes)), fmt(100 * medfin(g.bias)), fmt(100 * medfin(g.cv))])
+        end
+        sort!(mrow, by = r -> r[1])
+        println(io, md_table(["Model", "Datasets", "Fisher agrees (%)", "Profile closes (%)", "Synthetic recovery: abs. bias (%)",
+                              "Cross-validation: held-out error (%)"], mrow))
+        println(io)
     end
     if isfile(joinpath(SHOWCASE, "figures", "cross", "identifiability_by_dataset.png"))
         println(io, "## Identifiability by dataset\n")

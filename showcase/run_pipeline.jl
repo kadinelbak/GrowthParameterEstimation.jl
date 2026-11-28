@@ -58,10 +58,10 @@ function stepped_from_column(g::AbstractDataFrame, col::Symbol)
     return SteppedExposure(times, vals)
 end
 
-function run_dataset(cfg::Dict, defaults::Dict)
-    c = merge(defaults, cfg)
+"""The curves a dataset entry fits: loaded, filtered, with exposures, and subset to
+`max_curves_fitted` if set. `c` is the dataset entry merged with the defaults."""
+function dataset_conditions(c::Dict)
     id = c["id"]
-    t0 = time()
     df = load_dataset(c)
     # exposure: none (default), or a 0/1 therapy schedule read from a Bool column
     # or a dose schedule per condition: [dataset.schedules."name"] change_times = [...], values = [...]
@@ -79,6 +79,14 @@ function run_dataset(cfg::Dict, defaults::Dict)
     # evenly spaced subset, so every condition (e.g. seeding density) stays represented
     max_n > 0 && length(conds) > max_n && (conds = conds[round.(Int, range(1, length(conds), length = max_n))])
     isempty(conds) && error("$(id): no curve has enough points")
+    return conds
+end
+
+function run_dataset(cfg::Dict, defaults::Dict)
+    c = merge(defaults, cfg)
+    id = c["id"]
+    t0 = time()
+    conds = dataset_conditions(c)
     models = String.(get(c, "models", GROWTH_PANEL))
     @info "$(id): $(length(conds)) curves × $(length(models)) models on $(Threads.nthreads()) threads"
 

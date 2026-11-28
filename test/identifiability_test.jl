@@ -1,4 +1,5 @@
 using StructuralIdentifiability
+using LinearAlgebra: diag
 
 @testset "Identifiability APIs" begin
     function shared_logistic!(du, u, p, t)
@@ -48,6 +49,20 @@ using StructuralIdentifiability
     @test fisher.numerical_rank == 2
     @test isfinite(fisher.condition_number)
     @test nrow(fisher.table) == 2
+
+    # Parameters on very different scales: the Wald error of K must match the inverse of the
+    # Fisher information, not collapse to zero (regression test for squaring the tolerance).
+    scaled_truth = [0.4, 1500.0]
+    scaled_u0 = [50.0, 60.0]
+    scaled_solution = solve(ODEProblem(shared_logistic!, scaled_u0, (0.0, 12.0), scaled_truth), Tsit5(); saveat = 0.0:1.0:12.0)
+    scaled_datasets = [
+        (x = collect(0.0:1.0:12.0), y = [state[1] for state in scaled_solution.u], state_index = 1, residual_scale = 20.0),
+    ]
+    scaled = fisher_information(shared_logistic!, scaled_datasets, scaled_u0, scaled_truth;
+                                parameter_names = [:r, :K], solver = Tsit5())
+    @test scaled.numerical_rank == 2
+    @test scaled.table.local_std_error ≈ sqrt.(diag(inv(scaled.fisher_information))) rtol = 1e-6
+    @test scaled.table.local_std_error[2] > 1.0
 
     global_sensitivity = global_sensitivity_analysis(
         shared_logistic!, datasets, u0;

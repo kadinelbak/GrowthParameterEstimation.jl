@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Showcase: every dataset page opens with a verdict box comparing the result with the source paper (matches, partly matches, does not match, or not directly comparable), plus a "Does it match the papers?" summary page and a "What it covers" page listing which package features the showcase uses and which it does not yet.
+- Showcase: a "Package diagnostics" section on every dataset page runs the package's own `fisher_information`, `profile_likelihood`, `bootstrap_joint_fit`, `synthetic_recovery_benchmark` and `k_fold_cross_validation` on up to 12 curves with the rule pick, and compares their intervals with the showcase profile (`showcase/analyses/package_checks.jl`). The diagnostics run on every model in each panel, with the error scale estimated from each fit's residuals, and cross-validation uses the showcase objective. They found that `profile_likelihood`'s default grid gives zero-width intervals labelled `bounded` on these curves, and that `k_fold_cross_validation` silently drops held-out points before its first training time.
+
+### Fixed
+
+- `fisher_information` now builds the covariance from the SVD of the Jacobian with the same cutoff as the numerical rank. It used to apply `rank_tolerance` to JᵀJ, which squared the singular-value ratio and gave near-zero standard errors (collapsed Wald intervals) for parameters on a much larger scale than the others, such as a carrying capacity next to a growth rate.
 
 ## v0.6.1 - 2026-11-13
 
